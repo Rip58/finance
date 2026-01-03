@@ -13,7 +13,7 @@ interface ChartDataPoint {
 
 interface AssetTransaction {
   symbol: string;
-  type: string;
+  side: string;
   quantity: number;
   transaction_date: string;
 }
@@ -38,7 +38,7 @@ function calculateHoldingsAtDate(transactions: AssetTransaction[], targetDate: D
     const txDate = new Date(tx.transaction_date);
     if (txDate <= targetDate) {
       if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
-      if (tx.type === "buy") {
+      if (tx.side === "buy") {
         holdings[tx.symbol] += Number(tx.quantity);
       } else {
         holdings[tx.symbol] -= Number(tx.quantity);
@@ -143,7 +143,7 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       const [assetTxResult, cashTxResult, pricesResult] = await Promise.all([
         supabase
           .from("asset_transactions")
-          .select("symbol, type, quantity, transaction_date")
+          .select("symbol, side, quantity, transaction_date")
           .eq("user_id", userId)
           .order("transaction_date", { ascending: true }),
         supabase

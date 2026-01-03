@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Wallet, Activity, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { TrendingUp, TrendingDown, Wallet, Activity, LogOut, Settings } from "lucide-react";
 import { IntervalSelector, Interval } from "@/components/IntervalSelector";
 import { MetricCard } from "@/components/MetricCard";
 import { EvolutionChart } from "@/components/EvolutionChart";
@@ -22,6 +23,7 @@ const formatPercent = (value: number) =>
   `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 
 const Index = () => {
+  const navigate = useNavigate();
   const [interval, setInterval] = useState<Interval>("1D");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -73,10 +75,13 @@ const Index = () => {
               </div>
               <h1 className="text-xl font-semibold tracking-tight">Portfolio Dashboard</h1>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <p className="text-sm text-muted-foreground hidden sm:block">
                 {user.email}
               </p>
+              <Button variant="ghost" size="icon" onClick={() => navigate("/settings")}>
+                <Settings className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
               </Button>
