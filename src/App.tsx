@@ -10,6 +10,10 @@ import { HomePage } from "@/pages/HomePage";
 import { WalletPage } from "@/pages/WalletPage";
 import { ReportPage } from "@/pages/ReportPage";
 import { AccountPage } from "@/pages/AccountPage";
+import { AddIncomePage } from "@/pages/AddIncomePage";
+import { AddExpensePage } from "@/pages/AddExpensePage";
+import { AddTransferPage } from "@/pages/AddTransferPage";
+import { PendingPaymentsPage } from "@/pages/PendingPaymentsPage";
 import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 
@@ -50,6 +54,10 @@ function AppContent() {
       <Route path="/wallet" element={<WalletPage user={user} />} />
       <Route path="/report" element={<ReportPage user={user} />} />
       <Route path="/account" element={<AccountPage user={user} />} />
+      <Route path="/add-income" element={<AddIncomePage user={user} />} />
+      <Route path="/add-expense" element={<AddExpensePage user={user} />} />
+      <Route path="/add-transfer" element={<AddTransferPage user={user} />} />
+      <Route path="/pending-payments" element={<PendingPaymentsPage user={user} />} />
       {/* Legacy route redirect */}
       <Route path="/settings" element={<Navigate to="/account" replace />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

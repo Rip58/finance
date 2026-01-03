@@ -9,6 +9,8 @@ interface DashboardMetrics {
   assetChange: number;
   incomeChange: number;
   expenseChange: number;
+  savingsBalance: number;
+  investmentsBalance: number;
 }
 
 export function useDashboardMetrics(userId: string | undefined) {
@@ -24,6 +26,8 @@ export function useDashboardMetrics(userId: string | undefined) {
           assetChange: 0,
           incomeChange: 0,
           expenseChange: 0,
+          savingsBalance: 0,
+          investmentsBalance: 0,
         };
       }
 
@@ -31,8 +35,8 @@ export function useDashboardMetrics(userId: string | undefined) {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-      // Fetch transactions, asset data, and fx rates in parallel
-      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates] = await Promise.all([
+      // Fetch transactions, asset data, fx rates, accounts, and categories in parallel
+      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates, accounts, categories, allTransactions, transfers] = await Promise.all([
         supabase
           .from("transactions")
           .select("type, amount, currency, date, value_date")
@@ -58,6 +62,23 @@ export function useDashboardMetrics(userId: string | undefined) {
           .eq("pair", "USDT/EUR")
           .order("as_of", { ascending: false })
           .limit(1),
+        supabase
+          .from("bank_accounts")
+          .select("id, name, currency, category_id, is_archived")
+          .eq("user_id", userId)
+          .eq("is_archived", false),
+        supabase
+          .from("categories")
+          .select("id, name, scope")
+          .eq("user_id", userId),
+        supabase
+          .from("transactions")
+          .select("type, amount, currency, bank_account_id")
+          .eq("user_id", userId),
+        supabase
+          .from("transfers")
+          .select("from_account_id, to_account_id, amount_from, amount_to, currency_from, currency_to")
+          .eq("user_id", userId),
       ]);
 
       // Get latest USDT/EUR rate (fallback to 1 if none)
@@ -110,6 +131,59 @@ export function useDashboardMetrics(userId: string | undefined) {
         totalAssets += quantity * price;
       }
 
+      // Calculate account balances
+      const accountBalances: Record<string, number> = {};
+      for (const acc of accounts.data || []) {
+        accountBalances[acc.id] = 0;
+      }
+
+      // Add income, subtract expenses
+      for (const tx of allTransactions.data || []) {
+        if (tx.bank_account_id && accountBalances[tx.bank_account_id] !== undefined) {
+          const amount = toEur(Number(tx.amount), tx.currency);
+          if (tx.type === "income") {
+            accountBalances[tx.bank_account_id] += amount;
+          } else {
+            accountBalances[tx.bank_account_id] -= amount;
+          }
+        }
+      }
+
+      // Apply transfers
+      for (const transfer of transfers.data || []) {
+        if (transfer.from_account_id && accountBalances[transfer.from_account_id] !== undefined) {
+          accountBalances[transfer.from_account_id] -= toEur(Number(transfer.amount_from), transfer.currency_from);
+        }
+        if (transfer.to_account_id && accountBalances[transfer.to_account_id] !== undefined) {
+          accountBalances[transfer.to_account_id] += toEur(Number(transfer.amount_to), transfer.currency_to);
+        }
+      }
+
+      // Find savings and investment categories
+      const savingsCategoryIds = (categories.data || [])
+        .filter(c => c.name.toLowerCase().includes("ahorro"))
+        .map(c => c.id);
+      const investmentsCategoryIds = (categories.data || [])
+        .filter(c => c.name.toLowerCase().includes("inversión") || c.name.toLowerCase().includes("inversion"))
+        .map(c => c.id);
+
+      // Calculate savings and investments balances
+      let savingsBalance = 0;
+      let investmentsBalance = 0;
+
+      for (const acc of accounts.data || []) {
+        const balance = accountBalances[acc.id] || 0;
+        if (acc.category_id && savingsCategoryIds.includes(acc.category_id)) {
+          savingsBalance += balance;
+        }
+        if (acc.category_id && investmentsCategoryIds.includes(acc.category_id)) {
+          investmentsBalance += balance;
+        }
+      }
+
+      // Add crypto assets to investments
+      investmentsBalance += totalAssets;
+
       const netBalance = monthlyIncome - monthlyExpense;
       const incomeChange = lastMonthIncome > 0 
         ? ((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100 
@@ -126,6 +200,8 @@ export function useDashboardMetrics(userId: string | undefined) {
         assetChange: 0, // Would need historical data to calculate
         incomeChange: Math.round(incomeChange * 10) / 10,
         expenseChange: Math.round(expenseChange * 10) / 10,
+        savingsBalance: Math.round(savingsBalance * 100) / 100,
+        investmentsBalance: Math.round(investmentsBalance * 100) / 100,
       };
     },
     enabled: !!userId,

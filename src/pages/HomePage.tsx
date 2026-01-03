@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Bell, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,9 +10,8 @@ import {
   type QuickActionType,
   type TransactionItem,
 } from "@/components/mobile";
-import { QuickActionDialog } from "@/components/dialogs/QuickActionDialog";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
-import { useTransactions, type TransactionType } from "@/hooks/useTransactions";
+import { useTransactions } from "@/hooks/useTransactions";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
@@ -25,7 +23,6 @@ interface HomePageProps {
 export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [activeAction, setActiveAction] = useState<QuickActionType | null>(null);
 
   const { data: metrics } = useDashboardMetrics(user.id);
   const { data: transactions = [] } = useTransactions(user.id);
@@ -33,6 +30,23 @@ export function HomePage({ user }: HomePageProps) {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast({ title: "Sesión cerrada" });
+  };
+
+  const handleQuickAction = (action: QuickActionType) => {
+    switch (action) {
+      case "income":
+        navigate("/add-income");
+        break;
+      case "expense":
+        navigate("/add-expense");
+        break;
+      case "transfer":
+        navigate("/add-transfer");
+        break;
+      case "pending-payments":
+        navigate("/pending-payments");
+        break;
+    }
   };
 
   const recentTransactions: TransactionItem[] = transactions
@@ -78,13 +92,15 @@ export function HomePage({ user }: HomePageProps) {
       <div className="px-4 py-4">
         <BalanceCard
           balance={metrics?.netBalance ?? 0}
-          subtitle="Total balance"
+          subtitle="Balance mensual"
+          savingsTotal={metrics?.savingsBalance ?? 0}
+          investmentsTotal={metrics?.investmentsBalance ?? 0}
         />
       </div>
 
       {/* Quick Actions */}
       <div className="px-4 py-2">
-        <QuickActionsGrid onAction={setActiveAction} />
+        <QuickActionsGrid onAction={handleQuickAction} />
       </div>
 
       {/* Transaction History */}
@@ -94,21 +110,13 @@ export function HomePage({ user }: HomePageProps) {
           onSeeAll={() => navigate("/account?tab=data")}
         />
       </div>
-
-      {/* Quick Action Dialogs */}
-      <QuickActionDialog
-        open={activeAction !== null}
-        onOpenChange={(open) => !open && setActiveAction(null)}
-        action={activeAction}
-        userId={user.id}
-      />
     </MobileLayout>
   );
 }
 
 function getGreeting() {
   const hour = new Date().getHours();
-  if (hour < 12) return "Good Morning!";
-  if (hour < 18) return "Good Afternoon!";
-  return "Good Evening!";
+  if (hour < 12) return "Buenos días!";
+  if (hour < 18) return "Buenas tardes!";
+  return "Buenas noches!";
 }

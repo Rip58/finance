@@ -225,6 +225,63 @@ export type Database = {
         }
         Relationships: []
       }
+      loans: {
+        Row: {
+          bank_account_id: string | null
+          category_id: string | null
+          created_at: string | null
+          currency: string
+          end_date: string
+          id: string
+          is_active: boolean
+          monthly_payment: number
+          name: string
+          next_payment_date: string
+          notes: string | null
+          paid_installments: number
+          start_date: string
+          total_amount: number
+          total_installments: number
+          user_id: string
+        }
+        Insert: {
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          monthly_payment: number
+          name: string
+          next_payment_date: string
+          notes?: string | null
+          paid_installments?: number
+          start_date: string
+          total_amount: number
+          total_installments: number
+          user_id: string
+        }
+        Update: {
+          bank_account_id?: string | null
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          monthly_payment?: number
+          name?: string
+          next_payment_date?: string
+          notes?: string | null
+          paid_installments?: number
+          start_date?: string
+          total_amount?: number
+          total_installments?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       recurring_confirmations: {
         Row: {
           confirmed_at: string | null
@@ -270,49 +327,61 @@ export type Database = {
       recurring_transactions: {
         Row: {
           amount: number
+          amount_to: number | null
           bank_account_id: string | null
           cadence: string
           category_id: string | null
           created_at: string | null
           currency: string
+          currency_to: string | null
+          from_account_id: string | null
           id: string
           is_active: boolean
           name: string
           next_occurrence_date: string
           notes: string | null
           start_date: string
+          to_account_id: string | null
           type: string
           user_id: string
         }
         Insert: {
           amount: number
+          amount_to?: number | null
           bank_account_id?: string | null
           cadence: string
           category_id?: string | null
           created_at?: string | null
           currency?: string
+          currency_to?: string | null
+          from_account_id?: string | null
           id?: string
           is_active?: boolean
           name: string
           next_occurrence_date: string
           notes?: string | null
           start_date: string
+          to_account_id?: string | null
           type: string
           user_id: string
         }
         Update: {
           amount?: number
+          amount_to?: number | null
           bank_account_id?: string | null
           cadence?: string
           category_id?: string | null
           created_at?: string | null
           currency?: string
+          currency_to?: string | null
+          from_account_id?: string | null
           id?: string
           is_active?: boolean
           name?: string
           next_occurrence_date?: string
           notes?: string | null
           start_date?: string
+          to_account_id?: string | null
           type?: string
           user_id?: string
         }

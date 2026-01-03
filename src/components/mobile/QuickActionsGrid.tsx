@@ -1,20 +1,20 @@
-import { Plus, ArrowRightLeft, Download, Upload } from "lucide-react";
+import { TrendingUp, TrendingDown, ArrowRightLeft, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type QuickActionType = "add-money" | "transfer" | "deposit" | "withdraw";
+export type QuickActionType = "income" | "expense" | "transfer" | "pending-payments";
 
 interface QuickAction {
   id: QuickActionType;
-  icon: typeof Plus;
+  icon: typeof TrendingUp;
   label: string;
   color: string;
 }
 
 const actions: QuickAction[] = [
-  { id: "add-money", icon: Plus, label: "Add money", color: "bg-primary/10 text-primary" },
-  { id: "transfer", icon: ArrowRightLeft, label: "Transfer", color: "bg-chart-assets/10 text-chart-assets" },
-  { id: "deposit", icon: Download, label: "Deposit", color: "bg-success/10 text-success" },
-  { id: "withdraw", icon: Upload, label: "Withdraw", color: "bg-warning/10 text-warning" },
+  { id: "income", icon: TrendingUp, label: "Ingreso", color: "bg-success/10 text-success" },
+  { id: "expense", icon: TrendingDown, label: "Gasto", color: "bg-destructive/10 text-destructive" },
+  { id: "transfer", icon: ArrowRightLeft, label: "Transferencia", color: "bg-chart-assets/10 text-chart-assets" },
+  { id: "pending-payments", icon: Clock, label: "Pagos", color: "bg-warning/10 text-warning" },
 ];
 
 interface QuickActionsGridProps {
