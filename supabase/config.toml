@@ -1,1 +1,7 @@
 project_id = "waqfhwgtfilxeizjwlfh"
+
+[functions.get-fx-rate]
+verify_jwt = false
+
+[functions.run-subscription-charges]
+verify_jwt = false

@@ -47,7 +47,7 @@ export function useDashboardMetrics(userId: string | undefined) {
           .lt("transaction_date", startOfMonth.toISOString()),
         supabase
           .from("asset_transactions")
-          .select("symbol, type, quantity")
+          .select("symbol, side, quantity")
           .eq("user_id", userId),
         supabase
           .from("asset_prices")
@@ -73,9 +73,9 @@ export function useDashboardMetrics(userId: string | undefined) {
 
       // Calculate current holdings
       const holdings: Record<string, number> = {};
-      for (const tx of assetTransactions.data || []) {
+      for (const tx of (assetTransactions.data || []) as { symbol: string; side: string; quantity: number }[]) {
         if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
-        if (tx.type === "buy") holdings[tx.symbol] += Number(tx.quantity);
+        if (tx.side === "buy") holdings[tx.symbol] += Number(tx.quantity);
         else holdings[tx.symbol] -= Number(tx.quantity);
       }
 
