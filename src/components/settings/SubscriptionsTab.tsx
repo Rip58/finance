@@ -39,8 +39,8 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
     currency: "EUR",
     cadence: "monthly" as Cadence,
     start_date: new Date().toISOString().split("T")[0],
-    category_id: "",
-    bank_account_id: "",
+    category_id: "none",
+    bank_account_id: "none",
     is_active: true,
     notes: "",
   });
@@ -54,8 +54,8 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
       cadence: formData.cadence,
       start_date: startDate,
       next_charge_date: editingSub ? editingSub.next_charge_date : startDate,
-      category_id: formData.category_id || null,
-      bank_account_id: formData.bank_account_id || null,
+      category_id: formData.category_id === "none" ? null : formData.category_id,
+      bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
       is_active: formData.is_active,
       notes: formData.notes || null,
     };
@@ -76,8 +76,8 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
       currency: "EUR",
       cadence: "monthly",
       start_date: new Date().toISOString().split("T")[0],
-      category_id: "",
-      bank_account_id: "",
+      category_id: "none",
+      bank_account_id: "none",
       is_active: true,
       notes: "",
     });
@@ -92,8 +92,8 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
       currency: sub.currency,
       cadence: sub.cadence,
       start_date: sub.start_date,
-      category_id: sub.category_id || "",
-      bank_account_id: sub.bank_account_id || "",
+      category_id: sub.category_id || "none",
+      bank_account_id: sub.bank_account_id || "none",
       is_active: sub.is_active,
       notes: sub.notes || "",
     });
@@ -267,7 +267,7 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
                   <SelectValue placeholder="Sin categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin categoría</SelectItem>
+                  <SelectItem value="none">Sin categoría</SelectItem>
                   {categories?.filter(c => !c.is_archived).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
@@ -281,7 +281,7 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
                   <SelectValue placeholder="Sin cuenta" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin cuenta</SelectItem>
+                  <SelectItem value="none">Sin cuenta</SelectItem>
                   {accounts?.filter(a => !a.is_archived).map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                   ))}

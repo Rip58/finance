@@ -23,22 +23,26 @@ export function AccountsTab({ userId }: AccountsTabProps) {
   const [formData, setFormData] = useState({
     name: "",
     currency: "EUR",
-    category_id: "",
+    category_id: "none",
     is_archived: false,
   });
 
   const handleSubmit = async () => {
+    const dataToSave = {
+      ...formData,
+      category_id: formData.category_id === "none" ? null : formData.category_id,
+    };
     if (editingAccount) {
-      await update({ id: editingAccount.id, ...formData, category_id: formData.category_id || null });
+      await update({ id: editingAccount.id, ...dataToSave });
     } else {
-      await create({ ...formData, category_id: formData.category_id || null });
+      await create(dataToSave);
     }
     setIsDialogOpen(false);
     resetForm();
   };
 
   const resetForm = () => {
-    setFormData({ name: "", currency: "EUR", category_id: "", is_archived: false });
+    setFormData({ name: "", currency: "EUR", category_id: "none", is_archived: false });
     setEditingAccount(null);
   };
 
@@ -47,7 +51,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
     setFormData({
       name: account.name,
       currency: account.currency,
-      category_id: account.category_id || "",
+      category_id: account.category_id || "none",
       is_archived: account.is_archived,
     });
     setIsDialogOpen(true);
@@ -179,7 +183,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                   <SelectValue placeholder="Sin categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin categoría</SelectItem>
+                  <SelectItem value="none">Sin categoría</SelectItem>
                   {categories?.filter(c => !c.is_archived).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
