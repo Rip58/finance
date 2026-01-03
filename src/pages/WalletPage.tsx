@@ -72,7 +72,7 @@ export function WalletPage({ user }: WalletPageProps) {
             </div>
             <IntervalSelector value={interval} onChange={setInterval} />
           </div>
-          <div className="h-48">
+          <div className="h-56 overflow-hidden">
             <EvolutionChart interval={interval} userId={user.id} />
           </div>
         </div>
