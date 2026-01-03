@@ -30,21 +30,20 @@ export function useDashboardMetrics(userId: string | undefined) {
       const now = new Date();
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-      const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
 
-      // Fetch cash transactions for current and last month
-      const [currentMonthCash, lastMonthCash, assetTransactions, assetPrices] = await Promise.all([
+      // Fetch transactions, asset data, and fx rates in parallel
+      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates] = await Promise.all([
         supabase
-          .from("cash_transactions")
-          .select("type, amount_eur")
+          .from("transactions")
+          .select("type, amount, currency, date, value_date")
           .eq("user_id", userId)
-          .gte("transaction_date", startOfMonth.toISOString()),
+          .gte("date", startOfMonth.toISOString()),
         supabase
-          .from("cash_transactions")
-          .select("type, amount_eur")
+          .from("transactions")
+          .select("type, amount, currency, date, value_date")
           .eq("user_id", userId)
-          .gte("transaction_date", startOfLastMonth.toISOString())
-          .lt("transaction_date", startOfMonth.toISOString()),
+          .gte("date", startOfLastMonth.toISOString())
+          .lt("date", startOfMonth.toISOString()),
         supabase
           .from("asset_transactions")
           .select("symbol, side, quantity")
@@ -53,22 +52,39 @@ export function useDashboardMetrics(userId: string | undefined) {
           .from("asset_prices")
           .select("symbol, close_price, price_date")
           .order("price_date", { ascending: false }),
+        supabase
+          .from("fx_rates")
+          .select("pair, rate, as_of")
+          .eq("pair", "USDT/EUR")
+          .order("as_of", { ascending: false })
+          .limit(1),
       ]);
 
-      // Calculate current month income/expense
+      // Get latest USDT/EUR rate (fallback to 1 if none)
+      const usdtRate = fxRates.data?.[0]?.rate ? Number(fxRates.data[0].rate) : 1;
+
+      // Helper to convert amount to EUR
+      const toEur = (amount: number, currency: string) => {
+        if (currency === "USDT") return amount * usdtRate;
+        return amount;
+      };
+
+      // Calculate current month income/expense with currency conversion
       let monthlyIncome = 0;
       let monthlyExpense = 0;
-      for (const tx of currentMonthCash.data || []) {
-        if (tx.type === "income") monthlyIncome += Number(tx.amount_eur);
-        else monthlyExpense += Number(tx.amount_eur);
+      for (const tx of currentMonthTx.data || []) {
+        const amountEur = toEur(Number(tx.amount), tx.currency);
+        if (tx.type === "income") monthlyIncome += amountEur;
+        else monthlyExpense += amountEur;
       }
 
       // Calculate last month income/expense for comparison
       let lastMonthIncome = 0;
       let lastMonthExpense = 0;
-      for (const tx of lastMonthCash.data || []) {
-        if (tx.type === "income") lastMonthIncome += Number(tx.amount_eur);
-        else lastMonthExpense += Number(tx.amount_eur);
+      for (const tx of lastMonthTx.data || []) {
+        const amountEur = toEur(Number(tx.amount), tx.currency);
+        if (tx.type === "income") lastMonthIncome += amountEur;
+        else lastMonthExpense += amountEur;
       }
 
       // Calculate current holdings

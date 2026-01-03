@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSettings } from "@/hooks/useSettings";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -25,7 +25,13 @@ interface PreferencesTabProps {
 
 export function PreferencesTab({ userId }: PreferencesTabProps) {
   const { data: settings, isLoading, upsert, isUpserting } = useSettings(userId);
-  const [timezone, setTimezone] = useState(settings?.timezone || "Europe/Madrid");
+  const [timezone, setTimezone] = useState("Europe/Madrid");
+
+  useEffect(() => {
+    if (settings?.timezone) {
+      setTimezone(settings.timezone);
+    }
+  }, [settings?.timezone]);
 
   const handleSave = async () => {
     await upsert({ base_currency: "EUR", timezone });
