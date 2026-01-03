@@ -225,6 +225,114 @@ export type Database = {
         }
         Relationships: []
       }
+      recurring_confirmations: {
+        Row: {
+          confirmed_at: string | null
+          id: string
+          occurrence_date: string
+          recurring_id: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          confirmed_at?: string | null
+          id?: string
+          occurrence_date: string
+          recurring_id: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          confirmed_at?: string | null
+          id?: string
+          occurrence_date?: string
+          recurring_id?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_confirmations_recurring_id_fkey"
+            columns: ["recurring_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_transactions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_confirmations_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recurring_transactions: {
+        Row: {
+          amount: number
+          bank_account_id: string | null
+          cadence: string
+          category_id: string | null
+          created_at: string | null
+          currency: string
+          id: string
+          is_active: boolean
+          name: string
+          next_occurrence_date: string
+          notes: string | null
+          start_date: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          bank_account_id?: string | null
+          cadence: string
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          next_occurrence_date: string
+          notes?: string | null
+          start_date: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          bank_account_id?: string | null
+          cadence?: string
+          category_id?: string | null
+          created_at?: string | null
+          currency?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          next_occurrence_date?: string
+          notes?: string | null
+          start_date?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recurring_transactions_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recurring_transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       settings: {
         Row: {
           base_currency: string
