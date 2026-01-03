@@ -18,10 +18,18 @@ interface AssetTransaction {
   transaction_date: string;
 }
 
-interface CashTransaction {
+interface Transaction {
   type: string;
-  amount_eur: number;
-  transaction_date: string;
+  amount: number;
+  currency: string;
+  date: string;
+  value_date: string | null;
+}
+
+interface FxRate {
+  pair: string;
+  rate: number;
+  as_of: string;
 }
 
 interface AssetPrice {
@@ -78,9 +86,27 @@ function calculateTotalAssetsAtDate(
   return total;
 }
 
-// Aggregate cash transactions for a period
-function aggregateCashTransactions(
-  transactions: CashTransaction[],
+// Get FX rate for a date (closest rate <= date, fallback to latest)
+function getFxRateAtDate(fxRates: FxRate[], targetDate: Date): number {
+  const usdtRates = fxRates
+    .filter(r => r.pair === "USDT/EUR")
+    .sort((a, b) => new Date(b.as_of).getTime() - new Date(a.as_of).getTime());
+  
+  // Find closest rate <= targetDate
+  for (const rate of usdtRates) {
+    if (new Date(rate.as_of) <= targetDate) {
+      return Number(rate.rate);
+    }
+  }
+  
+  // Fallback to latest rate
+  return usdtRates.length > 0 ? Number(usdtRates[0].rate) : 1;
+}
+
+// Aggregate transactions for a period with USDT to EUR conversion
+function aggregateTransactions(
+  transactions: Transaction[],
+  fxRates: FxRate[],
   startDate: Date,
   endDate: Date
 ): { income: number; expense: number } {
@@ -88,12 +114,20 @@ function aggregateCashTransactions(
   let expense = 0;
   
   for (const tx of transactions) {
-    const txDate = new Date(tx.transaction_date);
+    const txDate = new Date(tx.value_date || tx.date);
     if (txDate >= startDate && txDate <= endDate) {
+      let amountEur = Number(tx.amount);
+      
+      // Convert USDT to EUR
+      if (tx.currency === "USDT") {
+        const rate = getFxRateAtDate(fxRates, txDate);
+        amountEur = amountEur * rate;
+      }
+      
       if (tx.type === "income") {
-        income += Number(tx.amount_eur);
+        income += amountEur;
       } else {
-        expense += Number(tx.amount_eur);
+        expense += amountEur;
       }
     }
   }
@@ -140,25 +174,31 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       }
       
       // Fetch all data in parallel
-      const [assetTxResult, cashTxResult, pricesResult] = await Promise.all([
+      const [assetTxResult, txResult, pricesResult, fxRatesResult] = await Promise.all([
         supabase
           .from("asset_transactions")
           .select("symbol, side, quantity, transaction_date")
           .eq("user_id", userId)
           .order("transaction_date", { ascending: true }),
         supabase
-          .from("cash_transactions")
-          .select("type, amount_eur, transaction_date")
+          .from("transactions")
+          .select("type, amount, currency, date, value_date")
           .eq("user_id", userId),
         supabase
           .from("asset_prices")
           .select("symbol, price_date, close_price")
           .order("price_date", { ascending: true }),
+        supabase
+          .from("fx_rates")
+          .select("pair, rate, as_of")
+          .eq("pair", "USDT/EUR")
+          .order("as_of", { ascending: false }),
       ]);
       
       const assetTransactions = (assetTxResult.data || []) as AssetTransaction[];
-      const cashTransactions = (cashTxResult.data || []) as CashTransaction[];
+      const transactions = (txResult.data || []) as Transaction[];
       const prices = (pricesResult.data || []) as AssetPrice[];
+      const fxRates = (fxRatesResult.data || []) as FxRate[];
       
       // Generate chart data points
       const chartData: ChartDataPoint[] = dates.map((date, index) => {
@@ -169,9 +209,9 @@ export function useChartData(interval: Interval, userId: string | undefined) {
         const holdings = calculateHoldingsAtDate(assetTransactions, actualEnd);
         const totalAssets = calculateTotalAssetsAtDate(holdings, prices, actualEnd);
         
-        // Aggregate cash for the period
+        // Aggregate transactions for the period
         const periodStart = index === 0 ? start : dates[index - 1];
-        const { income, expense } = aggregateCashTransactions(cashTransactions, periodStart, actualEnd);
+        const { income, expense } = aggregateTransactions(transactions, fxRates, periodStart, actualEnd);
         
         return {
           label: formatLabel(date),
