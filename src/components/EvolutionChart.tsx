@@ -51,7 +51,7 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
 
   if (isLoading) {
     return (
-      <div className="h-[400px] w-full flex items-center justify-center">
+      <div className="h-full w-full flex items-center justify-center">
         <Skeleton className="h-full w-full" />
       </div>
     );
@@ -62,17 +62,17 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
 
   if (!hasData) {
     return (
-      <div className="h-[400px] w-full flex items-center justify-center">
+      <div className="h-full w-full flex items-center justify-center">
         <div className="text-center text-muted-foreground">
-          <p className="text-lg font-medium">Sin datos todavía</p>
-          <p className="text-sm mt-1">Añade transacciones para ver la evolución</p>
+          <p className="text-sm font-medium">Sin datos todavía</p>
+          <p className="text-xs mt-1">Añade transacciones para ver la evolución</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-[400px] w-full animate-fade-in">
+    <div className="h-full w-full animate-fade-in">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
           data={chartData}
@@ -114,11 +114,12 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
           <Tooltip content={<CustomTooltip />} />
           <Legend
             verticalAlign="top"
-            height={36}
+            height={24}
             iconType="circle"
-            wrapperStyle={{ paddingBottom: "20px" }}
+            iconSize={8}
+            wrapperStyle={{ paddingBottom: "8px" }}
             formatter={(value) => (
-              <span className="text-sm text-muted-foreground">{value}</span>
+              <span className="text-xs text-muted-foreground">{value}</span>
             )}
           />
           <Area
