@@ -14,7 +14,108 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      asset_prices: {
+        Row: {
+          close_price: number
+          created_at: string
+          high_price: number | null
+          id: string
+          low_price: number | null
+          open_price: number | null
+          price_date: string
+          symbol: string
+        }
+        Insert: {
+          close_price: number
+          created_at?: string
+          high_price?: number | null
+          id?: string
+          low_price?: number | null
+          open_price?: number | null
+          price_date: string
+          symbol: string
+        }
+        Update: {
+          close_price?: number
+          created_at?: string
+          high_price?: number | null
+          id?: string
+          low_price?: number | null
+          open_price?: number | null
+          price_date?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
+      asset_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          notes: string | null
+          price_eur: number
+          quantity: number
+          symbol: string
+          transaction_date: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          price_eur: number
+          quantity: number
+          symbol: string
+          transaction_date?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notes?: string | null
+          price_eur?: number
+          quantity?: number
+          symbol?: string
+          transaction_date?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      cash_transactions: {
+        Row: {
+          amount_eur: number
+          category: string | null
+          created_at: string
+          description: string | null
+          id: string
+          transaction_date: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount_eur: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          transaction_date?: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount_eur?: number
+          category?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          transaction_date?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
