@@ -2,14 +2,12 @@ import { useState, useEffect } from "react";
 import { useTransfers, Transfer } from "@/hooks/useTransfers";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useFxRates } from "@/hooks/useFxRates";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, RefreshCw } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Pencil, Trash2, Loader2, RefreshCw, ArrowRightLeft } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -47,7 +45,6 @@ export function TransfersTab({ userId }: TransfersTabProps) {
         setFormData(prev => ({ ...prev, fx_rate: rate }));
         const amountFrom = parseFloat(formData.amount_from);
         if (!isNaN(amountFrom)) {
-          // EUR -> USDT: divide by rate, USDT -> EUR: multiply by rate
           const amountTo = fromAccount.currency === "EUR" 
             ? amountFrom / rate 
             : amountFrom * rate;
@@ -115,6 +112,12 @@ export function TransfersTab({ userId }: TransfersTabProps) {
 
   const getAccountName = (id: string) => accounts?.find(a => a.id === id)?.name || "-";
 
+  const formatCurrency = (value: number, currency: string) =>
+    new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: currency === "USDT" ? "USD" : currency,
+    }).format(value);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -124,192 +127,195 @@ export function TransfersTab({ userId }: TransfersTabProps) {
   }
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <CardTitle>Transferencias</CardTitle>
-          <CardDescription>Movimientos entre cuentas</CardDescription>
+          <h3 className="font-semibold">Transferencias</h3>
+          <p className="text-sm text-muted-foreground">{transfers?.length || 0} registros</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => fetchRate()} disabled={isFetching}>
+          <Button variant="outline" size="icon" onClick={() => fetchRate()} disabled={isFetching}>
             {isFetching ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            <span className="ml-2 hidden sm:inline">Actualizar FX</span>
           </Button>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Nueva
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>{editingTransfer ? "Editar transferencia" : "Nueva transferencia"}</DialogTitle>
-                <DialogDescription>
-                  {editingTransfer ? "Modifica los datos" : "Crea una transferencia entre cuentas"}
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Desde cuenta</Label>
-                    <Select value={formData.from_account_id} onValueChange={(v) => setFormData({ ...formData, from_account_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeAccounts.map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name} ({acc.currency})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Hacia cuenta</Label>
-                    <Select value={formData.to_account_id} onValueChange={(v) => setFormData({ ...formData, to_account_id: v })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Seleccionar" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {activeAccounts.filter(a => a.id !== formData.from_account_id).map((acc) => (
-                          <SelectItem key={acc.id} value={acc.id}>
-                            {acc.name} ({acc.currency})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Importe origen {fromAccount && `(${fromAccount.currency})`}</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.amount_from}
-                      onChange={(e) => setFormData({ ...formData, amount_from: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Importe destino {toAccount && `(${toAccount.currency})`}</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={formData.amount_to}
-                      onChange={(e) => setFormData({ ...formData, amount_to: e.target.value })}
-                      disabled={!needsConversion}
-                    />
-                  </div>
-                </div>
-                {needsConversion && formData.fx_rate && (
-                  <p className="text-sm text-muted-foreground">
-                    Tipo de cambio: 1 USDT = {formData.fx_rate.toFixed(4)} EUR
+          <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Nueva
+          </Button>
+        </div>
+      </div>
+
+      {/* Transfers List */}
+      {transfers?.length === 0 ? (
+        <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
+          <ArrowRightLeft className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-muted-foreground">No hay transferencias</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {transfers?.map((transfer) => (
+            <div
+              key={transfer.id}
+              className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border/50"
+            >
+              <div className="h-10 w-10 rounded-full bg-chart-assets/10 flex items-center justify-center text-chart-assets shrink-0">
+                <ArrowRightLeft className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">
+                  {getAccountName(transfer.from_account_id)} → {getAccountName(transfer.to_account_id)}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(transfer.date), "d MMM yyyy", { locale: es })}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="font-semibold">
+                  {formatCurrency(transfer.amount_from, transfer.currency_from)}
+                </span>
+                {transfer.currency_from !== transfer.currency_to && (
+                  <p className="text-xs text-muted-foreground">
+                    → {formatCurrency(transfer.amount_to, transfer.currency_to)}
                   </p>
                 )}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Fecha</Label>
-                    <Input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fecha valor (opcional)</Label>
-                    <Input
-                      type="date"
-                      value={formData.value_date}
-                      onChange={(e) => setFormData({ ...formData, value_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Descripción (opcional)</Label>
-                  <Input
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  />
-                </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
-                  Cancelar
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(transfer)}>
+                  <Pencil className="h-4 w-4" />
                 </Button>
-                <Button 
-                  onClick={handleSubmit} 
-                  disabled={isCreating || isUpdating || !formData.from_account_id || !formData.to_account_id || !formData.amount_from}
-                >
-                  {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingTransfer ? "Guardar" : "Crear"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar transferencia?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteTransfer(transfer.id)}>
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ))}
         </div>
-      </CardHeader>
-      <CardContent>
-        {transfers?.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">No hay transferencias</p>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Desde</TableHead>
-                <TableHead>Hacia</TableHead>
-                <TableHead className="text-right">Importe</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transfers?.map((transfer) => (
-                <TableRow key={transfer.id}>
-                  <TableCell>{format(new Date(transfer.date), "dd MMM yyyy", { locale: es })}</TableCell>
-                  <TableCell>{getAccountName(transfer.from_account_id)}</TableCell>
-                  <TableCell>{getAccountName(transfer.to_account_id)}</TableCell>
-                  <TableCell className="text-right">
-                    {transfer.amount_from} {transfer.currency_from}
-                    {transfer.currency_from !== transfer.currency_to && (
-                      <span className="text-muted-foreground"> → {transfer.amount_to} {transfer.currency_to}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(transfer)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar transferencia?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => deleteTransfer(transfer.id)}>
-                              Eliminar
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </CardContent>
-    </Card>
+      )}
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-sm mx-4 max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTransfer ? "Editar transferencia" : "Nueva transferencia"}</DialogTitle>
+            <DialogDescription>
+              {editingTransfer ? "Modifica los datos" : "Crea una transferencia entre cuentas"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Desde cuenta</Label>
+              <Select value={formData.from_account_id} onValueChange={(v) => setFormData({ ...formData, from_account_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.currency})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Hacia cuenta</Label>
+              <Select value={formData.to_account_id} onValueChange={(v) => setFormData({ ...formData, to_account_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar" />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAccounts.filter(a => a.id !== formData.from_account_id).map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name} ({acc.currency})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Importe origen</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount_from}
+                  onChange={(e) => setFormData({ ...formData, amount_from: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Importe destino</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount_to}
+                  onChange={(e) => setFormData({ ...formData, amount_to: e.target.value })}
+                  disabled={!needsConversion}
+                />
+              </div>
+            </div>
+            {needsConversion && formData.fx_rate && (
+              <p className="text-sm text-muted-foreground">
+                1 USDT = {formData.fx_rate.toFixed(4)} EUR
+              </p>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Fecha</Label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Fecha valor</Label>
+                <Input
+                  type="date"
+                  value={formData.value_date}
+                  onChange={(e) => setFormData({ ...formData, value_date: e.target.value })}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Descripción</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isCreating || isUpdating || !formData.from_account_id || !formData.to_account_id || !formData.amount_from}
+            >
+              {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingTransfer ? "Guardar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

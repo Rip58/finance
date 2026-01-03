@@ -1,31 +1,57 @@
 import { useState } from "react";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { IncomeExpenseData } from "@/components/settings/IncomeExpenseData";
 import { AssetsData } from "@/components/settings/AssetsData";
+import { TransfersTab } from "@/components/settings/TransfersTab";
+import { Button } from "@/components/ui/button";
+
+type SubTab = "income" | "expense" | "assets" | "transfers";
 
 interface DataTabProps {
   userId: string;
 }
 
 export function DataTab({ userId }: DataTabProps) {
-  const [activeSubTab, setActiveSubTab] = useState("income");
+  const [activeSubTab, setActiveSubTab] = useState<SubTab>("income");
 
   return (
-    <Tabs value={activeSubTab} onValueChange={setActiveSubTab} className="space-y-4">
-      <TabsList>
-        <TabsTrigger value="income">Ingresos</TabsTrigger>
-        <TabsTrigger value="expense">Gastos</TabsTrigger>
-        <TabsTrigger value="assets">Activos</TabsTrigger>
-      </TabsList>
-      <TabsContent value="income">
-        <IncomeExpenseData userId={userId} type="income" />
-      </TabsContent>
-      <TabsContent value="expense">
-        <IncomeExpenseData userId={userId} type="expense" />
-      </TabsContent>
-      <TabsContent value="assets">
-        <AssetsData userId={userId} />
-      </TabsContent>
-    </Tabs>
+    <div className="space-y-4">
+      {/* Sub Tabs */}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant={activeSubTab === "income" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveSubTab("income")}
+        >
+          Ingresos
+        </Button>
+        <Button
+          variant={activeSubTab === "expense" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveSubTab("expense")}
+        >
+          Gastos
+        </Button>
+        <Button
+          variant={activeSubTab === "assets" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveSubTab("assets")}
+        >
+          Activos
+        </Button>
+        <Button
+          variant={activeSubTab === "transfers" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setActiveSubTab("transfers")}
+        >
+          Transferencias
+        </Button>
+      </div>
+
+      {/* Content */}
+      {activeSubTab === "income" && <IncomeExpenseData userId={userId} type="income" />}
+      {activeSubTab === "expense" && <IncomeExpenseData userId={userId} type="expense" />}
+      {activeSubTab === "assets" && <AssetsData userId={userId} />}
+      {activeSubTab === "transfers" && <TransfersTab userId={userId} />}
+    </div>
   );
 }
