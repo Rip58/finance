@@ -1,13 +1,62 @@
+import { useState, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Index from "./pages/Index";
-import Settings from "./pages/Settings";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { AuthForm } from "@/components/AuthForm";
+import { HomePage } from "@/pages/HomePage";
+import { WalletPage } from "@/pages/WalletPage";
+import { ReportPage } from "@/pages/ReportPage";
+import { AccountPage } from "@/pages/AccountPage";
 import NotFound from "./pages/NotFound";
+import type { User } from "@supabase/supabase-js";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthForm onSuccess={() => {}} />;
+  }
+
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage user={user} />} />
+      <Route path="/wallet" element={<WalletPage user={user} />} />
+      <Route path="/report" element={<ReportPage user={user} />} />
+      <Route path="/account" element={<AccountPage user={user} />} />
+      {/* Legacy route redirect */}
+      <Route path="/settings" element={<Navigate to="/account" replace />} />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -15,12 +64,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/settings" element={<Settings />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AppContent />
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

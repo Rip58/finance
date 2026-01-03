@@ -2,19 +2,18 @@ import { useState } from "react";
 import { useTransactions, Transaction, TransactionType } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, TrendingUp, TrendingDown } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface IncomeExpenseDataProps {
   userId: string;
@@ -38,6 +37,8 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
   });
 
   const title = type === "income" ? "Ingresos" : "Gastos";
+  const Icon = type === "income" ? TrendingUp : TrendingDown;
+  const colorClass = type === "income" ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive";
 
   const handleSubmit = async () => {
     const txData = {
@@ -87,6 +88,12 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
     setIsDialogOpen(true);
   };
 
+  const formatCurrency = (value: number, currency: string) =>
+    new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: currency === "USDT" ? "USD" : currency,
+    }).format(value);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -96,184 +103,178 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
   }
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <CardTitle>{title}</CardTitle>
-          <CardDescription>Gestiona tus {title.toLowerCase()}</CardDescription>
+          <h3 className="font-semibold">{title}</h3>
+          <p className="text-sm text-muted-foreground">{transactions?.length || 0} registros</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nuevo
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingTx ? `Editar ${type === "income" ? "ingreso" : "gasto"}` : `Nuevo ${type === "income" ? "ingreso" : "gasto"}`}</DialogTitle>
-              <DialogDescription>
-                {editingTx ? "Modifica los datos" : "Añade una nueva transacción"}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Importe</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Moneda</Label>
-                  <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="USDT">USDT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nuevo
+        </Button>
+      </div>
+
+      {/* Transactions List */}
+      {transactions?.length === 0 ? (
+        <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
+          <Icon className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-muted-foreground">No hay {title.toLowerCase()}</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {transactions?.map((tx) => (
+            <div
+              key={tx.id}
+              className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border/50"
+            >
+              <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shrink-0", colorClass)}>
+                <Icon className="h-5 w-5" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Fecha</Label>
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Fecha valor (opcional)</Label>
-                  <Input
-                    type="date"
-                    value={formData.value_date}
-                    onChange={(e) => setFormData({ ...formData, value_date: e.target.value })}
-                  />
-                </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">
+                  {tx.description || categories?.find(c => c.id === tx.category_id)?.name || "Sin descripción"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {format(new Date(tx.date), "d MMM yyyy", { locale: es })}
+                </p>
+              </div>
+              <div className="text-right shrink-0">
+                <span className={cn("font-semibold", type === "income" ? "text-success" : "text-foreground")}>
+                  {type === "income" ? "+" : "-"}{formatCurrency(tx.amount, tx.currency)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(tx)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar transacción?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Esta acción no se puede deshacer.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteTx(tx.id)}>
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-sm mx-4 max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingTx ? `Editar ${type === "income" ? "ingreso" : "gasto"}` : `Nuevo ${type === "income" ? "ingreso" : "gasto"}`}</DialogTitle>
+            <DialogDescription>
+              {editingTx ? "Modifica los datos" : "Añade una nueva transacción"}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Importe</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
-                <Label>Categoría (opcional)</Label>
-                <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
+                <Label>Moneda</Label>
+                <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sin categoría" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin categoría</SelectItem>
-                    {categories?.filter(c => !c.is_archived).map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                    ))}
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="USDT">USDT</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Cuenta (opcional)</Label>
-                <Select value={formData.bank_account_id} onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin cuenta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sin cuenta</SelectItem>
-                    {accounts?.filter(a => !a.is_archived).map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Fecha</Label>
+                <Input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
-                <Label>Descripción (opcional)</Label>
-                <Textarea
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  rows={2}
+                <Label>Fecha valor</Label>
+                <Input
+                  type="date"
+                  value={formData.value_date}
+                  onChange={(e) => setFormData({ ...formData, value_date: e.target.value })}
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSubmit} disabled={isCreating || isUpdating || !formData.amount}>
-                {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingTx ? "Guardar" : "Crear"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {transactions?.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">No hay {title.toLowerCase()}</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Categoría</TableHead>
-                  <TableHead>Cuenta</TableHead>
-                  <TableHead className="text-right">Importe</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {transactions?.map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{format(new Date(tx.date), "dd MMM yyyy", { locale: es })}</TableCell>
-                    <TableCell>{tx.description || "-"}</TableCell>
-                    <TableCell>
-                      {categories?.find(c => c.id === tx.category_id)?.name || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {accounts?.find(a => a.id === tx.bank_account_id)?.name || "-"}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Badge variant={type === "income" ? "default" : "destructive"} className={type === "income" ? "bg-success" : ""}>
-                        {type === "income" ? "+" : "-"}{tx.amount} {tx.currency}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => openEdit(tx)}>
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>¿Eliminar transacción?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Esta acción no se puede deshacer.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteTx(tx.id)}>
-                                Eliminar
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin categoría</SelectItem>
+                  {categories?.filter(c => !c.is_archived).map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Cuenta</Label>
+              <Select value={formData.bank_account_id} onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin cuenta</SelectItem>
+                  {accounts?.filter(a => !a.is_archived).map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Descripción</Label>
+              <Textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+              />
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={isCreating || isUpdating || !formData.amount}>
+              {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingTx ? "Guardar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

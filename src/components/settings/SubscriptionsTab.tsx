@@ -2,20 +2,19 @@ import { useState } from "react";
 import { useSubscriptions, Subscription, Cadence } from "@/hooks/useSubscriptions";
 import { useCategories } from "@/hooks/useCategories";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Repeat } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 const cadenceLabels: Record<Cadence, string> = {
   weekly: "Semanal",
@@ -101,13 +100,11 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
     setIsDialogOpen(true);
   };
 
-  const getLastCharge = (subId: string) => {
-    const subCharges = charges.filter(c => c.subscription_id === subId);
-    if (subCharges.length === 0) return null;
-    return subCharges.reduce((latest, c) => 
-      new Date(c.charge_date) > new Date(latest.charge_date) ? c : latest
-    );
-  };
+  const formatCurrency = (value: number, currency: string) =>
+    new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: currency === "USDT" ? "USD" : currency,
+    }).format(value);
 
   if (isLoading) {
     return (
@@ -118,209 +115,206 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
   }
 
   return (
-    <Card className="bg-card border-border">
-      <CardHeader className="flex flex-row items-center justify-between">
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <CardTitle>Suscripciones</CardTitle>
-          <CardDescription>Cargos recurrentes automáticos</CardDescription>
+          <h3 className="font-semibold">Suscripciones</h3>
+          <p className="text-sm text-muted-foreground">Cargos recurrentes</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Nueva suscripción
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editingSub ? "Editar suscripción" : "Nueva suscripción"}</DialogTitle>
-              <DialogDescription>
-                Los cargos se generan automáticamente como gastos
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
+        <Button size="sm" onClick={() => setIsDialogOpen(true)}>
+          <Plus className="h-4 w-4 mr-2" />
+          Nueva
+        </Button>
+      </div>
+
+      {/* Subscriptions List */}
+      {subscriptions?.length === 0 ? (
+        <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
+          <Repeat className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-muted-foreground">No hay suscripciones</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {subscriptions?.map((sub) => (
+            <div
+              key={sub.id}
+              className={cn(
+                "flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/50",
+                !sub.is_active && "opacity-50"
+              )}
+            >
+              <div className="h-10 w-10 rounded-full bg-warning/10 flex items-center justify-center text-warning shrink-0">
+                <Repeat className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-medium truncate">{sub.name}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <span className="text-xs text-muted-foreground">
+                    {cadenceLabels[sub.cadence]}
+                  </span>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <span className="text-xs text-muted-foreground">
+                    {format(new Date(sub.next_charge_date), "d MMM", { locale: es })}
+                  </span>
+                  {!sub.is_active && (
+                    <Badge variant="secondary" className="text-xs">Pausada</Badge>
+                  )}
+                </div>
+              </div>
+              <div className="text-right shrink-0">
+                <span className="font-semibold">{formatCurrency(sub.amount, sub.currency)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(sub)}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>¿Eliminar suscripción?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Los cargos ya generados no se eliminarán.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => deleteSub(sub.id)}>
+                        Eliminar
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Create/Edit Dialog */}
+      <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+        <DialogContent className="max-w-sm mx-4 max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingSub ? "Editar suscripción" : "Nueva suscripción"}</DialogTitle>
+            <DialogDescription>
+              Los cargos se generan automáticamente
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nombre</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Netflix, Spotify..."
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label>Nombre</Label>
+                <Label>Importe</Label>
                 <Input
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Netflix, Spotify..."
+                  type="number"
+                  step="0.01"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Importe</Label>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Moneda</Label>
-                  <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="USDT">USDT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Cadencia</Label>
-                  <Select value={formData.cadence} onValueChange={(v) => setFormData({ ...formData, cadence: v as Cadence })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(Object.keys(cadenceLabels) as Cadence[]).map((c) => (
-                        <SelectItem key={c} value={c}>{cadenceLabels[c]}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Fecha inicio</Label>
-                  <Input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                  />
-                </div>
-              </div>
               <div className="space-y-2">
-                <Label>Categoría (opcional)</Label>
-                <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
+                <Label>Moneda</Label>
+                <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Sin categoría" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sin categoría</SelectItem>
-                    {categories?.filter(c => !c.is_archived).map((cat) => (
-                      <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                    <SelectItem value="EUR">EUR</SelectItem>
+                    <SelectItem value="USDT">USDT</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Cadencia</Label>
+                <Select value={formData.cadence} onValueChange={(v) => setFormData({ ...formData, cadence: v as Cadence })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(cadenceLabels) as Cadence[]).map((c) => (
+                      <SelectItem key={c} value={c}>{cadenceLabels[c]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label>Cuenta (opcional)</Label>
-                <Select value={formData.bank_account_id} onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sin cuenta" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sin cuenta</SelectItem>
-                    {accounts?.filter(a => !a.is_archived).map((acc) => (
-                      <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Notas (opcional)</Label>
-                <Textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={2}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label>Activa</Label>
-                <Switch
-                  checked={formData.is_active}
-                  onCheckedChange={(v) => setFormData({ ...formData, is_active: v })}
+                <Label>Fecha inicio</Label>
+                <Input
+                  type="date"
+                  value={formData.start_date}
+                  onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
-                Cancelar
-              </Button>
-              <Button onClick={handleSubmit} disabled={isCreating || isUpdating || !formData.name || !formData.amount}>
-                {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {editingSub ? "Guardar" : "Crear"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </CardHeader>
-      <CardContent>
-        {subscriptions?.length === 0 ? (
-          <p className="text-center py-8 text-muted-foreground">No hay suscripciones</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Importe</TableHead>
-                  <TableHead>Cadencia</TableHead>
-                  <TableHead>Próximo cargo</TableHead>
-                  <TableHead>Último cargo</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {subscriptions?.map((sub) => {
-                  const lastCharge = getLastCharge(sub.id);
-                  return (
-                    <TableRow key={sub.id} className={!sub.is_active ? "opacity-50" : ""}>
-                      <TableCell className="font-medium">{sub.name}</TableCell>
-                      <TableCell>{sub.amount} {sub.currency}</TableCell>
-                      <TableCell>{cadenceLabels[sub.cadence]}</TableCell>
-                      <TableCell>{format(new Date(sub.next_charge_date), "dd MMM yyyy", { locale: es })}</TableCell>
-                      <TableCell>
-                        {lastCharge ? format(new Date(lastCharge.charge_date), "dd MMM yyyy", { locale: es }) : "-"}
-                      </TableCell>
-                      <TableCell>
-                        {sub.is_active ? (
-                          <Badge variant="default" className="bg-success">Activa</Badge>
-                        ) : (
-                          <Badge variant="secondary">Pausada</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button variant="ghost" size="icon" onClick={() => openEdit(sub)}>
-                            <Pencil className="h-4 w-4" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>¿Eliminar suscripción?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Los cargos ya generados no se eliminarán.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                                <AlertDialogAction onClick={() => deleteSub(sub.id)}>
-                                  Eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
+            <div className="space-y-2">
+              <Label>Categoría</Label>
+              <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin categoría" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin categoría</SelectItem>
+                  {categories?.filter(c => !c.is_archived).map((cat) => (
+                    <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Cuenta</Label>
+              <Select value={formData.bank_account_id} onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Sin cuenta</SelectItem>
+                  {accounts?.filter(a => !a.is_archived).map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Notas</Label>
+              <Textarea
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                rows={2}
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/50">
+              <Label>Activa</Label>
+              <Switch
+                checked={formData.is_active}
+                onCheckedChange={(v) => setFormData({ ...formData, is_active: v })}
+              />
+            </div>
           </div>
-        )}
-      </CardContent>
-    </Card>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSubmit} disabled={isCreating || isUpdating || !formData.name || !formData.amount}>
+              {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {editingSub ? "Guardar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
