@@ -31,8 +31,8 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
     currency: "EUR",
     date: new Date().toISOString().split("T")[0],
     value_date: "",
-    category_id: "",
-    bank_account_id: "",
+    category_id: "none",
+    bank_account_id: "none",
     description: "",
   });
 
@@ -47,8 +47,8 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
       currency: formData.currency,
       date: new Date(formData.date).toISOString(),
       value_date: formData.value_date ? new Date(formData.value_date).toISOString() : null,
-      category_id: formData.category_id || null,
-      bank_account_id: formData.bank_account_id || null,
+      category_id: formData.category_id === "none" ? null : formData.category_id,
+      bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
       description: formData.description || null,
     };
 
@@ -67,8 +67,8 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
       currency: "EUR",
       date: new Date().toISOString().split("T")[0],
       value_date: "",
-      category_id: "",
-      bank_account_id: "",
+      category_id: "none",
+      bank_account_id: "none",
       description: "",
     });
     setEditingTx(null);
@@ -81,8 +81,8 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
       currency: tx.currency,
       date: tx.date.split("T")[0],
       value_date: tx.value_date ? tx.value_date.split("T")[0] : "",
-      category_id: tx.category_id || "",
-      bank_account_id: tx.bank_account_id || "",
+      category_id: tx.category_id || "none",
+      bank_account_id: tx.bank_account_id || "none",
       description: tx.description || "",
     });
     setIsDialogOpen(true);
@@ -234,7 +234,7 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
                   <SelectValue placeholder="Sin categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin categoría</SelectItem>
+                  <SelectItem value="none">Sin categoría</SelectItem>
                   {categories?.filter(c => !c.is_archived).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
@@ -248,7 +248,7 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
                   <SelectValue placeholder="Sin cuenta" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sin cuenta</SelectItem>
+                  <SelectItem value="none">Sin cuenta</SelectItem>
                   {accounts?.filter(a => !a.is_archived).map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                   ))}

@@ -38,7 +38,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
     price_eur: "",
     transaction_date: new Date().toISOString().split("T")[0],
     value_date: "",
-    category_id: "",
+    category_id: "none",
     notes: "",
   });
 
@@ -51,7 +51,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
       price_eur: parseFloat(formData.price_eur),
       transaction_date: new Date(formData.transaction_date).toISOString(),
       value_date: formData.value_date ? new Date(formData.value_date).toISOString() : null,
-      category_id: formData.category_id || null,
+      category_id: formData.category_id === "none" ? null : formData.category_id,
       notes: formData.notes || null,
     };
 
@@ -73,7 +73,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
       price_eur: "",
       transaction_date: new Date().toISOString().split("T")[0],
       value_date: "",
-      category_id: "",
+      category_id: "none",
       notes: "",
     });
     setEditingTx(null);
@@ -89,7 +89,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
       price_eur: tx.price_eur.toString(),
       transaction_date: tx.transaction_date.split("T")[0],
       value_date: tx.value_date ? tx.value_date.split("T")[0] : "",
-      category_id: tx.category_id || "",
+      category_id: tx.category_id || "none",
       notes: tx.notes || "",
     });
     setIsDialogOpen(true);
@@ -204,8 +204,8 @@ export function AssetsData({ userId }: AssetsDataProps) {
                   <SelectTrigger>
                     <SelectValue placeholder="Sin categoría" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Sin categoría</SelectItem>
+                <SelectContent>
+                    <SelectItem value="none">Sin categoría</SelectItem>
                     {categories?.filter(c => !c.is_archived).map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                     ))}
