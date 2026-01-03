@@ -1,11 +1,65 @@
-import { useState } from "react";
-import { TrendingUp, TrendingDown, Wallet, Activity } from "lucide-react";
+import { useState, useEffect } from "react";
+import { TrendingUp, TrendingDown, Wallet, Activity, LogOut } from "lucide-react";
 import { IntervalSelector, Interval } from "@/components/IntervalSelector";
 import { MetricCard } from "@/components/MetricCard";
 import { EvolutionChart } from "@/components/EvolutionChart";
+import { AuthForm } from "@/components/AuthForm";
+import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import { useToast } from "@/hooks/use-toast";
+import type { User } from "@supabase/supabase-js";
+
+const formatEUR = (value: number) =>
+  new Intl.NumberFormat("es-ES", {
+    style: "currency",
+    currency: "EUR",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value);
+
+const formatPercent = (value: number) =>
+  `${value >= 0 ? "+" : ""}${value.toFixed(1)}%`;
 
 const Index = () => {
   const [interval, setInterval] = useState<Interval>("1D");
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+  
+  const { data: metrics, isLoading: metricsLoading } = useDashboardMetrics(user?.id);
+
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast({ title: "Sesión cerrada" });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthForm onSuccess={() => {}} />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -19,14 +73,14 @@ const Index = () => {
               </div>
               <h1 className="text-xl font-semibold tracking-tight">Portfolio Dashboard</h1>
             </div>
-            <p className="text-sm text-muted-foreground font-mono">
-              {new Date().toLocaleDateString("es-ES", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+            <div className="flex items-center gap-4">
+              <p className="text-sm text-muted-foreground hidden sm:block">
+                {user.email}
+              </p>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -37,33 +91,32 @@ const Index = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <MetricCard
             title="Total Activos"
-            value="€67,432.50"
-            change="+12.5% vs mes anterior"
-            changeType="positive"
+            value={formatEUR(metrics?.totalAssets ?? 0)}
+            change={metrics?.totalAssets === 0 ? "Sin activos" : undefined}
+            changeType="neutral"
             icon={Wallet}
             variant="cyan"
           />
           <MetricCard
             title="Ingresos (Mes)"
-            value="€4,250.00"
-            change="+8.2% vs mes anterior"
-            changeType="positive"
+            value={formatEUR(metrics?.monthlyIncome ?? 0)}
+            change={metrics?.incomeChange !== 0 ? `${formatPercent(metrics?.incomeChange ?? 0)} vs mes anterior` : undefined}
+            changeType={metrics?.incomeChange && metrics.incomeChange >= 0 ? "positive" : "negative"}
             icon={TrendingUp}
             variant="success"
           />
           <MetricCard
             title="Gastos (Mes)"
-            value="€2,180.00"
-            change="-3.1% vs mes anterior"
-            changeType="positive"
+            value={formatEUR(metrics?.monthlyExpense ?? 0)}
+            change={metrics?.expenseChange !== 0 ? `${formatPercent(metrics?.expenseChange ?? 0)} vs mes anterior` : undefined}
+            changeType={metrics?.expenseChange && metrics.expenseChange <= 0 ? "positive" : "negative"}
             icon={TrendingDown}
             variant="danger"
           />
           <MetricCard
             title="Balance Neto"
-            value="€2,070.00"
-            change="+€520 vs mes anterior"
-            changeType="positive"
+            value={formatEUR(metrics?.netBalance ?? 0)}
+            changeType={metrics?.netBalance && metrics.netBalance >= 0 ? "positive" : "negative"}
             icon={Activity}
             variant="default"
           />
@@ -80,13 +133,13 @@ const Index = () => {
             </div>
             <IntervalSelector value={interval} onChange={setInterval} />
           </div>
-          <EvolutionChart interval={interval} />
+          <EvolutionChart interval={interval} userId={user.id} />
         </div>
 
         {/* Footer Info */}
         <div className="mt-8 text-center">
           <p className="text-xs text-muted-foreground">
-            Datos actualizados en tiempo real • Precios de cierre con carry-forward
+            Datos calculados en tiempo real • Precios de cierre con carry-forward
           </p>
         </div>
       </main>

@@ -10,77 +10,12 @@ import {
   Legend,
 } from "recharts";
 import { Interval } from "./IntervalSelector";
-
-interface ChartDataPoint {
-  label: string;
-  income: number;
-  expense: number;
-  totalAssets: number;
-}
+import { useChartData } from "@/hooks/useChartData";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface EvolutionChartProps {
   interval: Interval;
-}
-
-// Generate mock data based on interval
-function generateMockData(interval: Interval): ChartDataPoint[] {
-  const now = new Date();
-  const data: ChartDataPoint[] = [];
-
-  let points: number;
-  let labelFormat: (date: Date) => string;
-
-  switch (interval) {
-    case "1D":
-      points = 30;
-      labelFormat = (d) => d.toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
-      break;
-    case "7D":
-      points = 12;
-      labelFormat = (d) => `Sem ${Math.ceil((d.getDate()) / 7)}/${d.getMonth() + 1}`;
-      break;
-    case "1M":
-      points = 12;
-      labelFormat = (d) => d.toLocaleDateString("es-ES", { month: "short", year: "2-digit" });
-      break;
-  }
-
-  let cumulativeAssets = 45000;
-
-  for (let i = points - 1; i >= 0; i--) {
-    const date = new Date(now);
-    
-    switch (interval) {
-      case "1D":
-        date.setDate(date.getDate() - i);
-        break;
-      case "7D":
-        date.setDate(date.getDate() - i * 7);
-        break;
-      case "1M":
-        date.setMonth(date.getMonth() - i);
-        break;
-    }
-
-    const baseIncome = 2000 + Math.random() * 3000;
-    const baseExpense = 1500 + Math.random() * 2000;
-    const multiplier = interval === "1D" ? 0.15 : interval === "7D" ? 0.5 : 1;
-
-    const income = Math.round(baseIncome * multiplier);
-    const expense = Math.round(baseExpense * multiplier);
-    
-    cumulativeAssets += (income - expense) * 2 + (Math.random() - 0.5) * 2000;
-    cumulativeAssets = Math.max(cumulativeAssets, 30000);
-
-    data.push({
-      label: labelFormat(date),
-      income,
-      expense,
-      totalAssets: Math.round(cumulativeAssets),
-    });
-  }
-
-  return data;
+  userId: string | undefined;
 }
 
 const formatEUR = (value: number) =>
@@ -111,14 +46,36 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function EvolutionChart({ interval }: EvolutionChartProps) {
-  const data = useMemo(() => generateMockData(interval), [interval]);
+export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
+  const { data, isLoading } = useChartData(interval, userId);
+
+  if (isLoading) {
+    return (
+      <div className="h-[400px] w-full flex items-center justify-center">
+        <Skeleton className="h-full w-full" />
+      </div>
+    );
+  }
+
+  const chartData = data || [];
+  const hasData = chartData.some(d => d.income > 0 || d.expense > 0 || d.totalAssets > 0);
+
+  if (!hasData) {
+    return (
+      <div className="h-[400px] w-full flex items-center justify-center">
+        <div className="text-center text-muted-foreground">
+          <p className="text-lg font-medium">Sin datos todavía</p>
+          <p className="text-sm mt-1">Añade transacciones para ver la evolución</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[400px] w-full animate-fade-in">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart
-          data={data}
+          data={chartData}
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
         >
           <defs>
