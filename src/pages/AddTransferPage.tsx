@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, ArrowRightLeft } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Loader2, ArrowRightLeft, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useTransfers } from "@/hooks/useTransfers";
 import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useFxRates } from "@/hooks/useFxRates";
+import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 
 interface AddTransferPageProps {
@@ -19,7 +20,11 @@ interface AddTransferPageProps {
 
 export function AddTransferPage({ user }: AddTransferPageProps) {
   const navigate = useNavigate();
-  const { create: createTransfer, isCreating } = useTransfers(user.id);
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("edit");
+  const { toast } = useToast();
+  
+  const { data: allTransfers, create: createTransfer, update: updateTransfer, delete: deleteTransfer, isCreating } = useTransfers(user.id);
   const { create: createRecurring } = useRecurringTransactions(user.id);
   const { data: accounts } = useBankAccounts(user.id);
   const { getLatestRate } = useFxRates();
@@ -41,6 +46,24 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
   const fromAccount = activeAccounts.find(a => a.id === formData.from_account_id);
   const toAccount = activeAccounts.find(a => a.id === formData.to_account_id);
   const needsConversion = fromAccount && toAccount && fromAccount.currency !== toAccount.currency;
+
+  // Load existing transfer if editing
+  useEffect(() => {
+    if (editId && allTransfers) {
+      const existing = allTransfers.find(t => t.id === editId);
+      if (existing) {
+        setFormData({
+          from_account_id: existing.from_account_id,
+          to_account_id: existing.to_account_id,
+          amount_from: existing.amount_from.toString(),
+          amount_to: existing.amount_to.toString(),
+          date: existing.date.split("T")[0],
+          description: existing.description || "",
+          fx_rate: existing.fx_rate,
+        });
+      }
+    }
+  }, [editId, allTransfers]);
 
   useEffect(() => {
     if (needsConversion && formData.amount_from) {
@@ -66,8 +89,7 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
     setIsSubmitting(true);
 
     try {
-      // Create the transfer
-      await createTransfer({
+      const payload = {
         from_account_id: formData.from_account_id,
         to_account_id: formData.to_account_id,
         amount_from: parseFloat(formData.amount_from),
@@ -78,25 +100,46 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
         date: new Date(formData.date).toISOString(),
         value_date: null,
         description: formData.description || null,
-      });
+      };
 
-      // If recurring, also create the recurring template
-      if (isRecurring) {
-        createRecurring({
-          type: "income", // We use a special type indicator via notes
-          name: formData.description || "Transferencia recurrente",
-          amount: parseFloat(formData.amount_from),
-          currency: fromAccount.currency,
-          category_id: null,
-          bank_account_id: formData.from_account_id,
-          cadence,
-          start_date: formData.date,
-          next_occurrence_date: formData.date,
-          is_active: true,
-          notes: `TRANSFER:${formData.to_account_id}:${formData.amount_to}:${toAccount.currency}`,
-        });
+      if (editId) {
+        await updateTransfer({ id: editId, ...payload });
+        toast({ title: "Transferencia actualizada" });
+      } else {
+        await createTransfer(payload);
+
+        // If recurring, also create the recurring template
+        if (isRecurring) {
+          createRecurring({
+            type: "income", // We use a special type indicator via notes
+            name: formData.description || "Transferencia recurrente",
+            amount: parseFloat(formData.amount_from),
+            currency: fromAccount.currency,
+            category_id: null,
+            bank_account_id: formData.from_account_id,
+            cadence,
+            start_date: formData.date,
+            next_occurrence_date: formData.date,
+            is_active: true,
+            notes: `TRANSFER:${formData.to_account_id}:${formData.amount_to}:${toAccount.currency}`,
+          });
+        }
       }
 
+      navigate(-1);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editId) return;
+    setIsSubmitting(true);
+    try {
+      await deleteTransfer(editId);
+      toast({ title: "Transferencia eliminada" });
       navigate(-1);
     } catch (error) {
       console.error(error);
@@ -115,7 +158,7 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
           <div className="h-8 w-8 rounded-full bg-chart-assets/10 flex items-center justify-center">
             <ArrowRightLeft className="h-4 w-4 text-chart-assets" />
           </div>
-          <h1 className="text-lg font-semibold">Nueva Transferencia</h1>
+          <h1 className="text-lg font-semibold">{editId ? "Editar Transferencia" : "Nueva Transferencia"}</h1>
         </div>
       </header>
 
@@ -205,17 +248,19 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
           />
         </div>
 
-        {/* Recurring Switch */}
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
-          <div>
-            <p className="font-medium">Hacer recurrente</p>
-            <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
+        {/* Recurring Switch (only for new transfers) */}
+        {!editId && (
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
+            <div>
+              <p className="font-medium">Hacer recurrente</p>
+              <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
+            </div>
+            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
           </div>
-          <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
-        </div>
+        )}
 
         {/* Cadence (if recurring) */}
-        {isRecurring && (
+        {!editId && isRecurring && (
           <div className="space-y-2">
             <Label>Frecuencia</Label>
             <Select value={cadence} onValueChange={(v) => setCadence(v as typeof cadence)}>
@@ -240,8 +285,22 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
           disabled={isSubmitting || isCreating || !formData.from_account_id || !formData.to_account_id || !formData.amount_from}
         >
           {(isSubmitting || isCreating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Guardar
+          {editId ? "Actualizar" : "Guardar"}
         </Button>
+
+        {/* Delete Button (only in edit mode) */}
+        {editId && (
+          <Button 
+            variant="destructive"
+            className="w-full" 
+            size="lg" 
+            onClick={handleDelete}
+            disabled={isSubmitting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Eliminar
+          </Button>
+        )}
       </div>
     </MobileLayout>
   );

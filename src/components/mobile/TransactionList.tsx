@@ -18,6 +18,7 @@ interface TransactionListProps {
   title?: string;
   showSeeAll?: boolean;
   onSeeAll?: () => void;
+  onEdit?: (transaction: TransactionItem) => void;
   className?: string;
   maxItems?: number;
 }
@@ -61,6 +62,7 @@ export function TransactionList({
   title = "Transaction History",
   showSeeAll = true,
   onSeeAll,
+  onEdit,
   className,
   maxItems = 5,
 }: TransactionListProps) {
@@ -95,7 +97,8 @@ export function TransactionList({
             return (
               <div
                 key={tx.id}
-                className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50"
+                onClick={() => onEdit?.(tx)}
+                className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 cursor-pointer hover:bg-accent/50 transition-colors"
               >
                 <div className={cn("h-10 w-10 rounded-full flex items-center justify-center shrink-0", colorClass)}>
                   <Icon className="h-4 w-4" />

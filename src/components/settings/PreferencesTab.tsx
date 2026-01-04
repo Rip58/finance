@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
+import { useTheme } from "next-themes";
 import { useSettings } from "@/hooks/useSettings";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Globe, Coins } from "lucide-react";
+import { Loader2, Globe, Coins, Sun, Moon } from "lucide-react";
 
 const timezones = [
   "Europe/Madrid",
@@ -24,6 +25,7 @@ interface PreferencesTabProps {
 
 export function PreferencesTab({ userId }: PreferencesTabProps) {
   const { data: settings, isLoading, upsert, isUpserting } = useSettings(userId);
+  const { theme, setTheme } = useTheme();
   const [timezone, setTimezone] = useState("Europe/Madrid");
 
   useEffect(() => {
@@ -46,6 +48,28 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Theme Card */}
+      <div className="p-4 rounded-2xl bg-card border border-border/50">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+            {theme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          </div>
+          <div>
+            <p className="font-medium">Tema</p>
+            <p className="text-xs text-muted-foreground">Apariencia de la app</p>
+          </div>
+        </div>
+        <Select value={theme} onValueChange={setTheme}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dark">Oscuro</SelectItem>
+            <SelectItem value="light">Claro</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       {/* Currency Card */}
       <div className="p-4 rounded-2xl bg-card border border-border/50">
         <div className="flex items-center gap-3 mb-4">

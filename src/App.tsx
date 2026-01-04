@@ -4,10 +4,10 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthForm } from "@/components/AuthForm";
 import { HomePage } from "@/pages/HomePage";
-import { WalletPage } from "@/pages/WalletPage";
 import { ReportPage } from "@/pages/ReportPage";
 import { AccountPage } from "@/pages/AccountPage";
 import { AddIncomePage } from "@/pages/AddIncomePage";
@@ -51,7 +51,6 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/" element={<HomePage user={user} />} />
-      <Route path="/wallet" element={<WalletPage user={user} />} />
       <Route path="/report" element={<ReportPage user={user} />} />
       <Route path="/account" element={<AccountPage user={user} />} />
       <Route path="/add-income" element={<AddIncomePage user={user} />} />
@@ -68,13 +67,15 @@ function AppContent() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AppContent />
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AppContent />
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

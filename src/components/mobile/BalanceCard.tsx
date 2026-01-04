@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, EyeOff, CreditCard, PiggyBank, TrendingUp } from "lucide-react";
+import { Eye, EyeOff, PiggyBank, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -34,16 +34,11 @@ export function BalanceCard({
     <div
       className={cn(
         "relative overflow-hidden rounded-2xl p-5",
-        "bg-gradient-to-br from-primary/90 to-primary text-primary-foreground",
+        "bg-primary text-primary-foreground",
         "shadow-lg",
         className
       )}
     >
-      {/* Decorative elements */}
-      <div className="absolute top-4 right-4 opacity-20">
-        <CreditCard className="h-14 w-14" />
-      </div>
-      <div className="absolute -bottom-8 -right-8 h-28 w-28 rounded-full bg-background/10" />
       
       <div className="relative z-10 flex justify-between">
         {/* Left side - Main balance */}

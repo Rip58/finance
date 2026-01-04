@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Loader2, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Loader2, TrendingUp, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { useTransactions } from "@/hooks/useTransactions";
 import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { useToast } from "@/hooks/use-toast";
 import type { User } from "@supabase/supabase-js";
 
 interface AddIncomePageProps {
@@ -20,7 +21,11 @@ interface AddIncomePageProps {
 
 export function AddIncomePage({ user }: AddIncomePageProps) {
   const navigate = useNavigate();
-  const { create: createTransaction, isCreating } = useTransactions(user.id);
+  const [searchParams] = useSearchParams();
+  const editId = searchParams.get("edit");
+  const { toast } = useToast();
+  
+  const { data: allTransactions, create: createTransaction, update: updateTransaction, delete: deleteTransaction, isCreating } = useTransactions(user.id);
   const { create: createRecurring } = useRecurringTransactions(user.id);
   const { data: categories } = useCategories(user.id, "income");
   const { data: accounts } = useBankAccounts(user.id);
@@ -37,14 +42,30 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
   const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Load existing transaction if editing
+  useEffect(() => {
+    if (editId && allTransactions) {
+      const existing = allTransactions.find(t => t.id === editId);
+      if (existing) {
+        setFormData({
+          amount: existing.amount.toString(),
+          currency: existing.currency,
+          date: existing.date.split("T")[0],
+          category_id: existing.category_id || "none",
+          bank_account_id: existing.bank_account_id || "none",
+          description: existing.description || "",
+        });
+      }
+    }
+  }, [editId, allTransactions]);
+
   const handleSubmit = async () => {
     if (!formData.amount) return;
     setIsSubmitting(true);
 
     try {
-      // Create the transaction
-      await createTransaction({
-        type: "income",
+      const payload = {
+        type: "income" as const,
         amount: parseFloat(formData.amount),
         currency: formData.currency,
         date: new Date(formData.date).toISOString(),
@@ -52,25 +73,46 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         category_id: formData.category_id === "none" ? null : formData.category_id,
         bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
         description: formData.description || null,
-      });
+      };
 
-      // If recurring, also create the recurring template
-      if (isRecurring) {
-        createRecurring({
-          type: "income",
-          name: formData.description || "Ingreso recurrente",
-          amount: parseFloat(formData.amount),
-          currency: formData.currency,
-          category_id: formData.category_id === "none" ? null : formData.category_id,
-          bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
-          cadence,
-          start_date: formData.date,
-          next_occurrence_date: formData.date,
-          is_active: true,
-          notes: null,
-        });
+      if (editId) {
+        await updateTransaction({ id: editId, ...payload });
+        toast({ title: "Ingreso actualizado" });
+      } else {
+        await createTransaction(payload);
+        
+        // If recurring, also create the recurring template
+        if (isRecurring) {
+          createRecurring({
+            type: "income",
+            name: formData.description || "Ingreso recurrente",
+            amount: parseFloat(formData.amount),
+            currency: formData.currency,
+            category_id: formData.category_id === "none" ? null : formData.category_id,
+            bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
+            cadence,
+            start_date: formData.date,
+            next_occurrence_date: formData.date,
+            is_active: true,
+            notes: null,
+          });
+        }
       }
 
+      navigate(-1);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!editId) return;
+    setIsSubmitting(true);
+    try {
+      await deleteTransaction(editId);
+      toast({ title: "Ingreso eliminado" });
       navigate(-1);
     } catch (error) {
       console.error(error);
@@ -89,7 +131,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           <div className="h-8 w-8 rounded-full bg-success/10 flex items-center justify-center">
             <TrendingUp className="h-4 w-4 text-success" />
           </div>
-          <h1 className="text-lg font-semibold">Nuevo Ingreso</h1>
+          <h1 className="text-lg font-semibold">{editId ? "Editar Ingreso" : "Nuevo Ingreso"}</h1>
         </div>
       </header>
 
@@ -173,17 +215,19 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           />
         </div>
 
-        {/* Recurring Switch */}
-        <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
-          <div>
-            <p className="font-medium">Hacer recurrente</p>
-            <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
+        {/* Recurring Switch (only for new transactions) */}
+        {!editId && (
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
+            <div>
+              <p className="font-medium">Hacer recurrente</p>
+              <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
+            </div>
+            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
           </div>
-          <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
-        </div>
+        )}
 
         {/* Cadence (if recurring) */}
-        {isRecurring && (
+        {!editId && isRecurring && (
           <div className="space-y-2">
             <Label>Frecuencia</Label>
             <Select value={cadence} onValueChange={(v) => setCadence(v as typeof cadence)}>
@@ -208,8 +252,22 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           disabled={isSubmitting || isCreating || !formData.amount}
         >
           {(isSubmitting || isCreating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Guardar
+          {editId ? "Actualizar" : "Guardar"}
         </Button>
+
+        {/* Delete Button (only in edit mode) */}
+        {editId && (
+          <Button 
+            variant="destructive"
+            className="w-full" 
+            size="lg" 
+            onClick={handleDelete}
+            disabled={isSubmitting}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Eliminar
+          </Button>
+        )}
       </div>
     </MobileLayout>
   );
