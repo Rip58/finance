@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { TrendingUp, Plus, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -133,8 +134,8 @@ export function DCAsTab({ userId }: DCAsTabProps) {
     }
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value);
+  const formatUSDT = (value: number) =>
+    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 
   const totalInitial = (parseFloat(formData.initialQuantity) || 0) * (parseFloat(formData.initialPrice) || 0);
 
@@ -162,9 +163,7 @@ export function DCAsTab({ userId }: DCAsTabProps) {
             key={portfolio.id}
             className="flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/50"
           >
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm">
-              {portfolio.symbol.slice(0, 3)}
-            </div>
+            <CryptoLogo symbol={portfolio.symbol} size={40} />
             <div className="flex-1 min-w-0">
               <p className="font-medium truncate">{portfolio.name}</p>
               <p className="text-sm text-muted-foreground">{portfolio.symbol}</p>
@@ -288,7 +287,7 @@ export function DCAsTab({ userId }: DCAsTabProps) {
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label htmlFor="initialPrice" className="text-xs">Precio (EUR)</Label>
+                  <Label htmlFor="initialPrice" className="text-xs">Precio (USDT)</Label>
                   <Input
                     id="initialPrice"
                     type="number"
@@ -301,7 +300,7 @@ export function DCAsTab({ userId }: DCAsTabProps) {
                 {totalInitial > 0 && (
                   <div className="p-2 rounded-lg bg-primary/10 text-center">
                     <p className="text-xs text-muted-foreground">Inversión inicial</p>
-                    <p className="font-bold text-primary">{formatCurrency(totalInitial)}</p>
+                    <p className="font-bold text-primary">{formatUSDT(totalInitial)}</p>
                   </div>
                 )}
               </div>

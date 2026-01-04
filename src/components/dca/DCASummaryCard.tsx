@@ -8,13 +8,15 @@ import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 interface DCASummaryCardProps {
   transactions: AssetTransaction[] | undefined;
   currentPrices: Record<string, number>;
+  symbol: string;
   onRefresh: () => void;
   isRefreshing?: boolean;
 }
 
 export function DCASummaryCard({ 
   transactions, 
-  currentPrices, 
+  currentPrices,
+  symbol,
   onRefresh,
   isRefreshing 
 }: DCASummaryCardProps) {
@@ -62,8 +64,10 @@ export function DCASummaryCard({
     return { totalInvested, currentValue, pnl, pnlPercent };
   }, [transactions, currentPrices]);
 
-  const formatCurrency = (value: number) => 
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value);
+  const formatUSDT = (value: number) => 
+    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+
+  const currentPrice = symbol ? currentPrices[symbol.toUpperCase()] : null;
 
   return (
     <Card className="mx-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
@@ -83,13 +87,13 @@ export function DCASummaryCard({
           <div>
             <p className="text-sm text-muted-foreground">Total invertido</p>
             <p className="text-xl font-bold text-foreground">
-              {formatCurrency(totals.totalInvested)}
+              {formatUSDT(totals.totalInvested)}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Valor actual</p>
             <p className="text-xl font-bold text-foreground">
-              {formatCurrency(totals.currentValue)}
+              {formatUSDT(totals.currentValue)}
             </p>
           </div>
           <div>
@@ -98,7 +102,7 @@ export function DCASummaryCard({
               "text-xl font-bold",
               totals.pnl >= 0 ? "text-chart-income" : "text-destructive"
             )}>
-              {totals.pnl >= 0 ? "+" : ""}{formatCurrency(totals.pnl)}
+              {totals.pnl >= 0 ? "+" : ""}{formatUSDT(totals.pnl)}
             </p>
           </div>
           <div>
@@ -111,6 +115,15 @@ export function DCASummaryCard({
             </p>
           </div>
         </div>
+
+        {currentPrice && (
+          <div className="mt-4 pt-4 border-t border-primary/20 text-center">
+            <p className="text-sm text-muted-foreground">Valor {symbol}</p>
+            <p className="text-2xl font-bold text-primary">
+              {formatUSDT(currentPrice)}
+            </p>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

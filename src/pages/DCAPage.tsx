@@ -9,6 +9,7 @@ import { useDCAPortfolios, type DCAPortfolio } from "@/hooks/useDCAPortfolios";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { DCASummaryCard } from "@/components/dca/DCASummaryCard";
 import { DCAEntryList } from "@/components/dca/DCAEntryList";
+import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { DCAFormDialog } from "@/components/dca/DCAFormDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -163,9 +164,10 @@ export function DCAPage({ user }: DCAPageProps) {
               variant={selectedPortfolioId === portfolio.id ? "default" : "outline"}
               size="sm"
               onClick={() => setSelectedPortfolioId(portfolio.id)}
-              className="flex-shrink-0 rounded-full"
+              className="flex-shrink-0 rounded-full flex items-center gap-2 px-3"
             >
-              {portfolio.symbol}
+              <CryptoLogo symbol={portfolio.symbol} size={20} />
+              <span>{portfolio.symbol}</span>
             </Button>
           ))}
         </div>
@@ -175,6 +177,7 @@ export function DCAPage({ user }: DCAPageProps) {
         <DCASummaryCard
           transactions={filteredTransactions}
           currentPrices={currentPrices || {}}
+          symbol={selectedPortfolio?.symbol || ""}
           onRefresh={handleRefreshPrices}
           isRefreshing={isRefreshing}
         />
