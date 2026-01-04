@@ -11,6 +11,7 @@ import {
 import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
 import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
 import { EvolutionChart } from "@/components/EvolutionChart";
+import { useChartData } from "@/hooks/useChartData";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
@@ -38,6 +39,7 @@ export function HomePage({ user }: HomePageProps) {
   const [selectedAccount, setSelectedAccount] = useState<typeof bankAccounts[0] | null>(null);
 
   const { data: metrics } = useDashboardMetrics(user.id);
+  const { data: chartData } = useChartData(interval, user.id);
   const { data: transactions = [] } = useTransactions(user.id);
   const { data: bankAccounts = [] } = useBankAccounts(user.id);
   const { data: categories = [] } = useCategories(user.id, undefined);
@@ -178,6 +180,18 @@ export function HomePage({ user }: HomePageProps) {
     return total;
   }, [savingsAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
+  // Calculate percentage change from chart data
+  const percentageChange = useMemo(() => {
+    if (!chartData || chartData.length < 2) return null;
+    
+    const firstValue = chartData[0].balanceTotal;
+    const lastValue = chartData[chartData.length - 1].balanceTotal;
+    
+    if (firstValue === 0) return null;
+    
+    return ((lastValue - firstValue) / firstValue) * 100;
+  }, [chartData]);
+
   // Format currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
     if (currency === "USDT" || currency === "USD") {
@@ -283,9 +297,21 @@ export function HomePage({ user }: HomePageProps) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-muted-foreground">Evolución Balance</p>
-              <p className="text-xl font-bold">
-                {formatEur(metrics?.totalAssets ?? 0)}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-xl font-bold">
+                  {formatEur(metrics?.totalAssets ?? 0)}
+                </p>
+                {percentageChange !== null && (
+                  <span className={cn(
+                    "text-xs font-medium px-1.5 py-0.5 rounded",
+                    percentageChange >= 0 
+                      ? "text-green-500 bg-green-500/10" 
+                      : "text-red-500 bg-red-500/10"
+                  )}>
+                    {percentageChange >= 0 ? "+" : ""}{percentageChange.toFixed(1)}%
+                  </span>
+                )}
+              </div>
             </div>
             <IntervalSelector value={interval} onChange={setInterval} />
           </div>
@@ -329,7 +355,7 @@ export function HomePage({ user }: HomePageProps) {
             ))}
             
             {/* DCA Entry */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between p-2 -mx-2">
               <div className="flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-primary" />
                 <span className="text-sm font-medium">DCA (Total)</span>

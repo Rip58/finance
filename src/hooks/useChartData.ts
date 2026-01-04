@@ -185,21 +185,24 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       let formatLabel: (date: Date) => string;
       
       switch (interval) {
-        case "1D":
+        case "1M":
+          // Last 30 days, points every 4 days
           dates = eachDayOfInterval({
             start: subDays(now, 29),
+            end: now,
+          }).filter((_, i, arr) => i % 4 === 0 || i === arr.length - 1);
+          formatLabel = (d) => format(d, "dd MMM", { locale: es });
+          break;
+        case "3M":
+          // Last 3 months, weekly points
+          dates = eachWeekOfInterval({
+            start: subMonths(now, 3),
             end: now,
           });
           formatLabel = (d) => format(d, "dd MMM", { locale: es });
           break;
-        case "7D":
-          dates = eachWeekOfInterval({
-            start: subWeeks(now, 11),
-            end: now,
-          });
-          formatLabel = (d) => `Sem ${format(d, "w")}`;
-          break;
-        case "1M":
+        case "1Y":
+          // Last 12 months
           dates = eachMonthOfInterval({
             start: subMonths(now, 11),
             end: now,
