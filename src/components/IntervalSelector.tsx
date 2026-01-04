@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-export type Interval = "1D" | "7D" | "1M";
+export type Interval = "1M" | "3M" | "1Y";
 
 interface IntervalSelectorProps {
   value: Interval;
@@ -8,9 +8,9 @@ interface IntervalSelectorProps {
 }
 
 const intervals: { value: Interval; label: string }[] = [
-  { value: "1D", label: "1D" },
-  { value: "7D", label: "7D" },
   { value: "1M", label: "1M" },
+  { value: "3M", label: "3M" },
+  { value: "1Y", label: "1Y" },
 ];
 
 export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {

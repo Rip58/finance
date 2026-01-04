@@ -24,7 +24,7 @@ const formatPercent = (value: number) =>
 
 const Index = () => {
   const navigate = useNavigate();
-  const [interval, setInterval] = useState<Interval>("1D");
+  const [interval, setInterval] = useState<Interval>("1M");
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
