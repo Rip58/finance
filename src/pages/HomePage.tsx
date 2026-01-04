@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bell, LogOut } from "lucide-react";
+import { Bell, LogOut, ChevronDown, ChevronUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -27,6 +27,7 @@ export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [interval, setInterval] = useState<Interval>("1M");
+  const [showTransactions, setShowTransactions] = useState(false);
 
   const { data: metrics } = useDashboardMetrics(user.id);
   const { data: transactions = [] } = useTransactions(user.id);
@@ -128,7 +129,7 @@ export function HomePage({ user }: HomePageProps) {
         <div className="rounded-2xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-sm text-muted-foreground">Total Transaction</p>
+              <p className="text-sm text-muted-foreground">Evolución Balance</p>
               <p className="text-xl font-bold">
                 {new Intl.NumberFormat("es-ES", {
                   style: "currency",
@@ -144,13 +145,32 @@ export function HomePage({ user }: HomePageProps) {
         </div>
       </div>
 
-      {/* Transaction History */}
+      {/* Transaction History - Collapsible */}
       <div className="px-4 py-4">
-        <TransactionList
-          transactions={recentTransactions}
-          onSeeAll={() => navigate("/account?tab=data")}
-          onEdit={handleEditTransaction}
-        />
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-semibold">Historial Transacciones</h3>
+          <button
+            onClick={() => setShowTransactions(!showTransactions)}
+            className="text-sm text-primary font-medium flex items-center gap-1"
+          >
+            {showTransactions ? "Ocultar" : "Ver todo"}
+            {showTransactions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </button>
+        </div>
+        
+        {showTransactions && (
+          <TransactionList
+            transactions={recentTransactions}
+            showSeeAll={false}
+            onEdit={handleEditTransaction}
+          />
+        )}
+        
+        {!showTransactions && recentTransactions.length > 0 && (
+          <p className="text-sm text-muted-foreground text-center py-4">
+            {recentTransactions.length} transacciones recientes
+          </p>
+        )}
       </div>
     </MobileLayout>
   );

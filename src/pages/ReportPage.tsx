@@ -49,7 +49,8 @@ export function ReportPage({ user }: ReportPageProps) {
   const navigate = useNavigate();
   const [range, setRange] = useState<RangeType>("monthly");
 
-  const { data: transactions = [] } = useTransactions(user.id, "expense");
+  const { data: expenseTransactions = [] } = useTransactions(user.id, "expense");
+  const { data: incomeTransactions = [] } = useTransactions(user.id, "income");
   const { data: categories = [] } = useCategories(user.id, "expense");
   const { data: allCategories = [] } = useCategories(user.id, undefined);
   const { data: transfers = [] } = useTransfers(user.id);
@@ -71,7 +72,7 @@ export function ReportPage({ user }: ReportPageProps) {
       .map(acc => acc.id);
   }, [bankAccounts, allCategories]);
 
-  // Chart data with expenses and savings
+  // Chart data with expenses, income and savings
   const chartData = useMemo(() => {
     const months = [];
     for (let i = 5; i >= 0; i--) {
@@ -80,7 +81,12 @@ export function ReportPage({ user }: ReportPageProps) {
       const end = endOfMonth(monthDate);
 
       // Expenses
-      const expenses = transactions
+      const gastos = expenseTransactions
+        .filter((tx) => isWithinInterval(new Date(tx.date), { start, end }))
+        .reduce((sum, tx) => sum + tx.amount, 0);
+
+      // Income
+      const ingresos = incomeTransactions
         .filter((tx) => isWithinInterval(new Date(tx.date), { start, end }))
         .reduce((sum, tx) => sum + tx.amount, 0);
 
@@ -101,17 +107,18 @@ export function ReportPage({ user }: ReportPageProps) {
         })
         .reduce((sum, at) => sum + (at.quantity * at.price_eur), 0);
 
-      const savings = transfersToSavings + assetPurchases;
+      const ahorro = transfersToSavings + assetPurchases;
 
       months.push({
         name: format(monthDate, "MMM", { locale: es }),
-        gastos: expenses,
-        ahorro: savings,
+        gastos,
+        ingresos,
+        ahorro,
         isCurrentMonth: i === 0,
       });
     }
     return months;
-  }, [transactions, transfers, assetTransactions, savingsAccountIds]);
+  }, [expenseTransactions, incomeTransactions, transfers, assetTransactions, savingsAccountIds]);
 
   // Calculate totals
   const totalExpense = useMemo(() => {
@@ -126,7 +133,7 @@ export function ReportPage({ user }: ReportPageProps) {
   const categoryBreakdown: CategorySummary[] = useMemo(() => {
     const categoryMap = new Map<string, { name: string; count: number; total: number }>();
 
-    transactions.forEach((tx) => {
+    expenseTransactions.forEach((tx) => {
       const cat = categories.find((c) => c.id === tx.category_id);
       const catName = cat?.name || "Sin categoría";
       const catId = tx.category_id || "uncategorized";
@@ -149,7 +156,11 @@ export function ReportPage({ user }: ReportPageProps) {
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
-  }, [transactions, categories]);
+  }, [expenseTransactions, categories]);
+
+  const totalIncome = useMemo(() => {
+    return chartData.reduce((sum, m) => sum + m.ingresos, 0);
+  }, [chartData]);
 
   const RangeSelector = () => (
     <Select value={range} onValueChange={(v) => setRange(v as RangeType)}>
@@ -187,20 +198,28 @@ export function ReportPage({ user }: ReportPageProps) {
       <div className="px-4 py-4">
         <Tabs defaultValue="expenses" className="w-full">
           <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="expenses">Gastos</TabsTrigger>
+            <TabsTrigger value="expenses">Gastos & Ingresos</TabsTrigger>
             <TabsTrigger value="savings">Ahorros</TabsTrigger>
           </TabsList>
 
           <TabsContent value="expenses">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-sm text-muted-foreground">Total gastos</p>
-                <p className="text-3xl font-bold text-destructive">{formatCurrency(totalExpense)}</p>
+                <div className="flex gap-6">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total gastos</p>
+                    <p className="text-2xl font-bold text-destructive">{formatCurrency(totalExpense)}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Total ingresos</p>
+                    <p className="text-2xl font-bold text-green-500">{formatCurrency(totalIncome)}</p>
+                  </div>
+                </div>
               </div>
               <RangeSelector />
             </div>
 
-            {/* Stacked Bar Chart */}
+            {/* Bar Chart with Expenses and Income side by side */}
             <div className="h-48 mb-6">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData} barCategoryGap="20%">
@@ -218,17 +237,15 @@ export function ReportPage({ user }: ReportPageProps) {
                   />
                   <Bar 
                     dataKey="gastos" 
-                    stackId="a" 
                     fill="hsl(var(--destructive))" 
-                    radius={[0, 0, 4, 4]} 
+                    radius={[4, 4, 4, 4]} 
                     name="Gastos"
                   />
                   <Bar 
-                    dataKey="ahorro" 
-                    stackId="a" 
+                    dataKey="ingresos" 
                     fill="hsl(142.1 76.2% 36.3%)" 
-                    radius={[4, 4, 0, 0]} 
-                    name="Ahorro"
+                    radius={[4, 4, 4, 4]} 
+                    name="Ingresos"
                   />
                 </BarChart>
               </ResponsiveContainer>

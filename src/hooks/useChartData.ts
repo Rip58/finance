@@ -1,14 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Interval } from "@/components/IntervalSelector";
-import { startOfDay, subDays, subWeeks, subMonths, format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfWeek, endOfMonth } from "date-fns";
+import { startOfDay, subDays, subWeeks, subMonths, format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfWeek, endOfMonth, startOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface ChartDataPoint {
   label: string;
-  income: number;
-  expense: number;
-  totalAssets: number;
+  activos: number;
+  ahorros: number;
+  balanceTotal: number;
 }
 
 interface AssetTransaction {
@@ -18,12 +18,22 @@ interface AssetTransaction {
   transaction_date: string;
 }
 
+interface Transfer {
+  from_account_id: string;
+  to_account_id: string;
+  amount_from: number;
+  amount_to: number;
+  currency_from: string;
+  currency_to: string;
+  date: string;
+}
+
 interface Transaction {
   type: string;
   amount: number;
   currency: string;
   date: string;
-  value_date: string | null;
+  bank_account_id: string | null;
 }
 
 interface FxRate {
@@ -36,6 +46,18 @@ interface AssetPrice {
   symbol: string;
   price_date: string;
   close_price: number;
+}
+
+interface BankAccount {
+  id: string;
+  category_id: string | null;
+  currency: string;
+  initial_balance: number;
+}
+
+interface Category {
+  id: string;
+  name: string;
 }
 
 // Calculate holdings at a specific date from transactions
@@ -69,11 +91,11 @@ function getPriceAtDate(prices: AssetPrice[], symbol: string, targetDate: Date):
     }
   }
   
-  return 0; // No price found
+  return 0;
 }
 
-// Calculate total assets value at date
-function calculateTotalAssetsAtDate(
+// Calculate total crypto assets value at date
+function calculateCryptoAssetsAtDate(
   holdings: Record<string, number>,
   prices: AssetPrice[],
   date: Date
@@ -86,53 +108,70 @@ function calculateTotalAssetsAtDate(
   return total;
 }
 
-// Get FX rate for a date (closest rate <= date, fallback to latest)
+// Get FX rate for a date
 function getFxRateAtDate(fxRates: FxRate[], targetDate: Date): number {
   const usdtRates = fxRates
     .filter(r => r.pair === "USDT/EUR")
     .sort((a, b) => new Date(b.as_of).getTime() - new Date(a.as_of).getTime());
   
-  // Find closest rate <= targetDate
   for (const rate of usdtRates) {
     if (new Date(rate.as_of) <= targetDate) {
       return Number(rate.rate);
     }
   }
   
-  // Fallback to latest rate
   return usdtRates.length > 0 ? Number(usdtRates[0].rate) : 1;
 }
 
-// Aggregate transactions for a period with USDT to EUR conversion
-function aggregateTransactions(
+// Calculate savings account balance at date
+function calculateSavingsAtDate(
+  bankAccounts: BankAccount[],
+  savingsAccountIds: string[],
   transactions: Transaction[],
+  transfers: Transfer[],
   fxRates: FxRate[],
-  startDate: Date,
-  endDate: Date
-): { income: number; expense: number } {
-  let income = 0;
-  let expense = 0;
-  
+  targetDate: Date
+): number {
+  const toEur = (amount: number, currency: string, date: Date) => {
+    if (currency === "USDT") return amount * getFxRateAtDate(fxRates, date);
+    return amount;
+  };
+
+  // Start with initial balances
+  let total = 0;
+  for (const acc of bankAccounts) {
+    if (savingsAccountIds.includes(acc.id)) {
+      total += toEur(acc.initial_balance, acc.currency, targetDate);
+    }
+  }
+
+  // Add/subtract transactions up to date
   for (const tx of transactions) {
-    const txDate = new Date(tx.value_date || tx.date);
-    if (txDate >= startDate && txDate <= endDate) {
-      let amountEur = Number(tx.amount);
-      
-      // Convert USDT to EUR
-      if (tx.currency === "USDT") {
-        const rate = getFxRateAtDate(fxRates, txDate);
-        amountEur = amountEur * rate;
-      }
-      
+    const txDate = new Date(tx.date);
+    if (txDate <= targetDate && tx.bank_account_id && savingsAccountIds.includes(tx.bank_account_id)) {
+      const amount = toEur(Number(tx.amount), tx.currency, txDate);
       if (tx.type === "income") {
-        income += amountEur;
+        total += amount;
       } else {
-        expense += amountEur;
+        total -= amount;
       }
     }
   }
-  
-  return { income, expense };
+
+  // Apply transfers up to date
+  for (const transfer of transfers) {
+    const txDate = new Date(transfer.date);
+    if (txDate <= targetDate) {
+      if (savingsAccountIds.includes(transfer.from_account_id)) {
+        total -= toEur(Number(transfer.amount_from), transfer.currency_from, txDate);
+      }
+      if (savingsAccountIds.includes(transfer.to_account_id)) {
+        total += toEur(Number(transfer.amount_to), transfer.currency_to, txDate);
+      }
+    }
+  }
+
+  return total;
 }
 
 export function useChartData(interval: Interval, userId: string | undefined) {
@@ -144,7 +183,6 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       const now = new Date();
       let dates: Date[] = [];
       let formatLabel: (date: Date) => string;
-      let getPeriodBounds: (date: Date) => { start: Date; end: Date };
       
       switch (interval) {
         case "1D":
@@ -153,7 +191,6 @@ export function useChartData(interval: Interval, userId: string | undefined) {
             end: now,
           });
           formatLabel = (d) => format(d, "dd MMM", { locale: es });
-          getPeriodBounds = (d) => ({ start: startOfDay(d), end: d });
           break;
         case "7D":
           dates = eachWeekOfInterval({
@@ -161,7 +198,6 @@ export function useChartData(interval: Interval, userId: string | undefined) {
             end: now,
           });
           formatLabel = (d) => `Sem ${format(d, "w")}`;
-          getPeriodBounds = (d) => ({ start: d, end: endOfWeek(d) });
           break;
         case "1M":
           dates = eachMonthOfInterval({
@@ -169,12 +205,11 @@ export function useChartData(interval: Interval, userId: string | undefined) {
             end: now,
           });
           formatLabel = (d) => format(d, "MMM yy", { locale: es });
-          getPeriodBounds = (d) => ({ start: d, end: endOfMonth(d) });
           break;
       }
       
       // Fetch all data in parallel
-      const [assetTxResult, txResult, pricesResult, fxRatesResult] = await Promise.all([
+      const [assetTxResult, txResult, pricesResult, fxRatesResult, accountsResult, categoriesResult, transfersResult] = await Promise.all([
         supabase
           .from("asset_transactions")
           .select("symbol, side, quantity, transaction_date")
@@ -182,7 +217,7 @@ export function useChartData(interval: Interval, userId: string | undefined) {
           .order("transaction_date", { ascending: true }),
         supabase
           .from("transactions")
-          .select("type, amount, currency, date, value_date")
+          .select("type, amount, currency, date, bank_account_id")
           .eq("user_id", userId),
         supabase
           .from("asset_prices")
@@ -193,37 +228,74 @@ export function useChartData(interval: Interval, userId: string | undefined) {
           .select("pair, rate, as_of")
           .eq("pair", "USDT/EUR")
           .order("as_of", { ascending: false }),
+        supabase
+          .from("bank_accounts")
+          .select("id, category_id, currency, initial_balance")
+          .eq("user_id", userId)
+          .eq("is_archived", false),
+        supabase
+          .from("categories")
+          .select("id, name")
+          .eq("user_id", userId),
+        supabase
+          .from("transfers")
+          .select("from_account_id, to_account_id, amount_from, amount_to, currency_from, currency_to, date")
+          .eq("user_id", userId),
       ]);
       
       const assetTransactions = (assetTxResult.data || []) as AssetTransaction[];
       const transactions = (txResult.data || []) as Transaction[];
       const prices = (pricesResult.data || []) as AssetPrice[];
       const fxRates = (fxRatesResult.data || []) as FxRate[];
+      const bankAccounts = (accountsResult.data || []) as BankAccount[];
+      const categories = (categoriesResult.data || []) as Category[];
+      const transfers = (transfersResult.data || []) as Transfer[];
+      
+      // Find savings/investment accounts
+      const savingsCategoryIds = categories
+        .filter(c => 
+          c.name.toLowerCase().includes("ahorro") || 
+          c.name.toLowerCase().includes("inversión") ||
+          c.name.toLowerCase().includes("inversion")
+        )
+        .map(c => c.id);
+      
+      const savingsAccountIds = bankAccounts
+        .filter(acc => acc.category_id && savingsCategoryIds.includes(acc.category_id))
+        .map(acc => acc.id);
       
       // Generate chart data points
-      const chartData: ChartDataPoint[] = dates.map((date, index) => {
-        const { start, end } = getPeriodBounds(date);
-        const actualEnd = end > now ? now : end;
+      const chartData: ChartDataPoint[] = dates.map((date) => {
+        const actualEnd = date > now ? now : endOfMonth(date) > now ? now : endOfMonth(date);
         
-        // Calculate holdings and total assets at end of period
+        // Calculate crypto assets at end of period
         const holdings = calculateHoldingsAtDate(assetTransactions, actualEnd);
-        const totalAssets = calculateTotalAssetsAtDate(holdings, prices, actualEnd);
+        const activos = calculateCryptoAssetsAtDate(holdings, prices, actualEnd);
         
-        // Aggregate transactions for the period
-        const periodStart = index === 0 ? start : dates[index - 1];
-        const { income, expense } = aggregateTransactions(transactions, fxRates, periodStart, actualEnd);
+        // Calculate savings account balance at end of period
+        const ahorros = calculateSavingsAtDate(
+          bankAccounts,
+          savingsAccountIds,
+          transactions,
+          transfers,
+          fxRates,
+          actualEnd
+        );
+        
+        // Balance total = activos + ahorros
+        const balanceTotal = activos + ahorros;
         
         return {
           label: formatLabel(date),
-          income: Math.round(income * 100) / 100,
-          expense: Math.round(expense * 100) / 100,
-          totalAssets: Math.round(totalAssets * 100) / 100,
+          activos: Math.round(activos * 100) / 100,
+          ahorros: Math.round(ahorros * 100) / 100,
+          balanceTotal: Math.round(balanceTotal * 100) / 100,
         };
       });
       
       return chartData;
     },
     enabled: !!userId,
-    staleTime: 60000, // 1 minute
+    staleTime: 60000,
   });
 }

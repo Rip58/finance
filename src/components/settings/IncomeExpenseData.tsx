@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Loader2, TrendingUp, TrendingDown, Check, Clock } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, TrendingUp, TrendingDown, Check, Clock, Circle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -59,6 +59,7 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
       category_id: formData.category_id === "none" ? null : formData.category_id,
       bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
       description: formData.description || null,
+      is_validated: false,
     };
 
     if (editingTx) {
@@ -212,9 +213,16 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
                 <Icon className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">
-                  {tx.description || categories?.find(c => c.id === tx.category_id)?.name || "Sin descripción"}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium truncate">
+                    {tx.description || categories?.find(c => c.id === tx.category_id)?.name || "Sin descripción"}
+                  </p>
+                  {!tx.is_validated && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
+                      Pendiente
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(tx.date), "d MMM yyyy", { locale: es })}
                 </p>
@@ -225,6 +233,18 @@ export function IncomeExpenseData({ userId, type }: IncomeExpenseDataProps) {
                 </span>
               </div>
               <div className="flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => update({ id: tx.id, is_validated: !tx.is_validated })}
+                >
+                  {tx.is_validated ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(tx)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
