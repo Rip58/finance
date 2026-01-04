@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LogOut, ChevronDown, ChevronUp, RefreshCw, Building2, TrendingUp } from "lucide-react";
+import { LogOut, RefreshCw, Building2, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -7,10 +7,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   MobileLayout,
   BalanceCard,
-  QuickActionsGrid,
-  TransactionList,
-  type QuickActionType,
-  type TransactionItem,
 } from "@/components/mobile";
 import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
 import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
@@ -38,7 +34,6 @@ export function HomePage({ user }: HomePageProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [interval, setInterval] = useState<Interval>("1M");
-  const [showTransactions, setShowTransactions] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<typeof bankAccounts[0] | null>(null);
 
@@ -243,47 +238,6 @@ export function HomePage({ user }: HomePageProps) {
     toast({ title: "Sesión cerrada" });
   };
 
-  const handleQuickAction = (action: QuickActionType) => {
-    switch (action) {
-      case "income":
-        navigate("/add-income");
-        break;
-      case "expense":
-        navigate("/add-expense");
-        break;
-      case "transfer":
-        navigate("/add-transfer");
-        break;
-      case "pending-payments":
-        navigate("/pending-payments");
-        break;
-      case "data":
-        navigate("/account?tab=data");
-        break;
-    }
-  };
-
-  const handleEditTransaction = (tx: TransactionItem) => {
-    if (tx.type === "income") {
-      navigate(`/add-income?edit=${tx.id}`);
-    } else if (tx.type === "expense") {
-      navigate(`/add-expense?edit=${tx.id}`);
-    } else if (tx.type === "transfer") {
-      navigate(`/add-transfer?edit=${tx.id}`);
-    }
-  };
-
-  const recentTransactions: TransactionItem[] = transactions
-    .slice(0, 5)
-    .map((tx) => ({
-      id: tx.id,
-      description: tx.description || "",
-      amount: tx.amount,
-      currency: tx.currency,
-      type: tx.type as "income" | "expense",
-      date: tx.date,
-    }));
-
   const userName = user.email?.split("@")[0] || "Usuario";
   const greeting = getGreeting();
   
@@ -322,10 +276,6 @@ export function HomePage({ user }: HomePageProps) {
         />
       </div>
 
-      {/* Quick Actions */}
-      <div className="px-4 py-2">
-        <QuickActionsGrid onAction={handleQuickAction} />
-      </div>
 
       {/* Chart Section */}
       <div className="px-4 py-4">
@@ -402,33 +352,6 @@ export function HomePage({ user }: HomePageProps) {
         </div>
       </div>
 
-      {/* Transaction History - Collapsible */}
-      <div className="px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold">Historial Transacciones</h3>
-          <button
-            onClick={() => setShowTransactions(!showTransactions)}
-            className="text-sm text-primary font-medium flex items-center gap-1"
-          >
-            {showTransactions ? "Ocultar" : "Ver todo"}
-            {showTransactions ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </button>
-        </div>
-        
-        {showTransactions && (
-          <TransactionList
-            transactions={recentTransactions}
-            showSeeAll={false}
-            onEdit={handleEditTransaction}
-          />
-        )}
-        
-        {!showTransactions && recentTransactions.length > 0 && (
-          <p className="text-sm text-muted-foreground text-center py-4">
-            {recentTransactions.length} transacciones recientes
-          </p>
-        )}
-      </div>
 
       {/* Account Edit Dialog */}
       <AccountEditDialog
