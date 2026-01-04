@@ -9,44 +9,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
-import type { BankAccount } from "@/hooks/useBankAccounts";
 
 interface DCAFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  accounts: BankAccount[] | undefined;
+  symbol: string;
   editingTx?: AssetTransaction | null;
   onSubmit: (data: {
-    symbol: string;
     quantity: number;
     price_eur: number;
     transaction_date: string;
     notes: string | null;
-    category_id: string | null;
   }) => Promise<void>;
   isSubmitting?: boolean;
 }
 
-const COMMON_SYMBOLS = ["BTC", "ETH", "SOL", "ADA", "DOT", "AVAX", "MATIC", "LINK"];
-
 export function DCAFormDialog({
   open,
   onOpenChange,
-  accounts,
+  symbol,
   editingTx,
   onSubmit,
   isSubmitting,
 }: DCAFormDialogProps) {
   const [formData, setFormData] = useState({
-    symbol: "",
     quantity: "",
     price_eur: "",
     transaction_date: new Date().toISOString().split("T")[0],
@@ -56,7 +43,6 @@ export function DCAFormDialog({
   useEffect(() => {
     if (editingTx) {
       setFormData({
-        symbol: editingTx.symbol,
         quantity: String(editingTx.quantity),
         price_eur: String(editingTx.price_eur),
         transaction_date: editingTx.transaction_date.split("T")[0],
@@ -64,7 +50,6 @@ export function DCAFormDialog({
       });
     } else {
       setFormData({
-        symbol: "",
         quantity: "",
         price_eur: "",
         transaction_date: new Date().toISOString().split("T")[0],
@@ -82,12 +67,10 @@ export function DCAFormDialog({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit({
-      symbol: formData.symbol.toUpperCase(),
       quantity: parseFloat(formData.quantity),
       price_eur: parseFloat(formData.price_eur),
       transaction_date: formData.transaction_date,
       notes: formData.notes || null,
-      category_id: null,
     });
     onOpenChange(false);
   };
@@ -100,65 +83,26 @@ export function DCAFormDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {editingTx ? "Editar DCA" : "Nueva entrada DCA"}
+            {editingTx ? "Editar compra" : `Nueva compra ${symbol}`}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="transaction_date">Fecha</Label>
-              <Input
-                id="transaction_date"
-                type="date"
-                value={formData.transaction_date}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, transaction_date: e.target.value }))
-                }
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="symbol">Activo</Label>
-              <Select
-                value={formData.symbol}
-                onValueChange={(val) =>
-                  setFormData((prev) => ({ ...prev, symbol: val }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccionar" />
-                </SelectTrigger>
-                <SelectContent>
-                  {COMMON_SYMBOLS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="transaction_date">Fecha</Label>
+            <Input
+              id="transaction_date"
+              type="date"
+              value={formData.transaction_date}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, transaction_date: e.target.value }))
+              }
+              required
+            />
           </div>
 
-          {!COMMON_SYMBOLS.includes(formData.symbol) && (
-            <div className="space-y-2">
-              <Label htmlFor="custom_symbol">Símbolo personalizado</Label>
-              <Input
-                id="custom_symbol"
-                placeholder="Ej: XRP"
-                value={formData.symbol}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    symbol: e.target.value.toUpperCase(),
-                  }))
-                }
-              />
-            </div>
-          )}
-
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="quantity">Cantidad</Label>
+              <Label htmlFor="quantity">Cantidad ({symbol})</Label>
               <Input
                 id="quantity"
                 type="number"
@@ -215,7 +159,7 @@ export function DCAFormDialog({
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting || !formData.symbol}>
+            <Button type="submit" disabled={isSubmitting || !formData.quantity || !formData.price_eur}>
               {editingTx ? "Guardar" : "Añadir"}
             </Button>
           </div>

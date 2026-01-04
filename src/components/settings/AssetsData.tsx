@@ -53,6 +53,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
       value_date: formData.value_date ? new Date(formData.value_date).toISOString() : null,
       category_id: formData.category_id === "none" ? null : formData.category_id,
       notes: formData.notes || null,
+      dca_portfolio_id: null,
     };
 
     if (editingTx) {

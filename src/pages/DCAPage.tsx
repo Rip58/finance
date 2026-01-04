@@ -1,16 +1,17 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Settings2 } from "lucide-react";
 import { useAssetTransactions, type AssetTransaction } from "@/hooks/useAssetTransactions";
-import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { useDCAPortfolios, type DCAPortfolio } from "@/hooks/useDCAPortfolios";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { DCASummaryCard } from "@/components/dca/DCASummaryCard";
 import { DCAEntryList } from "@/components/dca/DCAEntryList";
 import { DCAFormDialog } from "@/components/dca/DCAFormDialog";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,25 +29,47 @@ interface DCAPageProps {
 
 export function DCAPage({ user }: DCAPageProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editingTx, setEditingTx] = useState<AssetTransaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
 
+  const portfolios = useDCAPortfolios(user.id);
   const assetTransactions = useAssetTransactions(user.id);
-  const accounts = useBankAccounts(user.id);
 
-  // Get unique symbols from transactions
+  // Auto-select first portfolio when data loads
+  useEffect(() => {
+    if (portfolios.data && portfolios.data.length > 0 && !selectedPortfolioId) {
+      setSelectedPortfolioId(portfolios.data[0].id);
+    }
+  }, [portfolios.data, selectedPortfolioId]);
+
+  // Get selected portfolio
+  const selectedPortfolio = useMemo(() => {
+    return portfolios.data?.find((p) => p.id === selectedPortfolioId) || null;
+  }, [portfolios.data, selectedPortfolioId]);
+
+  // Filter transactions for selected portfolio
+  const filteredTransactions = useMemo(() => {
+    if (!assetTransactions.data || !selectedPortfolioId) return [];
+    return assetTransactions.data.filter(
+      (tx) => tx.dca_portfolio_id === selectedPortfolioId
+    );
+  }, [assetTransactions.data, selectedPortfolioId]);
+
+  // Get symbol from selected portfolio
   const symbols = useMemo(() => {
-    if (!assetTransactions.data) return [];
-    return [...new Set(assetTransactions.data.map((tx) => tx.symbol.toUpperCase()))];
-  }, [assetTransactions.data]);
+    if (!selectedPortfolio) return [];
+    return [selectedPortfolio.symbol.toUpperCase()];
+  }, [selectedPortfolio]);
 
   const { data: currentPrices, refreshPrices } = useCurrentPrices(symbols);
 
   const handleRefreshPrices = async () => {
     if (symbols.length === 0) {
-      toast({ title: "No hay activos", description: "Añade primero alguna compra" });
+      toast({ title: "No hay activos", description: "Selecciona un DCA primero" });
       return;
     }
     setIsRefreshing(true);
@@ -65,13 +88,13 @@ export function DCAPage({ user }: DCAPageProps) {
   };
 
   const handleSubmit = async (data: {
-    symbol: string;
     quantity: number;
     price_eur: number;
     transaction_date: string;
     notes: string | null;
-    category_id: string | null;
   }) => {
+    if (!selectedPortfolio) return;
+
     if (editingTx) {
       await assetTransactions.update({
         id: editingTx.id,
@@ -79,10 +102,16 @@ export function DCAPage({ user }: DCAPageProps) {
       });
     } else {
       await assetTransactions.create({
-        ...data,
-        asset_type: "crypto",
+        symbol: selectedPortfolio.symbol,
+        asset_type: selectedPortfolio.asset_type as "crypto" | "commodity" | "other",
         side: "buy",
+        quantity: data.quantity,
+        price_eur: data.price_eur,
+        transaction_date: data.transaction_date,
+        notes: data.notes,
         value_date: null,
+        category_id: null,
+        dca_portfolio_id: selectedPortfolioId,
       });
     }
     setEditingTx(null);
@@ -100,40 +129,80 @@ export function DCAPage({ user }: DCAPageProps) {
     }
   };
 
+  // No portfolios state
+  if (portfolios.data && portfolios.data.length === 0) {
+    return (
+      <MobileLayout>
+        <MobilePageHeader title="DCA" />
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+            <Settings2 className="h-8 w-8 text-primary" />
+          </div>
+          <h2 className="text-xl font-semibold mb-2">No tienes DCAs</h2>
+          <p className="text-muted-foreground mb-6">
+            Crea tu primer portafolio DCA para empezar a trackear tus inversiones
+          </p>
+          <Button onClick={() => navigate("/account?tab=dcas")}>
+            Configurar DCAs
+          </Button>
+        </div>
+      </MobileLayout>
+    );
+  }
+
   return (
     <MobileLayout>
       <MobilePageHeader title="DCA" />
 
+      {/* Portfolio selector */}
+      <div className="px-4 py-3">
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {portfolios.data?.map((portfolio) => (
+            <Button
+              key={portfolio.id}
+              variant={selectedPortfolioId === portfolio.id ? "default" : "outline"}
+              size="sm"
+              onClick={() => setSelectedPortfolioId(portfolio.id)}
+              className="flex-shrink-0 rounded-full"
+            >
+              {portfolio.symbol}
+            </Button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-4 pb-24">
         <DCASummaryCard
-          transactions={assetTransactions.data}
+          transactions={filteredTransactions}
           currentPrices={currentPrices || {}}
           onRefresh={handleRefreshPrices}
           isRefreshing={isRefreshing}
         />
 
         <DCAEntryList
-          transactions={assetTransactions.data}
+          transactions={filteredTransactions}
           onEdit={handleEdit}
           onDelete={(id) => setDeleteId(id)}
         />
       </div>
 
       {/* Floating action button */}
-      <Button
-        className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg"
-        onClick={() => {
-          setEditingTx(null);
-          setShowForm(true);
-        }}
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
+      {selectedPortfolioId && (
+        <Button
+          className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg"
+          onClick={() => {
+            setEditingTx(null);
+            setShowForm(true);
+          }}
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      )}
 
       <DCAFormDialog
         open={showForm}
         onOpenChange={setShowForm}
-        accounts={accounts.data}
+        symbol={selectedPortfolio?.symbol || ""}
         editingTx={editingTx}
         onSubmit={handleSubmit}
         isSubmitting={assetTransactions.isCreating || assetTransactions.isUpdating}
