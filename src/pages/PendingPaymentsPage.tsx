@@ -12,6 +12,7 @@ import { MobileLayout } from "@/components/mobile";
 import { useLoans, Loan } from "@/hooks/useLoans";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCategories } from "@/hooks/useCategories";
+import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { format, differenceInMonths, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import type { User } from "@supabase/supabase-js";
@@ -25,6 +26,7 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
   const { loans, pendingPayments, isLoading, create, update, delete: deleteLoan, payInstallment, isPaying, isCreating, isUpdating } = useLoans(user.id);
   const { data: accounts, create: createAccount, isCreating: isCreatingAccount } = useBankAccounts(user.id);
   const { data: categories, create: createCategory, isCreating: isCreatingCategory } = useCategories(user.id, "expense");
+  const { create: createRecurring } = useRecurringTransactions(user.id);
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
@@ -123,6 +125,21 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
       await update({ id: editingLoan.id, ...loanData });
     } else {
       await create(loanData);
+      
+      // Create recurring expense for the loan
+      await createRecurring({
+        type: "expense",
+        name: formData.name + " (cuota)",
+        amount: parseFloat(formData.monthly_payment),
+        currency: formData.currency,
+        category_id: formData.category_id === "none" ? null : formData.category_id,
+        bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
+        cadence: "monthly",
+        start_date: formData.start_date,
+        next_occurrence_date: format(nextPaymentDate, "yyyy-MM-dd"),
+        is_active: true,
+        notes: `Cuota préstamo: ${formData.name}`,
+      });
     }
     setIsDialogOpen(false);
     resetForm();
@@ -148,6 +165,7 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
       currency: newAccountCurrency,
       category_id: null,
       is_archived: false,
+      initial_balance: 0,
     });
     setFormData(prev => ({ ...prev, bank_account_id: newId }));
     setShowNewAccountDialog(false);

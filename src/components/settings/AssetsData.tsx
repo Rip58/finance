@@ -162,7 +162,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Cantidad</Label>
+                  <Label>Cantidad (unidades)</Label>
                   <Input
                     type="number"
                     step="0.00000001"
@@ -171,7 +171,7 @@ export function AssetsData({ userId }: AssetsDataProps) {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Precio (EUR)</Label>
+                  <Label>Precio (EUR/unidad)</Label>
                   <Input
                     type="number"
                     step="0.01"
@@ -180,9 +180,14 @@ export function AssetsData({ userId }: AssetsDataProps) {
                   />
                 </div>
               </div>
+              {formData.quantity && formData.price_eur && (
+                <p className="text-sm text-muted-foreground font-medium">
+                  Valor total: {new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(parseFloat(formData.quantity) * parseFloat(formData.price_eur))}
+                </p>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Fecha</Label>
+                  <Label>Fecha de compra</Label>
                   <Input
                     type="date"
                     value={formData.transaction_date}

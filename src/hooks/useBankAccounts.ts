@@ -10,6 +10,7 @@ export interface BankAccount {
   currency: string;
   is_archived: boolean;
   created_at: string;
+  initial_balance: number;
 }
 
 export function useBankAccounts(userId: string | undefined) {

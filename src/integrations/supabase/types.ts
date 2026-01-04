@@ -106,6 +106,7 @@ export type Database = {
           created_at: string | null
           currency: string
           id: string
+          initial_balance: number
           is_archived: boolean
           name: string
           user_id: string
@@ -115,6 +116,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           id?: string
+          initial_balance?: number
           is_archived?: boolean
           name: string
           user_id: string
@@ -124,6 +126,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           id?: string
+          initial_balance?: number
           is_archived?: boolean
           name?: string
           user_id?: string

@@ -25,12 +25,16 @@ export function AccountsTab({ userId }: AccountsTabProps) {
     currency: "EUR",
     category_id: "none",
     is_archived: false,
+    initial_balance: "0",
   });
 
   const handleSubmit = async () => {
     const dataToSave = {
-      ...formData,
+      name: formData.name,
+      currency: formData.currency,
       category_id: formData.category_id === "none" ? null : formData.category_id,
+      is_archived: formData.is_archived,
+      initial_balance: parseFloat(formData.initial_balance) || 0,
     };
     if (editingAccount) {
       await update({ id: editingAccount.id, ...dataToSave });
@@ -42,7 +46,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", currency: "EUR", category_id: "none", is_archived: false });
+    setFormData({ name: "", currency: "EUR", category_id: "none", is_archived: false, initial_balance: "0" });
     setEditingAccount(null);
   };
 
@@ -53,6 +57,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
       currency: account.currency,
       category_id: account.category_id || "none",
       is_archived: account.is_archived,
+      initial_balance: account.initial_balance?.toString() || "0",
     });
     setIsDialogOpen(true);
   };
@@ -102,6 +107,11 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                 <p className="font-medium truncate">{account.name}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs">{account.currency}</Badge>
+                  {account.initial_balance > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      Saldo: {new Intl.NumberFormat("es-ES", { style: "currency", currency: account.currency === "USDT" ? "USD" : account.currency }).format(account.initial_balance)}
+                    </Badge>
+                  )}
                   {account.is_archived && (
                     <Badge variant="secondary" className="text-xs">Archivada</Badge>
                   )}
@@ -175,6 +185,16 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                   <SelectItem value="USDT">USDT</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Saldo inicial</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={formData.initial_balance}
+                onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })}
+                placeholder="0.00"
+              />
             </div>
             <div className="space-y-2">
               <Label>Categoría (opcional)</Label>
