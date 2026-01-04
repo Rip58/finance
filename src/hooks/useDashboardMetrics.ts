@@ -35,8 +35,8 @@ export function useDashboardMetrics(userId: string | undefined) {
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
-      // Fetch transactions, asset data, fx rates, accounts, and categories in parallel
-      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates, accounts, categories, allTransactions, transfers] = await Promise.all([
+      // Fetch transactions, asset data, fx rates, accounts, categories, and account holdings in parallel
+      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates, accounts, categories, allTransactions, transfers, accountHoldings] = await Promise.all([
         supabase
           .from("transactions")
           .select("type, amount, currency, date, value_date")
@@ -59,7 +59,7 @@ export function useDashboardMetrics(userId: string | undefined) {
         supabase
           .from("fx_rates")
           .select("pair, rate, as_of")
-          .eq("pair", "USDT/EUR")
+          .eq("pair", "USDT_EUR")
           .order("as_of", { ascending: false })
           .limit(1),
         supabase
@@ -78,6 +78,10 @@ export function useDashboardMetrics(userId: string | undefined) {
         supabase
           .from("transfers")
           .select("from_account_id, to_account_id, amount_from, amount_to, currency_from, currency_to")
+          .eq("user_id", userId),
+        supabase
+          .from("account_holdings")
+          .select("symbol, quantity, bank_account_id")
           .eq("user_id", userId),
       ]);
 
@@ -124,12 +128,20 @@ export function useDashboardMetrics(userId: string | undefined) {
         }
       }
 
-      // Calculate total assets
+      // Calculate total assets from DCA transactions
       let totalAssets = 0;
       for (const [symbol, quantity] of Object.entries(holdings)) {
         const price = latestPrices[symbol] || 0;
         totalAssets += quantity * price;
       }
+
+      // Add account holdings value
+      let accountHoldingsValue = 0;
+      for (const h of accountHoldings.data || []) {
+        const price = latestPrices[h.symbol.toUpperCase()] || latestPrices[h.symbol] || 0;
+        accountHoldingsValue += Number(h.quantity) * price;
+      }
+      totalAssets += accountHoldingsValue;
 
       // Calculate account balances
       const accountBalances: Record<string, number> = {};

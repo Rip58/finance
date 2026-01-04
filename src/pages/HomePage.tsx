@@ -23,6 +23,7 @@ import { useTransfers } from "@/hooks/useTransfers";
 import { useAssetTransactions } from "@/hooks/useAssetTransactions";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { useFxRates } from "@/hooks/useFxRates";
+import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -47,17 +48,19 @@ export function HomePage({ user }: HomePageProps) {
   const { data: categories = [] } = useCategories(user.id, undefined);
   const { data: transfers = [] } = useTransfers(user.id);
   const { data: assetTransactions = [] } = useAssetTransactions(user.id);
+  const { data: allAccountHoldings = [] } = useAccountHoldings(user.id);
   const fxRates = useFxRates();
 
-  // Get unique symbols from asset transactions
-  const allSymbols = useMemo(() => 
-    [...new Set(assetTransactions.map(tx => tx.symbol.toUpperCase()))],
-    [assetTransactions]
-  );
+  // Get unique symbols from asset transactions and account holdings
+  const allSymbols = useMemo(() => {
+    const dcaSymbols = assetTransactions.map(tx => tx.symbol.toUpperCase());
+    const holdingSymbols = allAccountHoldings.map(h => h.symbol.toUpperCase());
+    return [...new Set([...dcaSymbols, ...holdingSymbols])];
+  }, [assetTransactions, allAccountHoldings]);
   const { data: currentPrices = {}, refreshPrices } = useCurrentPrices(allSymbols);
 
   // Get USDT/EUR rate
-  const usdtEurRate = fxRates.getLatestRate("USDT/EUR") || 1;
+  const usdtEurRate = fxRates.getLatestRate("USDT_EUR") || 1;
 
   // Calculate account balances in their original currency
   const accountBalances = useMemo(() => {
@@ -98,6 +101,23 @@ export function HomePage({ user }: HomePageProps) {
     return balances;
   }, [bankAccounts, transactions, transfers]);
 
+  // Calculate crypto account values from account_holdings
+  const cryptoAccountValues = useMemo(() => {
+    const values: Record<string, number> = {};
+    
+    for (const holding of allAccountHoldings) {
+      const price = currentPrices[holding.symbol.toUpperCase()] || 0;
+      const value = Number(holding.quantity) * price;
+      
+      if (!values[holding.bank_account_id]) {
+        values[holding.bank_account_id] = 0;
+      }
+      values[holding.bank_account_id] += value;
+    }
+    
+    return values;
+  }, [allAccountHoldings, currentPrices]);
+
   // Filter savings/investment accounts
   const savingsAccounts = useMemo(() => {
     const savingsCategoryIds = categories
@@ -131,33 +151,54 @@ export function HomePage({ user }: HomePageProps) {
     return totalUsd * usdtEurRate;
   }, [assetTransactions, currentPrices, usdtEurRate]);
 
+  // Calculate account holdings total in EUR
+  const accountHoldingsTotal = useMemo(() => {
+    let totalUsd = 0;
+    for (const holding of allAccountHoldings) {
+      const price = currentPrices[holding.symbol.toUpperCase()] || 0;
+      totalUsd += Number(holding.quantity) * price;
+    }
+    return totalUsd * usdtEurRate;
+  }, [allAccountHoldings, currentPrices, usdtEurRate]);
+
   // Calculate total patrimonio in EUR
   const totalPatrimonio = useMemo(() => {
     let total = 0;
     for (const acc of savingsAccounts) {
       const balance = accountBalances[acc.id] || 0;
+      const cryptoValue = cryptoAccountValues[acc.id] || 0;
       
       if (acc.currency === "EUR") {
         total += balance;
       } else if (acc.currency === "USD" || acc.currency === "USDT") {
-        total += balance * usdtEurRate;
+        // For crypto accounts, use holdings value instead of balance
+        total += cryptoValue * usdtEurRate;
       }
     }
     
     total += dcaTotal;
     return total;
-  }, [savingsAccounts, accountBalances, dcaTotal, usdtEurRate]);
+  }, [savingsAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
   // Format currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
-    if (currency === "USDT") {
-      return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+    if (currency === "USDT" || currency === "USD") {
+      return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
     }
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
     }).format(amount);
+  };
+
+  // Get display value for account (holdings value for crypto, balance for others)
+  const getAccountDisplayValue = (acc: typeof bankAccounts[0]) => {
+    if (acc.currency === "USDT" || acc.currency === "USD") {
+      const holdingsValue = cryptoAccountValues[acc.id] || 0;
+      return formatAccountCurrency(holdingsValue, acc.currency);
+    }
+    return formatAccountCurrency(accountBalances[acc.id] || 0, acc.currency);
   };
 
   const formatEur = (amount: number) => {
@@ -323,7 +364,7 @@ export function HomePage({ user }: HomePageProps) {
                   <span className="text-sm">{acc.name}</span>
                 </div>
                 <span className="font-medium text-sm">
-                  {formatAccountCurrency(accountBalances[acc.id] || 0, acc.currency)}
+                  {getAccountDisplayValue(acc)}
                 </span>
               </button>
             ))}

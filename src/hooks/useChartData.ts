@@ -111,7 +111,7 @@ function calculateCryptoAssetsAtDate(
 // Get FX rate for a date
 function getFxRateAtDate(fxRates: FxRate[], targetDate: Date): number {
   const usdtRates = fxRates
-    .filter(r => r.pair === "USDT/EUR")
+    .filter(r => r.pair === "USDT_EUR")
     .sort((a, b) => new Date(b.as_of).getTime() - new Date(a.as_of).getTime());
   
   for (const rate of usdtRates) {
@@ -209,7 +209,7 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       }
       
       // Fetch all data in parallel
-      const [assetTxResult, txResult, pricesResult, fxRatesResult, accountsResult, categoriesResult, transfersResult] = await Promise.all([
+      const [assetTxResult, txResult, pricesResult, fxRatesResult, accountsResult, categoriesResult, transfersResult, holdingsResult] = await Promise.all([
         supabase
           .from("asset_transactions")
           .select("symbol, side, quantity, transaction_date")
@@ -226,7 +226,7 @@ export function useChartData(interval: Interval, userId: string | undefined) {
         supabase
           .from("fx_rates")
           .select("pair, rate, as_of")
-          .eq("pair", "USDT/EUR")
+          .eq("pair", "USDT_EUR")
           .order("as_of", { ascending: false }),
         supabase
           .from("bank_accounts")
@@ -241,6 +241,10 @@ export function useChartData(interval: Interval, userId: string | undefined) {
           .from("transfers")
           .select("from_account_id, to_account_id, amount_from, amount_to, currency_from, currency_to, date")
           .eq("user_id", userId),
+        supabase
+          .from("account_holdings")
+          .select("symbol, quantity")
+          .eq("user_id", userId),
       ]);
       
       const assetTransactions = (assetTxResult.data || []) as AssetTransaction[];
@@ -250,6 +254,14 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       const bankAccounts = (accountsResult.data || []) as BankAccount[];
       const categories = (categoriesResult.data || []) as Category[];
       const transfers = (transfersResult.data || []) as Transfer[];
+      const accountHoldings = (holdingsResult.data || []) as { symbol: string; quantity: number }[];
+      
+      // Calculate static holdings from account_holdings (not date-based, use latest prices)
+      const staticHoldings: Record<string, number> = {};
+      for (const h of accountHoldings) {
+        const symbol = h.symbol.toUpperCase();
+        staticHoldings[symbol] = (staticHoldings[symbol] || 0) + Number(h.quantity);
+      }
       
       // Find savings/investment accounts
       const savingsCategoryIds = categories
@@ -268,9 +280,18 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       const chartData: ChartDataPoint[] = dates.map((date) => {
         const actualEnd = date > now ? now : endOfMonth(date) > now ? now : endOfMonth(date);
         
-        // Calculate crypto assets at end of period
-        const holdings = calculateHoldingsAtDate(assetTransactions, actualEnd);
-        const activos = calculateCryptoAssetsAtDate(holdings, prices, actualEnd);
+        // Calculate crypto assets from DCA at end of period
+        const dcaHoldings = calculateHoldingsAtDate(assetTransactions, actualEnd);
+        const dcaValue = calculateCryptoAssetsAtDate(dcaHoldings, prices, actualEnd);
+        
+        // Calculate crypto assets from account_holdings (static - use latest prices)
+        let accountHoldingsValue = 0;
+        for (const [symbol, quantity] of Object.entries(staticHoldings)) {
+          const price = getPriceAtDate(prices, symbol, actualEnd);
+          accountHoldingsValue += quantity * price;
+        }
+        
+        const activos = dcaValue + accountHoldingsValue;
         
         // Calculate savings account balance at end of period
         const ahorros = calculateSavingsAtDate(
