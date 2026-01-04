@@ -67,12 +67,15 @@ export function DCASummaryCard({
   const formatUSDT = (value: number) => 
     `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 
+  const formatUSD = (value: number) => 
+    `$${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
   const currentPrice = symbol ? currentPrices[symbol.toUpperCase()] : null;
 
   return (
     <Card className="mx-4 bg-gradient-to-br from-primary/10 to-primary/5 border-primary/20">
       <CardContent className="pt-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-1">
           <h3 className="font-semibold text-foreground">Resumen DCA</h3>
           <Button 
             variant="ghost" 
@@ -83,6 +86,13 @@ export function DCASummaryCard({
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </Button>
         </div>
+        
+        {currentPrice && (
+          <p className="text-xs text-muted-foreground mb-4">
+            Valor {symbol}: <span className="font-semibold text-foreground">{formatUSD(currentPrice)}</span>
+          </p>
+        )}
+        
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Total invertido</p>
@@ -115,15 +125,6 @@ export function DCASummaryCard({
             </p>
           </div>
         </div>
-
-        {currentPrice && (
-          <div className="mt-4 pt-4 border-t border-primary/20 text-center">
-            <p className="text-sm text-muted-foreground">Valor {symbol}</p>
-            <p className="text-2xl font-bold text-primary">
-              {formatUSDT(currentPrice)}
-            </p>
-          </div>
-        )}
       </CardContent>
     </Card>
   );

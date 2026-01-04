@@ -31,9 +31,9 @@ Deno.serve(async (req) => {
 
     console.log(`Fetching prices for symbols: ${symbols.join(", ")}`);
 
-    // Fetch prices from CoinMarketCap
+    // Fetch prices from CoinMarketCap in USD
     const cmcResponse = await fetch(
-      `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${symbols.join(",")}&convert=EUR`,
+      `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${symbols.join(",")}&convert=USD`,
       {
         headers: {
           "X-CMC_PRO_API_KEY": apiKey,
@@ -65,8 +65,8 @@ Deno.serve(async (req) => {
     // Process and store prices
     for (const symbol of symbols) {
       const coinData = cmcData.data?.[symbol.toUpperCase()];
-      if (coinData?.quote?.EUR?.price) {
-        const price = coinData.quote.EUR.price;
+      if (coinData?.quote?.USD?.price) {
+        const price = coinData.quote.USD.price;
         prices[symbol.toUpperCase()] = price;
 
         // Upsert to asset_prices table
@@ -84,7 +84,7 @@ Deno.serve(async (req) => {
         if (error) {
           console.error(`Error upserting price for ${symbol}:`, error);
         } else {
-          console.log(`Stored price for ${symbol}: ${price} EUR`);
+          console.log(`Stored price for ${symbol}: ${price} USD`);
         }
       } else {
         console.warn(`No price data found for symbol: ${symbol}`);
