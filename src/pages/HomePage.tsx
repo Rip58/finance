@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   MobileLayout,
+  SafeAreaHeader,
   BalanceCard,
 } from "@/components/mobile";
 import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
@@ -246,7 +247,8 @@ export function HomePage({ user }: HomePageProps) {
   return (
     <MobileLayout>
       {/* Header */}
-      <header className="flex items-center justify-between px-4 pt-4 pb-2">
+      <SafeAreaHeader>
+        <header className="flex items-center justify-between px-4 pb-2">
         <div className="flex items-center gap-3">
           <Avatar className="h-10 w-10 border-2 border-primary/20">
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
@@ -258,12 +260,13 @@ export function HomePage({ user }: HomePageProps) {
             <p className="font-semibold capitalize">{userName}</p>
           </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
-            <LogOut className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          </div>
+        </header>
+      </SafeAreaHeader>
 
       {/* Balance Card */}
       <div className="px-4 py-4">
