@@ -21,7 +21,7 @@ export function DCASummaryCard({
   isRefreshing 
 }: DCASummaryCardProps) {
   const totals = useMemo(() => {
-    if (!transactions) return { totalInvested: 0, currentValue: 0, pnl: 0, pnlPercent: 0 };
+    if (!transactions) return { totalInvested: 0, currentValue: 0, pnl: 0, pnlPercent: 0, averagePrice: 0 };
 
     let totalInvested = 0;
     let currentValue = 0;
@@ -40,7 +40,6 @@ export function DCASummaryCard({
         positions[symbol].costBasis += tx.quantity * tx.price_eur;
       } else {
         // For sells, reduce quantity proportionally
-        const sellValue = tx.quantity * tx.price_eur;
         const avgCost = positions[symbol].quantity > 0 
           ? positions[symbol].costBasis / positions[symbol].quantity 
           : 0;
@@ -58,10 +57,21 @@ export function DCASummaryCard({
       }
     }
 
+    // Calculate average price (for main symbol only)
+    let totalQuantityBought = 0;
+    let totalCostBasis = 0;
+    for (const tx of transactions) {
+      if (tx.side === "buy") {
+        totalQuantityBought += tx.quantity;
+        totalCostBasis += tx.quantity * tx.price_eur;
+      }
+    }
+    const averagePrice = totalQuantityBought > 0 ? totalCostBasis / totalQuantityBought : 0;
+
     const pnl = currentValue - totalInvested;
     const pnlPercent = totalInvested > 0 ? (pnl / totalInvested) * 100 : 0;
 
-    return { totalInvested, currentValue, pnl, pnlPercent };
+    return { totalInvested, currentValue, pnl, pnlPercent, averagePrice };
   }, [transactions, currentPrices]);
 
   const formatUSDT = (value: number) => 
@@ -104,6 +114,12 @@ export function DCASummaryCard({
             <p className="text-sm text-muted-foreground">Valor actual</p>
             <p className="text-xl font-bold text-foreground">
               {formatUSDT(totals.currentValue)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Precio promedio</p>
+            <p className="text-xl font-bold text-foreground">
+              {formatUSD(totals.averagePrice)}
             </p>
           </div>
           <div>

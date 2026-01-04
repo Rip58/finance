@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Trash2, Plus } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +21,7 @@ import {
 import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { useCryptoAssets } from "@/hooks/useCryptoAssets";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BankAccount {
   id: string;
@@ -69,6 +71,7 @@ function CryptoAccountDialog({
   account,
   userId,
 }: AccountEditDialogProps) {
+  const queryClient = useQueryClient();
   const { data: holdings = [], create, delete: deleteHolding, isCreating } = useAccountHoldings(userId, account?.id);
   const { data: cryptoAssets = [] } = useCryptoAssets(userId);
   
@@ -83,6 +86,19 @@ function CryptoAccountDialog({
       symbol: newSymbol,
       quantity: parseFloat(newQuantity),
     });
+    
+    // Fetch price for the new symbol from CMC
+    try {
+      await supabase.functions.invoke("get-asset-prices", {
+        body: { symbols: [newSymbol.toUpperCase()] },
+      });
+      // Invalidate queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["current-prices"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+    } catch (e) {
+      console.error("Error fetching price for new holding:", e);
+    }
     
     setNewSymbol("");
     setNewQuantity("");
