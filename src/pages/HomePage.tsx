@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Bell, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -10,6 +11,8 @@ import {
   type QuickActionType,
   type TransactionItem,
 } from "@/components/mobile";
+import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
+import { EvolutionChart } from "@/components/EvolutionChart";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useTransactions } from "@/hooks/useTransactions";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +26,7 @@ interface HomePageProps {
 export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [interval, setInterval] = useState<Interval>("1M");
 
   const { data: metrics } = useDashboardMetrics(user.id);
   const { data: transactions = [] } = useTransactions(user.id);
@@ -49,6 +53,16 @@ export function HomePage({ user }: HomePageProps) {
     }
   };
 
+  const handleEditTransaction = (tx: TransactionItem) => {
+    if (tx.type === "income") {
+      navigate(`/add-income?edit=${tx.id}`);
+    } else if (tx.type === "expense") {
+      navigate(`/add-expense?edit=${tx.id}`);
+    } else if (tx.type === "transfer") {
+      navigate(`/add-transfer?edit=${tx.id}`);
+    }
+  };
+
   const recentTransactions: TransactionItem[] = transactions
     .slice(0, 5)
     .map((tx) => ({
@@ -62,6 +76,9 @@ export function HomePage({ user }: HomePageProps) {
 
   const userName = user.email?.split("@")[0] || "Usuario";
   const greeting = getGreeting();
+  
+  // Balance = savings + investments
+  const totalBalance = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0);
 
   return (
     <MobileLayout>
@@ -91,8 +108,8 @@ export function HomePage({ user }: HomePageProps) {
       {/* Balance Card */}
       <div className="px-4 py-4">
         <BalanceCard
-          balance={metrics?.netBalance ?? 0}
-          subtitle="Balance mensual"
+          balance={totalBalance}
+          subtitle="Total patrimonio"
           savingsTotal={metrics?.savingsBalance ?? 0}
           investmentsTotal={metrics?.investmentsBalance ?? 0}
         />
@@ -103,11 +120,33 @@ export function HomePage({ user }: HomePageProps) {
         <QuickActionsGrid onAction={handleQuickAction} />
       </div>
 
+      {/* Chart Section */}
+      <div className="px-4 py-4">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Total Transaction</p>
+              <p className="text-xl font-bold">
+                {new Intl.NumberFormat("es-ES", {
+                  style: "currency",
+                  currency: "EUR",
+                }).format(metrics?.totalAssets ?? 0)}
+              </p>
+            </div>
+            <IntervalSelector value={interval} onChange={setInterval} />
+          </div>
+          <div className="h-56 overflow-hidden">
+            <EvolutionChart interval={interval} userId={user.id} />
+          </div>
+        </div>
+      </div>
+
       {/* Transaction History */}
       <div className="px-4 py-4">
         <TransactionList
           transactions={recentTransactions}
           onSeeAll={() => navigate("/account?tab=data")}
+          onEdit={handleEditTransaction}
         />
       </div>
     </MobileLayout>

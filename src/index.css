@@ -66,6 +66,65 @@
     --shadow-card: 0 4px 24px hsl(222 47% 4% / 0.5);
   }
 
+  .light {
+    --background: 0 0% 96%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 243 75% 59%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 220 14% 92%;
+    --accent-foreground: 222 47% 11%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 222 47% 6%;
+
+    --chart-income: 142 71% 45%;
+    --chart-expense: 0 72% 51%;
+    --chart-assets: 243 75% 59%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 243 75% 59%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 243 75% 59%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 243 75% 59%;
+
+    --gradient-card: linear-gradient(135deg, hsl(0 0% 100%) 0%, hsl(220 14% 98%) 100%);
+    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%) 0%, hsl(142 60% 55%) 100%);
+    --gradient-danger: linear-gradient(135deg, hsl(0 72% 51%) 0%, hsl(0 60% 55%) 100%);
+    --gradient-cyan: linear-gradient(135deg, hsl(243 75% 59%) 0%, hsl(243 70% 65%) 100%);
+
+    --shadow-glow-success: 0 0 40px hsl(142 71% 45% / 0.2);
+    --shadow-glow-danger: 0 0 40px hsl(0 72% 51% / 0.2);
+    --shadow-glow-cyan: 0 0 40px hsl(243 75% 59% / 0.2);
+    --shadow-card: 0 4px 24px hsl(220 14% 80% / 0.3);
+  }
+
   .dark {
     --background: 222 47% 6%;
     --foreground: 210 40% 98%;

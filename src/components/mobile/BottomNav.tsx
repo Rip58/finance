@@ -1,10 +1,9 @@
-import { Home, Wallet, BarChart3, User } from "lucide-react";
+import { Home, BarChart3, User } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { to: "/", icon: Home, label: "Home" },
-  { to: "/wallet", icon: Wallet, label: "Wallet" },
   { to: "/report", icon: BarChart3, label: "Report" },
   { to: "/account", icon: User, label: "Account" },
 ];
