@@ -100,6 +100,7 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
         date: new Date(formData.date).toISOString(),
         value_date: null,
         description: formData.description || null,
+        is_validated: false,
       };
 
       if (editId) {

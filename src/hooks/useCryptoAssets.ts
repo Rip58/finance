@@ -2,58 +2,50 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export interface Transfer {
+export interface CryptoAsset {
   id: string;
   user_id: string;
-  from_account_id: string;
-  to_account_id: string;
-  amount_from: number;
-  currency_from: string;
-  amount_to: number;
-  currency_to: string;
-  fx_rate: number | null;
-  date: string;
-  value_date: string | null;
-  description: string | null;
-  is_validated: boolean;
+  symbol: string;
+  name: string;
+  asset_type: string;
+  is_active: boolean;
   created_at: string;
 }
 
-export function useTransfers(userId: string | undefined) {
+export function useCryptoAssets(userId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["transfers", userId],
-    queryFn: async (): Promise<Transfer[]> => {
+    queryKey: ["crypto-assets", userId],
+    queryFn: async (): Promise<CryptoAsset[]> => {
       if (!userId) return [];
       
       const { data, error } = await supabase
-        .from("transfers")
+        .from("crypto_assets")
         .select("*")
         .eq("user_id", userId)
-        .order("date", { ascending: false });
+        .order("symbol", { ascending: true });
       
       if (error) throw error;
-      return data || [];
+      return (data || []) as CryptoAsset[];
     },
     enabled: !!userId,
   });
 
   const createMutation = useMutation({
-    mutationFn: async (transfer: Omit<Transfer, "id" | "user_id" | "created_at">) => {
+    mutationFn: async (asset: Omit<CryptoAsset, "id" | "user_id" | "created_at">) => {
       if (!userId) throw new Error("No user");
       
       const { error } = await supabase
-        .from("transfers")
-        .insert({ ...transfer, user_id: userId });
+        .from("crypto_assets")
+        .insert({ ...asset, user_id: userId });
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers", userId] });
-      queryClient.invalidateQueries({ queryKey: ["bank-accounts", userId] });
-      toast({ title: "Transferencia creada" });
+      queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
+      toast({ title: "Activo creado" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -61,18 +53,17 @@ export function useTransfers(userId: string | undefined) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Transfer> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<CryptoAsset> & { id: string }) => {
       const { error } = await supabase
-        .from("transfers")
+        .from("crypto_assets")
         .update(updates)
         .eq("id", id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers", userId] });
-      queryClient.invalidateQueries({ queryKey: ["bank-accounts", userId] });
-      toast({ title: "Transferencia actualizada" });
+      queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
+      toast({ title: "Activo actualizado" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -82,16 +73,15 @@ export function useTransfers(userId: string | undefined) {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("transfers")
+        .from("crypto_assets")
         .delete()
         .eq("id", id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["transfers", userId] });
-      queryClient.invalidateQueries({ queryKey: ["bank-accounts", userId] });
-      toast({ title: "Transferencia eliminada" });
+      queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
+      toast({ title: "Activo eliminado" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

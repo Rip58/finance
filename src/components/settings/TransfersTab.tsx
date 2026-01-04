@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, RefreshCw, ArrowRightLeft } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, RefreshCw, ArrowRightLeft, Check, Circle } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -70,6 +70,7 @@ export function TransfersTab({ userId }: TransfersTabProps) {
       date: new Date(formData.date).toISOString(),
       value_date: formData.value_date ? new Date(formData.value_date).toISOString() : null,
       description: formData.description || null,
+      is_validated: false,
     };
 
     if (editingTransfer) {
@@ -162,9 +163,16 @@ export function TransfersTab({ userId }: TransfersTabProps) {
                 <ArrowRightLeft className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">
-                  {getAccountName(transfer.from_account_id)} → {getAccountName(transfer.to_account_id)}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium truncate">
+                    {getAccountName(transfer.from_account_id)} → {getAccountName(transfer.to_account_id)}
+                  </p>
+                  {!transfer.is_validated && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
+                      Pendiente
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   {format(new Date(transfer.date), "d MMM yyyy", { locale: es })}
                 </p>
@@ -180,6 +188,18 @@ export function TransfersTab({ userId }: TransfersTabProps) {
                 )}
               </div>
               <div className="flex items-center gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-8 w-8"
+                  onClick={() => update({ id: transfer.id, is_validated: !transfer.is_validated })}
+                >
+                  {transfer.is_validated ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Circle className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(transfer)}>
                   <Pencil className="h-4 w-4" />
                 </Button>

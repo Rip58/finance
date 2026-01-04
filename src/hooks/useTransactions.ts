@@ -15,6 +15,7 @@ export interface Transaction {
   description: string | null;
   date: string;
   value_date: string | null;
+  is_validated: boolean;
   created_at: string;
 }
 

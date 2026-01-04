@@ -73,6 +73,7 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         category_id: formData.category_id === "none" ? null : formData.category_id,
         bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
         description: formData.description || null,
+        is_validated: false,
       };
 
       if (editId) {

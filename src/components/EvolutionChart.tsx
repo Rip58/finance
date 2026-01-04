@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import {
   AreaChart,
   Area,
@@ -58,7 +57,7 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
   }
 
   const chartData = data || [];
-  const hasData = chartData.some(d => d.income > 0 || d.expense > 0 || d.totalAssets > 0);
+  const hasData = chartData.some(d => d.activos > 0 || d.ahorros > 0 || d.balanceTotal > 0);
 
   if (!hasData) {
     return (
@@ -79,17 +78,17 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
           margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
         >
           <defs>
-            <linearGradient id="incomeGradient" x1="0" y1="0" x2="0" y2="1">
+            <linearGradient id="activosGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(192, 91%, 50%)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(192, 91%, 50%)" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="ahorrosGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0.3} />
               <stop offset="95%" stopColor="hsl(142, 71%, 45%)" stopOpacity={0} />
             </linearGradient>
-            <linearGradient id="expenseGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(0, 72%, 51%)" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="assetsGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="hsl(192, 91%, 50%)" stopOpacity={0.3} />
-              <stop offset="95%" stopColor="hsl(192, 91%, 50%)" stopOpacity={0} />
+            <linearGradient id="balanceGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%" stopColor="hsl(262, 83%, 58%)" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="hsl(262, 83%, 58%)" stopOpacity={0} />
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -124,30 +123,30 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
           />
           <Area
             type="monotone"
-            dataKey="income"
-            name="Ingresos"
-            stroke="hsl(142, 71%, 45%)"
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#incomeGradient)"
-          />
-          <Area
-            type="monotone"
-            dataKey="expense"
-            name="Gastos"
-            stroke="hsl(0, 72%, 51%)"
-            strokeWidth={2}
-            fillOpacity={1}
-            fill="url(#expenseGradient)"
-          />
-          <Area
-            type="monotone"
-            dataKey="totalAssets"
-            name="Total Activos"
+            dataKey="activos"
+            name="Activos"
             stroke="hsl(192, 91%, 50%)"
             strokeWidth={2}
             fillOpacity={1}
-            fill="url(#assetsGradient)"
+            fill="url(#activosGradient)"
+          />
+          <Area
+            type="monotone"
+            dataKey="ahorros"
+            name="Ahorros"
+            stroke="hsl(142, 71%, 45%)"
+            strokeWidth={2}
+            fillOpacity={1}
+            fill="url(#ahorrosGradient)"
+          />
+          <Area
+            type="monotone"
+            dataKey="balanceTotal"
+            name="Balance Total"
+            stroke="hsl(262, 83%, 58%)"
+            strokeWidth={2}
+            fillOpacity={1}
+            fill="url(#balanceGradient)"
           />
         </AreaChart>
       </ResponsiveContainer>

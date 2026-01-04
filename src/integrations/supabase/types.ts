@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_holdings: {
+        Row: {
+          bank_account_id: string
+          created_at: string
+          id: string
+          quantity: number
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          bank_account_id: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          bank_account_id?: string
+          created_at?: string
+          id?: string
+          quantity?: number
+          symbol?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       asset_prices: {
         Row: {
           close_price: number
@@ -210,6 +237,36 @@ export type Database = {
           name?: string
           scope?: string
           sort_order?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      crypto_assets: {
+        Row: {
+          asset_type: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          asset_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          symbol?: string
           user_id?: string
         }
         Relationships: []
@@ -584,6 +641,7 @@ export type Database = {
           date: string
           description: string | null
           id: string
+          is_validated: boolean
           type: string
           user_id: string
           value_date: string | null
@@ -597,6 +655,7 @@ export type Database = {
           date: string
           description?: string | null
           id?: string
+          is_validated?: boolean
           type: string
           user_id: string
           value_date?: string | null
@@ -610,6 +669,7 @@ export type Database = {
           date?: string
           description?: string | null
           id?: string
+          is_validated?: boolean
           type?: string
           user_id?: string
           value_date?: string | null
@@ -643,6 +703,7 @@ export type Database = {
           from_account_id: string
           fx_rate: number | null
           id: string
+          is_validated: boolean
           to_account_id: string
           user_id: string
           value_date: string | null
@@ -658,6 +719,7 @@ export type Database = {
           from_account_id: string
           fx_rate?: number | null
           id?: string
+          is_validated?: boolean
           to_account_id: string
           user_id: string
           value_date?: string | null
@@ -673,6 +735,7 @@ export type Database = {
           from_account_id?: string
           fx_rate?: number | null
           id?: string
+          is_validated?: boolean
           to_account_id?: string
           user_id?: string
           value_date?: string | null

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Settings, CreditCard, Tag, Repeat, Database, ChevronRight, TrendingUp } from "lucide-react";
+import { Settings, CreditCard, Tag, Repeat, Database, ChevronRight, TrendingUp, Coins } from "lucide-react";
 import { MobileLayout, MobilePageHeader } from "@/components/mobile";
 import { PreferencesTab } from "@/components/settings/PreferencesTab";
 import { AccountsTab } from "@/components/settings/AccountsTab";
@@ -8,10 +8,11 @@ import { CategoriesTab } from "@/components/settings/CategoriesTab";
 import { SubscriptionsTab } from "@/components/settings/SubscriptionsTab";
 import { DataTab } from "@/components/settings/DataTab";
 import { DCAsTab } from "@/components/settings/DCAsTab";
+import { CryptoAssetsTab } from "@/components/settings/CryptoAssetsTab";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
-type TabId = "preferences" | "accounts" | "categories" | "subscriptions" | "dcas" | "data";
+type TabId = "preferences" | "accounts" | "categories" | "subscriptions" | "dcas" | "assets" | "data";
 
 interface AccountPageProps {
   user: User;
@@ -23,6 +24,7 @@ const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
   { id: "categories", label: "Categories", icon: Tag },
   { id: "subscriptions", label: "Subscriptions", icon: Repeat },
   { id: "dcas", label: "DCAs", icon: TrendingUp },
+  { id: "assets", label: "Activos Crypto", icon: Coins },
   { id: "data", label: "Data", icon: Database },
 ];
 
@@ -80,6 +82,7 @@ export function AccountPage({ user }: AccountPageProps) {
         {currentTab === "categories" && <CategoriesTab userId={user.id} />}
         {currentTab === "subscriptions" && <SubscriptionsTab userId={user.id} />}
         {currentTab === "dcas" && <DCAsTab userId={user.id} />}
+        {currentTab === "assets" && <CryptoAssetsTab userId={user.id} />}
         {currentTab === "data" && <DataTab userId={user.id} />}
       </div>
     </MobileLayout>
