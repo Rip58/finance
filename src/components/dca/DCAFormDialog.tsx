@@ -5,22 +5,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 
+interface BankAccount {
+  id: string;
+  name: string;
+}
+
 interface DCAFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   symbol: string;
   editingTx?: AssetTransaction | null;
+  bankAccounts?: BankAccount[];
   onSubmit: (data: {
     quantity: number;
     price_eur: number;
     transaction_date: string;
     notes: string | null;
+    bank_account_id: string | null;
   }) => Promise<void>;
   isSubmitting?: boolean;
 }
@@ -30,6 +44,7 @@ export function DCAFormDialog({
   onOpenChange,
   symbol,
   editingTx,
+  bankAccounts = [],
   onSubmit,
   isSubmitting,
 }: DCAFormDialogProps) {
@@ -38,6 +53,7 @@ export function DCAFormDialog({
     price_eur: "",
     transaction_date: new Date().toISOString().split("T")[0],
     notes: "",
+    bank_account_id: "",
   });
 
   useEffect(() => {
@@ -47,6 +63,7 @@ export function DCAFormDialog({
         price_eur: String(editingTx.price_eur),
         transaction_date: editingTx.transaction_date.split("T")[0],
         notes: editingTx.notes || "",
+        bank_account_id: (editingTx as any).bank_account_id || "",
       });
     } else {
       setFormData({
@@ -54,6 +71,7 @@ export function DCAFormDialog({
         price_eur: "",
         transaction_date: new Date().toISOString().split("T")[0],
         notes: "",
+        bank_account_id: "",
       });
     }
   }, [editingTx, open]);
@@ -71,6 +89,7 @@ export function DCAFormDialog({
       price_eur: parseFloat(formData.price_eur),
       transaction_date: formData.transaction_date,
       notes: formData.notes || null,
+      bank_account_id: formData.bank_account_id || null,
     });
     onOpenChange(false);
   };
@@ -137,6 +156,30 @@ export function DCAFormDialog({
               {formatUSDT(totalInvestment)}
             </p>
           </div>
+
+          {bankAccounts.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="bank_account">Cuenta asociada (opcional)</Label>
+              <Select
+                value={formData.bank_account_id}
+                onValueChange={(val) =>
+                  setFormData((prev) => ({ ...prev, bank_account_id: val === "none" ? "" : val }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sin cuenta" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin cuenta</SelectItem>
+                  {bankAccounts.map((acc) => (
+                    <SelectItem key={acc.id} value={acc.id}>
+                      {acc.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notas (opcional)</Label>

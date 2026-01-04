@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, Settings2 } from "lucide-react";
 import { useAssetTransactions, type AssetTransaction } from "@/hooks/useAssetTransactions";
 import { useDCAPortfolios, type DCAPortfolio } from "@/hooks/useDCAPortfolios";
+import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { DCASummaryCard } from "@/components/dca/DCASummaryCard";
 import { DCAEntryList } from "@/components/dca/DCAEntryList";
@@ -39,6 +40,12 @@ export function DCAPage({ user }: DCAPageProps) {
 
   const portfolios = useDCAPortfolios(user.id);
   const assetTransactions = useAssetTransactions(user.id);
+  const bankAccounts = useBankAccounts(user.id);
+  
+  // Filter only non-archived bank accounts for the select
+  const activeBankAccounts = useMemo(() => {
+    return (bankAccounts.data || []).filter(acc => !acc.is_archived);
+  }, [bankAccounts.data]);
 
   // Auto-select first portfolio when data loads
   useEffect(() => {
@@ -93,6 +100,7 @@ export function DCAPage({ user }: DCAPageProps) {
     price_eur: number;
     transaction_date: string;
     notes: string | null;
+    bank_account_id: string | null;
   }) => {
     if (!selectedPortfolio) return;
 
@@ -207,6 +215,7 @@ export function DCAPage({ user }: DCAPageProps) {
         onOpenChange={setShowForm}
         symbol={selectedPortfolio?.symbol || ""}
         editingTx={editingTx}
+        bankAccounts={activeBankAccounts}
         onSubmit={handleSubmit}
         isSubmitting={assetTransactions.isCreating || assetTransactions.isUpdating}
       />
