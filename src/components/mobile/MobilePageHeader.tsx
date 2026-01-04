@@ -20,7 +20,8 @@ export function MobilePageHeader({
   const navigate = useNavigate();
 
   return (
-    <header className={cn("flex items-center justify-between h-14 px-4", className)}>
+    <header className={cn("safe-area-pt bg-background", className)}>
+      <div className="flex items-center justify-between h-14 px-4">
       <div className="w-10">
         {showBack && (
           <Button
@@ -34,12 +35,13 @@ export function MobilePageHeader({
         )}
       </div>
       <h1 className="text-lg font-semibold">{title}</h1>
-      <div className="w-10 flex justify-end">
-        {rightAction || (
-          <Button variant="ghost" size="icon" className="h-9 w-9 opacity-0 pointer-events-none">
-            <MoreHorizontal className="h-5 w-5" />
-          </Button>
-        )}
+        <div className="w-10 flex justify-end">
+          {rightAction || (
+            <Button variant="ghost" size="icon" className="h-9 w-9 opacity-0 pointer-events-none">
+              <MoreHorizontal className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
       </div>
     </header>
   );
