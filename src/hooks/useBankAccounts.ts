@@ -34,14 +34,17 @@ export function useBankAccounts(userId: string | undefined) {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (account: Omit<BankAccount, "id" | "user_id" | "created_at">) => {
+    mutationFn: async (account: Omit<BankAccount, "id" | "user_id" | "created_at">): Promise<string> => {
       if (!userId) throw new Error("No user");
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("bank_accounts")
-        .insert({ ...account, user_id: userId });
+        .insert({ ...account, user_id: userId })
+        .select("id")
+        .single();
       
       if (error) throw error;
+      return data.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["bank-accounts", userId] });
