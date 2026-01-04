@@ -40,7 +40,7 @@ export function DCAsTab({ userId }: DCAsTabProps) {
   const portfolios = useDCAPortfolios(userId);
   const assetTransactions = useAssetTransactions(userId);
   const cryptoAssets = useCryptoAssets(userId);
-  
+
   // Get unique symbols from user's crypto assets
   const availableSymbols = cryptoAssets.data?.filter(a => a.is_active).map(a => a.symbol) || [];
   const [showForm, setShowForm] = useState(false);
@@ -93,7 +93,26 @@ export function DCAsTab({ userId }: DCAsTabProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const finalSymbol = formData.symbol === "OTHER" ? formData.customSymbol.toUpperCase() : formData.symbol;
-    
+
+    // Check if we need to create the asset first
+    if (formData.symbol === "OTHER") {
+      const existingAsset = cryptoAssets.data?.find(a => a.symbol === finalSymbol);
+      if (!existingAsset) {
+        try {
+          await cryptoAssets.create({
+            symbol: finalSymbol,
+            name: finalSymbol, // Default name to symbol
+            asset_type: formData.asset_type as "crypto" | "commodity" | "other" | "institutional", // Handle explicit type
+            is_active: true
+          });
+        } catch (error) {
+          console.error("Error creating asset:", error);
+          // Continue anyway, maybe it exists but wasn't in local list yet? 
+          // Or let portfolio creation fail if FK constraint exists.
+        }
+      }
+    }
+
     if (editingPortfolio) {
       await portfolios.update({
         id: editingPortfolio.id,
@@ -247,8 +266,7 @@ export function DCAsTab({ userId }: DCAsTabProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="crypto">Crypto</SelectItem>
-                    <SelectItem value="commodity">Commodity</SelectItem>
-                    <SelectItem value="other">Otro</SelectItem>
+                    <SelectItem value="institutional">Institucional</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -317,8 +335,8 @@ export function DCAsTab({ userId }: DCAsTabProps) {
               <Button type="button" variant="outline" onClick={() => setShowForm(false)}>
                 Cancelar
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 disabled={portfolios.isCreating || portfolios.isUpdating || !formData.name || (!formData.symbol || (formData.symbol === "OTHER" && !formData.customSymbol))}
               >
                 {editingPortfolio ? "Guardar" : "Crear"}

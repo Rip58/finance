@@ -11,6 +11,7 @@ interface DashboardMetrics {
   expenseChange: number;
   savingsBalance: number;
   investmentsBalance: number;
+  cryptoBalance: number;
 }
 
 export function useDashboardMetrics(userId: string | undefined) {
@@ -28,6 +29,7 @@ export function useDashboardMetrics(userId: string | undefined) {
           expenseChange: 0,
           savingsBalance: 0,
           investmentsBalance: 0,
+          cryptoBalance: 0,
         };
       }
 
@@ -171,37 +173,55 @@ export function useDashboardMetrics(userId: string | undefined) {
         }
       }
 
-      // Find savings and investment categories
+      // Find categories
       const savingsCategoryIds = (categories.data || [])
         .filter(c => c.name.toLowerCase().includes("ahorro"))
         .map(c => c.id);
+
       const investmentsCategoryIds = (categories.data || [])
         .filter(c => c.name.toLowerCase().includes("inversión") || c.name.toLowerCase().includes("inversion"))
         .map(c => c.id);
 
-      // Calculate savings and investments balances
+      const cryptoCategoryIds = (categories.data || [])
+        .filter(c => c.name.toLowerCase().includes("crypto") || c.name.toLowerCase().includes("cripto"))
+        .map(c => c.id);
+
+      // Calculate balances
       let savingsBalance = 0;
       let investmentsBalance = 0;
+      let cryptoBalance = 0;
 
       for (const acc of accounts.data || []) {
+        // Accounts with "crypto" currency or category are typically crypto-related
+        // If it's a holding account (USDT/USD) we might want to check its holdings value instead of initial_balance logic if calculated above differently, 
+        // but existing logic uses 'accountBalances' for typical accounts.
+        // HOWEVER, for crypto accounts with holdings, we summed their value into `totalAssets` (via accountHoldingsValue).
+        // Standard bank accounts in EUR/USD without holdings use `accountBalances`.
+
         const balance = accountBalances[acc.id] || 0;
-        if (acc.category_id && savingsCategoryIds.includes(acc.category_id)) {
-          savingsBalance += balance;
-        }
-        if (acc.category_id && investmentsCategoryIds.includes(acc.category_id)) {
-          investmentsBalance += balance;
+
+        if (acc.category_id) {
+          if (savingsCategoryIds.includes(acc.category_id)) {
+            savingsBalance += balance;
+          } else if (cryptoCategoryIds.includes(acc.category_id)) {
+            // If it's a crypto bucket account
+            cryptoBalance += balance;
+          } else if (investmentsCategoryIds.includes(acc.category_id)) {
+            investmentsBalance += balance;
+          }
         }
       }
 
-      // Add crypto assets to investments (convert from USD to EUR)
-      investmentsBalance += totalAssets * usdtRate;
+      // Add Crypto Assets (Holdings + DCA) to Crypto Balance
+      // (Converted from USD to EUR)
+      cryptoBalance += totalAssets * usdtRate;
 
       const netBalance = monthlyIncome - monthlyExpense;
-      const incomeChange = lastMonthIncome > 0 
-        ? ((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100 
+      const incomeChange = lastMonthIncome > 0
+        ? ((monthlyIncome - lastMonthIncome) / lastMonthIncome) * 100
         : 0;
-      const expenseChange = lastMonthExpense > 0 
-        ? ((monthlyExpense - lastMonthExpense) / lastMonthExpense) * 100 
+      const expenseChange = lastMonthExpense > 0
+        ? ((monthlyExpense - lastMonthExpense) / lastMonthExpense) * 100
         : 0;
 
       return {
@@ -209,11 +229,12 @@ export function useDashboardMetrics(userId: string | undefined) {
         monthlyIncome: Math.round(monthlyIncome * 100) / 100,
         monthlyExpense: Math.round(monthlyExpense * 100) / 100,
         netBalance: Math.round(netBalance * 100) / 100,
-        assetChange: 0, // Would need historical data to calculate
+        assetChange: 0,
         incomeChange: Math.round(incomeChange * 10) / 10,
         expenseChange: Math.round(expenseChange * 10) / 10,
         savingsBalance: Math.round(savingsBalance * 100) / 100,
         investmentsBalance: Math.round(investmentsBalance * 100) / 100,
+        cryptoBalance: Math.round(cryptoBalance * 100) / 100,
       };
     },
     enabled: !!userId,

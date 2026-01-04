@@ -9,10 +9,11 @@ import { SubscriptionsTab } from "@/components/settings/SubscriptionsTab";
 import { DataTab } from "@/components/settings/DataTab";
 import { DCAsTab } from "@/components/settings/DCAsTab";
 import { CryptoAssetsTab } from "@/components/settings/CryptoAssetsTab";
+import { CurrenciesTab } from "@/components/settings/CurrenciesTab";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
-type TabId = "preferences" | "accounts" | "categories" | "subscriptions" | "dcas" | "assets" | "data";
+type TabId = "preferences" | "accounts" | "categories" | "subscriptions" | "dcas" | "assets" | "currencies" | "data";
 
 interface AccountPageProps {
   user: User;
@@ -25,6 +26,7 @@ const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
   { id: "subscriptions", label: "Subscriptions", icon: Repeat },
   { id: "dcas", label: "DCAs", icon: TrendingUp },
   { id: "assets", label: "Activos Crypto", icon: Coins },
+  { id: "currencies", label: "Divisas", icon: Coins },
   { id: "data", label: "Data", icon: Database },
 ];
 
@@ -45,7 +47,7 @@ export function AccountPage({ user }: AccountPageProps) {
     return (
       <MobileLayout>
         <MobilePageHeader title="Account" />
-        
+
         <div className="px-4 py-4">
           <div className="space-y-2">
             {tabs.map((tab) => (
@@ -75,7 +77,7 @@ export function AccountPage({ user }: AccountPageProps) {
         title={activeTab?.label || "Account"}
         showBack
       />
-      
+
       <div className="px-4 py-4">
         {currentTab === "preferences" && <PreferencesTab userId={user.id} />}
         {currentTab === "accounts" && <AccountsTab userId={user.id} />}
@@ -83,6 +85,7 @@ export function AccountPage({ user }: AccountPageProps) {
         {currentTab === "subscriptions" && <SubscriptionsTab userId={user.id} />}
         {currentTab === "dcas" && <DCAsTab userId={user.id} />}
         {currentTab === "assets" && <CryptoAssetsTab userId={user.id} />}
+        {currentTab === "currencies" && <CurrenciesTab />}
         {currentTab === "data" && <DataTab userId={user.id} />}
       </div>
     </MobileLayout>

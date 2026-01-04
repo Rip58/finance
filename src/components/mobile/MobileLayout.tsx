@@ -11,7 +11,7 @@ interface MobileLayoutProps {
 export function MobileLayout({ children, className, hideNav = false }: MobileLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
-      <div className={cn("max-w-md mx-auto min-h-screen pb-20", className)}>
+      <div className={cn("max-w-md mx-auto min-h-screen pb-32", className)}>
         {children}
       </div>
       {!hideNav && <BottomNav />}
