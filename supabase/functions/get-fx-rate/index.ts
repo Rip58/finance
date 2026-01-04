@@ -12,6 +12,35 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Create authenticated client to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
+
     const COINMARKETCAP_API_KEY = Deno.env.get('COINMARKETCAP_API_KEY');
     if (!COINMARKETCAP_API_KEY) {
       throw new Error('COINMARKETCAP_API_KEY is not configured');
@@ -37,7 +66,7 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log('CoinMarketCap response:', JSON.stringify(data, null, 2));
+    console.log('CoinMarketCap response received');
 
     const usdtPrice = data.data?.USDT?.quote?.EUR?.price;
     if (!usdtPrice) {
@@ -47,8 +76,7 @@ serve(async (req) => {
     const rate = Number(usdtPrice);
     console.log(`USDT/EUR rate: ${rate}`);
 
-    // Store in database
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    // Store in database using service role key
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 

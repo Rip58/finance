@@ -11,11 +11,61 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error('Missing authorization header');
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    
+    // Create authenticated client to verify user
+    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
+    if (authError || !user) {
+      console.error('Authentication failed:', authError?.message);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
+
     const { symbols } = await req.json();
     
     if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
       return new Response(
         JSON.stringify({ error: "symbols array is required" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Validate symbols - only allow alphanumeric and limit count
+    const MAX_SYMBOLS = 50;
+    if (symbols.length > MAX_SYMBOLS) {
+      return new Response(
+        JSON.stringify({ error: `Maximum ${MAX_SYMBOLS} symbols allowed` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const validSymbolRegex = /^[A-Za-z0-9]{1,10}$/;
+    const sanitizedSymbols = symbols
+      .filter((s): s is string => typeof s === 'string' && validSymbolRegex.test(s))
+      .map(s => s.toUpperCase());
+
+    if (sanitizedSymbols.length === 0) {
+      return new Response(
+        JSON.stringify({ error: "No valid symbols provided" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -29,11 +79,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log(`Fetching prices for symbols: ${symbols.join(", ")}`);
+    console.log(`Fetching prices for symbols: ${sanitizedSymbols.join(", ")}`);
 
     // Fetch prices from CoinMarketCap in USD
     const cmcResponse = await fetch(
-      `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${symbols.join(",")}&convert=USD`,
+      `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${sanitizedSymbols.join(",")}&convert=USD`,
       {
         headers: {
           "X-CMC_PRO_API_KEY": apiKey,
@@ -52,10 +102,9 @@ Deno.serve(async (req) => {
     }
 
     const cmcData = await cmcResponse.json();
-    console.log("CMC response received:", JSON.stringify(cmcData.status));
+    console.log("CMC response received");
 
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    // Initialize Supabase client with service role for database writes
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
@@ -63,18 +112,18 @@ Deno.serve(async (req) => {
     const prices: Record<string, number> = {};
 
     // Process and store prices
-    for (const symbol of symbols) {
-      const coinData = cmcData.data?.[symbol.toUpperCase()];
+    for (const symbol of sanitizedSymbols) {
+      const coinData = cmcData.data?.[symbol];
       if (coinData?.quote?.USD?.price) {
         const price = coinData.quote.USD.price;
-        prices[symbol.toUpperCase()] = price;
+        prices[symbol] = price;
 
         // Upsert to asset_prices table
         const { error } = await supabase
           .from("asset_prices")
           .upsert(
             {
-              symbol: symbol.toUpperCase(),
+              symbol: symbol,
               close_price: price,
               price_date: today,
             },
