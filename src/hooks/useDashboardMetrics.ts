@@ -193,8 +193,8 @@ export function useDashboardMetrics(userId: string | undefined) {
         }
       }
 
-      // Add crypto assets to investments
-      investmentsBalance += totalAssets;
+      // Add crypto assets to investments (convert from USD to EUR)
+      investmentsBalance += totalAssets * usdtRate;
 
       const netBalance = monthlyIncome - monthlyExpense;
       const incomeChange = lastMonthIncome > 0 

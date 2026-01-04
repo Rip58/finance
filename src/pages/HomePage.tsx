@@ -133,8 +133,8 @@ export function HomePage({ user }: HomePageProps) {
     );
   }, [bankAccounts, categories]);
 
-  // Calculate DCA total in EUR
-  const dcaTotal = useMemo(() => {
+  // Calculate DCA total in USD (not converted to EUR)
+  const dcaTotalUsd = useMemo(() => {
     const holdings: Record<string, number> = {};
     for (const tx of assetTransactions) {
       if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
@@ -148,8 +148,11 @@ export function HomePage({ user }: HomePageProps) {
       totalUsd += qty * price;
     }
     
-    return totalUsd * usdtEurRate;
-  }, [assetTransactions, currentPrices, usdtEurRate]);
+    return totalUsd;
+  }, [assetTransactions, currentPrices]);
+  
+  // DCA total in EUR for patrimonio calculation
+  const dcaTotal = dcaTotalUsd * usdtEurRate;
 
   // Calculate account holdings total in EUR
   const accountHoldingsTotal = useMemo(() => {
@@ -183,13 +186,18 @@ export function HomePage({ user }: HomePageProps) {
   // Format currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
     if (currency === "USDT" || currency === "USD") {
-      return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${currency}`;
+      return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: currency,
       minimumFractionDigits: 2,
     }).format(amount);
+  };
+  
+  // Format USD with $ symbol
+  const formatUsd = (amount: number) => {
+    return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
   // Get display value for account (holdings value for crypto, balance for others)
@@ -217,6 +225,7 @@ export function HomePage({ user }: HomePageProps) {
         fxRates.fetchRate(),
       ]);
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      queryClient.invalidateQueries({ queryKey: ["chart-data"] });
       toast({ title: "Precios actualizados" });
     } catch (error) {
       toast({ 
@@ -376,7 +385,7 @@ export function HomePage({ user }: HomePageProps) {
                 <span className="text-sm font-medium">DCA (Total)</span>
               </div>
               <span className="font-medium text-sm text-primary">
-                {formatEur(dcaTotal)}
+                {formatUsd(dcaTotalUsd)}
               </span>
             </div>
             

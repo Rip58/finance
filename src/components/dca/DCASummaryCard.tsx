@@ -97,10 +97,16 @@ export function DCASummaryCard({
           </Button>
         </div>
         
+        {/* Valor BTC y Precio promedio en la misma línea */}
         {currentPrice && (
-          <p className="text-xs text-muted-foreground mb-4">
-            Valor {symbol}: <span className="font-semibold text-foreground">{formatUSD(currentPrice)}</span>
-          </p>
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs text-muted-foreground">
+              Valor {symbol}: <span className="font-semibold text-foreground">{formatUSD(currentPrice)}</span>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Precio promedio: <span className="font-semibold text-foreground">{formatUSD(totals.averagePrice)}</span>
+            </p>
+          </div>
         )}
         
         <div className="grid grid-cols-2 gap-4">
@@ -114,12 +120,6 @@ export function DCASummaryCard({
             <p className="text-sm text-muted-foreground">Valor actual</p>
             <p className="text-xl font-bold text-foreground">
               {formatUSDT(totals.currentValue)}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Precio promedio</p>
-            <p className="text-xl font-bold text-foreground">
-              {formatUSD(totals.averagePrice)}
             </p>
           </div>
           <div>
