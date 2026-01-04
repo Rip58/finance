@@ -2,61 +2,53 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export type AssetType = "crypto" | "commodity" | "other";
-export type AssetSide = "buy" | "sell";
-
-export interface AssetTransaction {
+export interface DCAPortfolio {
   id: string;
   user_id: string;
-  asset_type: AssetType;
+  name: string;
   symbol: string;
-  category_id: string | null;
-  side: AssetSide;
-  quantity: number;
-  price_eur: number;
-  transaction_date: string;
-  value_date: string | null;
-  notes: string | null;
+  asset_type: string;
+  is_active: boolean;
   created_at: string;
-  dca_portfolio_id: string | null;
 }
 
-export function useAssetTransactions(userId: string | undefined) {
+export function useDCAPortfolios(userId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const query = useQuery({
-    queryKey: ["asset-transactions", userId],
-    queryFn: async (): Promise<AssetTransaction[]> => {
+    queryKey: ["dca-portfolios", userId],
+    queryFn: async (): Promise<DCAPortfolio[]> => {
       if (!userId) return [];
       
       const { data, error } = await supabase
-        .from("asset_transactions")
+        .from("dca_portfolios")
         .select("*")
         .eq("user_id", userId)
-        .order("transaction_date", { ascending: false });
+        .order("created_at", { ascending: true });
       
       if (error) throw error;
-      return (data || []) as AssetTransaction[];
+      return (data || []) as DCAPortfolio[];
     },
     enabled: !!userId,
   });
 
   const createMutation = useMutation({
-    mutationFn: async (transaction: Omit<AssetTransaction, "id" | "user_id" | "created_at">) => {
+    mutationFn: async (portfolio: Omit<DCAPortfolio, "id" | "user_id" | "created_at">) => {
       if (!userId) throw new Error("No user");
       
-      const { error } = await supabase
-        .from("asset_transactions")
-        .insert({ ...transaction, user_id: userId });
+      const { data, error } = await supabase
+        .from("dca_portfolios")
+        .insert({ ...portfolio, user_id: userId })
+        .select()
+        .single();
       
       if (error) throw error;
+      return data as DCAPortfolio;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["asset-transactions", userId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics", userId] });
-      queryClient.invalidateQueries({ queryKey: ["chart-data"] });
-      toast({ title: "Movimiento creado" });
+      queryClient.invalidateQueries({ queryKey: ["dca-portfolios", userId] });
+      toast({ title: "DCA creado" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -64,19 +56,17 @@ export function useAssetTransactions(userId: string | undefined) {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<AssetTransaction> & { id: string }) => {
+    mutationFn: async ({ id, ...updates }: Partial<DCAPortfolio> & { id: string }) => {
       const { error } = await supabase
-        .from("asset_transactions")
+        .from("dca_portfolios")
         .update(updates)
         .eq("id", id);
       
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["asset-transactions", userId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics", userId] });
-      queryClient.invalidateQueries({ queryKey: ["chart-data"] });
-      toast({ title: "Movimiento actualizado" });
+      queryClient.invalidateQueries({ queryKey: ["dca-portfolios", userId] });
+      toast({ title: "DCA actualizado" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -86,17 +76,16 @@ export function useAssetTransactions(userId: string | undefined) {
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
-        .from("asset_transactions")
+        .from("dca_portfolios")
         .delete()
         .eq("id", id);
       
       if (error) throw error;
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["dca-portfolios", userId] });
       queryClient.invalidateQueries({ queryKey: ["asset-transactions", userId] });
-      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics", userId] });
-      queryClient.invalidateQueries({ queryKey: ["chart-data"] });
-      toast({ title: "Movimiento eliminado" });
+      toast({ title: "DCA eliminado" });
     },
     onError: (error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });

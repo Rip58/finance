@@ -52,6 +52,7 @@ export type Database = {
           asset_type: string | null
           category_id: string | null
           created_at: string
+          dca_portfolio_id: string | null
           id: string
           notes: string | null
           price_eur: number
@@ -66,6 +67,7 @@ export type Database = {
           asset_type?: string | null
           category_id?: string | null
           created_at?: string
+          dca_portfolio_id?: string | null
           id?: string
           notes?: string | null
           price_eur: number
@@ -80,6 +82,7 @@ export type Database = {
           asset_type?: string | null
           category_id?: string | null
           created_at?: string
+          dca_portfolio_id?: string | null
           id?: string
           notes?: string | null
           price_eur?: number
@@ -96,6 +99,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "asset_transactions_dca_portfolio_id_fkey"
+            columns: ["dca_portfolio_id"]
+            isOneToOne: false
+            referencedRelation: "dca_portfolios"
             referencedColumns: ["id"]
           },
         ]
@@ -200,6 +210,36 @@ export type Database = {
           name?: string
           scope?: string
           sort_order?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      dca_portfolios: {
+        Row: {
+          asset_type: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          symbol: string
+          user_id: string
+        }
+        Insert: {
+          asset_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          symbol: string
+          user_id: string
+        }
+        Update: {
+          asset_type?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          symbol?: string
           user_id?: string
         }
         Relationships: []
