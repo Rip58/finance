@@ -41,12 +41,14 @@ export function useCategories(userId: string | undefined, scope?: CategoryScope)
   });
 
   const createMutation = useMutation({
-    mutationFn: async (category: Omit<Category, "id" | "user_id" | "created_at">) => {
+    mutationFn: async (category: Omit<Category, "id" | "user_id" | "created_at">): Promise<string> => {
       if (!userId) throw new Error("No user");
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("categories")
-        .insert({ ...category, user_id: userId });
+        .insert({ ...category, user_id: userId })
+        .select("id")
+        .single();
       
       if (error) {
         if (error.code === "23505") {
@@ -54,6 +56,7 @@ export function useCategories(userId: string | undefined, scope?: CategoryScope)
         }
         throw error;
       }
+      return data.id;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["categories", userId] });

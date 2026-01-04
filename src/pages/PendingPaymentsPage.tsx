@@ -12,7 +12,7 @@ import { MobileLayout } from "@/components/mobile";
 import { useLoans, Loan } from "@/hooks/useLoans";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCategories } from "@/hooks/useCategories";
-import { format, differenceInMonths } from "date-fns";
+import { format, differenceInMonths, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import type { User } from "@supabase/supabase-js";
 
@@ -23,8 +23,8 @@ interface PendingPaymentsPageProps {
 export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
   const navigate = useNavigate();
   const { loans, pendingPayments, isLoading, create, update, delete: deleteLoan, payInstallment, isPaying, isCreating, isUpdating } = useLoans(user.id);
-  const { data: accounts } = useBankAccounts(user.id);
-  const { data: categories } = useCategories(user.id, "expense");
+  const { data: accounts, create: createAccount, isCreating: isCreatingAccount } = useBankAccounts(user.id);
+  const { data: categories, create: createCategory, isCreating: isCreatingCategory } = useCategories(user.id, "expense");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null);
@@ -33,6 +33,7 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
     total_amount: "",
     monthly_payment: "",
     total_installments: "",
+    paid_installments: "0",
     start_date: new Date().toISOString().split("T")[0],
     end_date: "",
     category_id: "none",
@@ -41,12 +42,20 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
     notes: "",
   });
 
+  // Inline creation dialogs
+  const [showNewCategoryDialog, setShowNewCategoryDialog] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [showNewAccountDialog, setShowNewAccountDialog] = useState(false);
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountCurrency, setNewAccountCurrency] = useState("EUR");
+
   const resetForm = () => {
     setFormData({
       name: "",
       total_amount: "",
       monthly_payment: "",
       total_installments: "",
+      paid_installments: "0",
       start_date: new Date().toISOString().split("T")[0],
       end_date: "",
       category_id: "none",
@@ -64,6 +73,7 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
       total_amount: loan.total_amount.toString(),
       monthly_payment: loan.monthly_payment.toString(),
       total_installments: loan.total_installments.toString(),
+      paid_installments: loan.paid_installments.toString(),
       start_date: loan.start_date,
       end_date: loan.end_date,
       category_id: loan.category_id || "none",
@@ -90,15 +100,18 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
   };
 
   const handleSubmit = async () => {
+    const paidInstallments = parseInt(formData.paid_installments) || 0;
+    const nextPaymentDate = addMonths(new Date(formData.start_date), paidInstallments);
+    
     const loanData = {
       name: formData.name,
       total_amount: parseFloat(formData.total_amount),
       monthly_payment: parseFloat(formData.monthly_payment),
       total_installments: parseInt(formData.total_installments),
-      paid_installments: editingLoan?.paid_installments || 0,
+      paid_installments: paidInstallments,
       start_date: formData.start_date,
       end_date: formData.end_date,
-      next_payment_date: editingLoan?.next_payment_date || formData.start_date,
+      next_payment_date: format(nextPaymentDate, "yyyy-MM-dd"),
       category_id: formData.category_id === "none" ? null : formData.category_id,
       bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
       currency: formData.currency,
@@ -113,6 +126,33 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
     }
     setIsDialogOpen(false);
     resetForm();
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    const newId = await createCategory({
+      name: newCategoryName.trim(),
+      scope: "expense",
+      sort_order: 0,
+      is_archived: false,
+    });
+    setFormData(prev => ({ ...prev, category_id: newId }));
+    setShowNewCategoryDialog(false);
+    setNewCategoryName("");
+  };
+
+  const handleCreateAccount = async () => {
+    if (!newAccountName.trim()) return;
+    const newId = await createAccount({
+      name: newAccountName.trim(),
+      currency: newAccountCurrency,
+      category_id: null,
+      is_archived: false,
+    });
+    setFormData(prev => ({ ...prev, bank_account_id: newId }));
+    setShowNewAccountDialog(false);
+    setNewAccountName("");
+    setNewAccountCurrency("EUR");
   };
 
   const formatCurrency = (value: number, currency: string) =>
@@ -288,7 +328,7 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
         </section>
       </div>
 
-      {/* Create/Edit Dialog */}
+      {/* Create/Edit Loan Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-sm mx-4 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
@@ -354,21 +394,40 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
                 />
               </div>
               <div className="space-y-2">
-                <Label>Moneda</Label>
-                <Select value={formData.currency} onValueChange={(v) => handleFormChange("currency", v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="USDT">USDT</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Cuotas pagadas</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  value={formData.paid_installments}
+                  onChange={(e) => handleFormChange("paid_installments", e.target.value)}
+                  placeholder="0"
+                />
               </div>
             </div>
             <div className="space-y-2">
+              <Label>Moneda</Label>
+              <Select value={formData.currency} onValueChange={(v) => handleFormChange("currency", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="USDT">USDT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>Categoría</Label>
-              <Select value={formData.category_id} onValueChange={(v) => handleFormChange("category_id", v)}>
+              <Select 
+                value={formData.category_id} 
+                onValueChange={(v) => {
+                  if (v === "new") {
+                    setShowNewCategoryDialog(true);
+                  } else {
+                    handleFormChange("category_id", v);
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Sin categoría" />
                 </SelectTrigger>
@@ -377,12 +436,24 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
                   {categories?.filter(c => !c.is_archived).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
+                  <SelectItem value="new" className="text-primary font-medium">
+                    + Añadir nueva
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
               <Label>Cuenta de cargo</Label>
-              <Select value={formData.bank_account_id} onValueChange={(v) => handleFormChange("bank_account_id", v)}>
+              <Select 
+                value={formData.bank_account_id} 
+                onValueChange={(v) => {
+                  if (v === "new") {
+                    setShowNewAccountDialog(true);
+                  } else {
+                    handleFormChange("bank_account_id", v);
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Sin cuenta" />
                 </SelectTrigger>
@@ -391,6 +462,9 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
                   {accounts?.filter(a => !a.is_archived).map((acc) => (
                     <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>
                   ))}
+                  <SelectItem value="new" className="text-primary font-medium">
+                    + Añadir nueva
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -405,6 +479,65 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
             >
               {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {editingLoan ? "Guardar" : "Crear"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Category Dialog */}
+      <Dialog open={showNewCategoryDialog} onOpenChange={setShowNewCategoryDialog}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Nueva categoría</DialogTitle>
+          </DialogHeader>
+          <Input 
+            value={newCategoryName}
+            onChange={(e) => setNewCategoryName(e.target.value)}
+            placeholder="Nombre de la categoría"
+            autoFocus
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNewCategoryDialog(false); setNewCategoryName(""); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateCategory} disabled={!newCategoryName.trim() || isCreatingCategory}>
+              {isCreatingCategory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Crear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* New Account Dialog */}
+      <Dialog open={showNewAccountDialog} onOpenChange={setShowNewAccountDialog}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>Nueva cuenta</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input 
+              value={newAccountName}
+              onChange={(e) => setNewAccountName(e.target.value)}
+              placeholder="Nombre de la cuenta"
+              autoFocus
+            />
+            <Select value={newAccountCurrency} onValueChange={setNewAccountCurrency}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="EUR">EUR</SelectItem>
+                <SelectItem value="USDT">USDT</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setShowNewAccountDialog(false); setNewAccountName(""); setNewAccountCurrency("EUR"); }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateAccount} disabled={!newAccountName.trim() || isCreatingAccount}>
+              {isCreatingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Crear
             </Button>
           </DialogFooter>
         </DialogContent>
