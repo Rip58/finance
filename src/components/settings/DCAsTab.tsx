@@ -29,16 +29,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDCAPortfolios, type DCAPortfolio } from "@/hooks/useDCAPortfolios";
 import { useAssetTransactions } from "@/hooks/useAssetTransactions";
+import { useCryptoAssets } from "@/hooks/useCryptoAssets";
 
 interface DCAsTabProps {
   userId: string;
 }
 
-const COMMON_SYMBOLS = ["BTC", "ETH", "SOL", "ADA", "DOT", "AVAX", "MATIC", "LINK", "XRP"];
-
 export function DCAsTab({ userId }: DCAsTabProps) {
   const portfolios = useDCAPortfolios(userId);
   const assetTransactions = useAssetTransactions(userId);
+  const cryptoAssets = useCryptoAssets(userId);
+  
+  // Get unique symbols from user's crypto assets
+  const availableSymbols = cryptoAssets.data?.filter(a => a.is_active).map(a => a.symbol) || [];
   const [showForm, setShowForm] = useState(false);
   const [editingPortfolio, setEditingPortfolio] = useState<DCAPortfolio | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -70,11 +73,11 @@ export function DCAsTab({ userId }: DCAsTabProps) {
   const handleOpenForm = (portfolio?: DCAPortfolio) => {
     if (portfolio) {
       setEditingPortfolio(portfolio);
-      const isCommon = COMMON_SYMBOLS.includes(portfolio.symbol);
+      const isInList = availableSymbols.includes(portfolio.symbol);
       setFormData({
         name: portfolio.name,
-        symbol: isCommon ? portfolio.symbol : "OTHER",
-        customSymbol: isCommon ? "" : portfolio.symbol,
+        symbol: isInList ? portfolio.symbol : "OTHER",
+        customSymbol: isInList ? "" : portfolio.symbol,
         asset_type: portfolio.asset_type,
         initialQuantity: "",
         initialPrice: "",
@@ -219,11 +222,17 @@ export function DCAsTab({ userId }: DCAsTabProps) {
                     <SelectValue placeholder="Seleccionar" />
                   </SelectTrigger>
                   <SelectContent>
-                    {COMMON_SYMBOLS.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s}
+                    {availableSymbols.length === 0 ? (
+                      <SelectItem value="NONE" disabled>
+                        Sin activos - crea uno en Account
                       </SelectItem>
-                    ))}
+                    ) : (
+                      availableSymbols.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))
+                    )}
                     <SelectItem value="OTHER">Otro...</SelectItem>
                   </SelectContent>
                 </Select>
