@@ -64,7 +64,7 @@ export function useDashboardMetrics(userId: string | undefined) {
           .limit(1),
         supabase
           .from("bank_accounts")
-          .select("id, name, currency, category_id, is_archived")
+          .select("id, name, currency, category_id, is_archived, initial_balance")
           .eq("user_id", userId)
           .eq("is_archived", false),
         supabase
@@ -134,7 +134,7 @@ export function useDashboardMetrics(userId: string | undefined) {
       // Calculate account balances
       const accountBalances: Record<string, number> = {};
       for (const acc of accounts.data || []) {
-        accountBalances[acc.id] = 0;
+        accountBalances[acc.id] = Number(acc.initial_balance) || 0;
       }
 
       // Add income, subtract expenses
