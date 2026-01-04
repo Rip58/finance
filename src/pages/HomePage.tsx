@@ -1,6 +1,7 @@
-import { useState } from "react";
-import { Bell, LogOut, ChevronDown, ChevronUp } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Bell, LogOut, ChevronDown, ChevronUp, RefreshCw, Building2, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -15,8 +16,15 @@ import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
 import { useTransactions } from "@/hooks/useTransactions";
+import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { useCategories } from "@/hooks/useCategories";
+import { useTransfers } from "@/hooks/useTransfers";
+import { useAssetTransactions } from "@/hooks/useAssetTransactions";
+import { useCurrentPrices } from "@/hooks/useCurrentPrices";
+import { useFxRates } from "@/hooks/useFxRates";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
 interface HomePageProps {
@@ -25,12 +33,158 @@ interface HomePageProps {
 
 export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { toast } = useToast();
   const [interval, setInterval] = useState<Interval>("1M");
   const [showTransactions, setShowTransactions] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const { data: metrics } = useDashboardMetrics(user.id);
   const { data: transactions = [] } = useTransactions(user.id);
+  const { data: bankAccounts = [] } = useBankAccounts(user.id);
+  const { data: categories = [] } = useCategories(user.id, undefined);
+  const { data: transfers = [] } = useTransfers(user.id);
+  const { data: assetTransactions = [] } = useAssetTransactions(user.id);
+  const fxRates = useFxRates();
+
+  // Get unique symbols from asset transactions
+  const allSymbols = useMemo(() => 
+    [...new Set(assetTransactions.map(tx => tx.symbol.toUpperCase()))],
+    [assetTransactions]
+  );
+  const { data: currentPrices = {}, refreshPrices } = useCurrentPrices(allSymbols);
+
+  // Get USDT/EUR rate
+  const usdtEurRate = fxRates.getLatestRate("USDT/EUR") || 1;
+
+  // Calculate account balances in their original currency
+  const accountBalances = useMemo(() => {
+    const balances: Record<string, number> = {};
+    
+    // Initialize with initial_balance
+    for (const acc of bankAccounts) {
+      balances[acc.id] = Number(acc.initial_balance) || 0;
+    }
+    
+    // Add income, subtract expenses (matching currency)
+    for (const tx of transactions) {
+      if (tx.bank_account_id && balances[tx.bank_account_id] !== undefined) {
+        const account = bankAccounts.find(a => a.id === tx.bank_account_id);
+        if (account && tx.currency === account.currency) {
+          if (tx.type === "income") {
+            balances[tx.bank_account_id] += Number(tx.amount);
+          } else {
+            balances[tx.bank_account_id] -= Number(tx.amount);
+          }
+        }
+      }
+    }
+    
+    // Apply transfers
+    for (const transfer of transfers) {
+      const fromAccount = bankAccounts.find(a => a.id === transfer.from_account_id);
+      const toAccount = bankAccounts.find(a => a.id === transfer.to_account_id);
+      
+      if (fromAccount && transfer.currency_from === fromAccount.currency) {
+        balances[transfer.from_account_id] -= Number(transfer.amount_from);
+      }
+      if (toAccount && transfer.currency_to === toAccount.currency) {
+        balances[transfer.to_account_id] += Number(transfer.amount_to);
+      }
+    }
+    
+    return balances;
+  }, [bankAccounts, transactions, transfers]);
+
+  // Filter savings/investment accounts
+  const savingsAccounts = useMemo(() => {
+    const savingsCategoryIds = categories
+      .filter(c => 
+        c.name.toLowerCase().includes("ahorro") || 
+        c.name.toLowerCase().includes("inversión") ||
+        c.name.toLowerCase().includes("inversion")
+      )
+      .map(c => c.id);
+    
+    return bankAccounts.filter(
+      acc => !acc.is_archived && acc.category_id && savingsCategoryIds.includes(acc.category_id)
+    );
+  }, [bankAccounts, categories]);
+
+  // Calculate DCA total in EUR
+  const dcaTotal = useMemo(() => {
+    const holdings: Record<string, number> = {};
+    for (const tx of assetTransactions) {
+      if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
+      if (tx.side === "buy") holdings[tx.symbol] += Number(tx.quantity);
+      else holdings[tx.symbol] -= Number(tx.quantity);
+    }
+    
+    let totalUsd = 0;
+    for (const [symbol, qty] of Object.entries(holdings)) {
+      const price = currentPrices[symbol.toUpperCase()] || 0;
+      totalUsd += qty * price;
+    }
+    
+    return totalUsd * usdtEurRate;
+  }, [assetTransactions, currentPrices, usdtEurRate]);
+
+  // Calculate total patrimonio in EUR
+  const totalPatrimonio = useMemo(() => {
+    let total = 0;
+    for (const acc of savingsAccounts) {
+      const balance = accountBalances[acc.id] || 0;
+      
+      if (acc.currency === "EUR") {
+        total += balance;
+      } else if (acc.currency === "USD" || acc.currency === "USDT") {
+        total += balance * usdtEurRate;
+      }
+    }
+    
+    total += dcaTotal;
+    return total;
+  }, [savingsAccounts, accountBalances, dcaTotal, usdtEurRate]);
+
+  // Format currency based on account's currency
+  const formatAccountCurrency = (amount: number, currency: string) => {
+    if (currency === "USDT") {
+      return `${amount.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
+    }
+    return new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: currency,
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const formatEur = (amount: number) => {
+    return new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: "EUR",
+      minimumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const handleRefreshPrices = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([
+        refreshPrices(),
+        fxRates.fetchRate(),
+      ]);
+      queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+      toast({ title: "Precios actualizados" });
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "No se pudieron actualizar los precios",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -131,16 +285,66 @@ export function HomePage({ user }: HomePageProps) {
             <div>
               <p className="text-sm text-muted-foreground">Evolución Balance</p>
               <p className="text-xl font-bold">
-                {new Intl.NumberFormat("es-ES", {
-                  style: "currency",
-                  currency: "EUR",
-                }).format(metrics?.totalAssets ?? 0)}
+                {formatEur(metrics?.totalAssets ?? 0)}
               </p>
             </div>
             <IntervalSelector value={interval} onChange={setInterval} />
           </div>
           <div className="h-56 overflow-hidden">
             <EvolutionChart interval={interval} userId={user.id} />
+          </div>
+        </div>
+      </div>
+
+      {/* Savings Accounts Panel */}
+      <div className="px-4 py-2">
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-sm">Desglose Patrimonio</h3>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleRefreshPrices}
+              disabled={isRefreshing}
+              className="h-8 w-8 p-0"
+            >
+              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+            </Button>
+          </div>
+          
+          <div className="space-y-3">
+            {savingsAccounts.map(acc => (
+              <div key={acc.id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{acc.name}</span>
+                </div>
+                <span className="font-medium text-sm">
+                  {formatAccountCurrency(accountBalances[acc.id] || 0, acc.currency)}
+                </span>
+              </div>
+            ))}
+            
+            {/* DCA Entry */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">DCA (Total)</span>
+              </div>
+              <span className="font-medium text-sm text-primary">
+                {formatEur(dcaTotal)}
+              </span>
+            </div>
+            
+            {/* Separator + Total */}
+            <div className="border-t border-border pt-3 mt-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold">Total Patrimonio</span>
+                <span className="text-lg font-bold">
+                  {formatEur(totalPatrimonio)}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
