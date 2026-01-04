@@ -50,6 +50,9 @@ export function HomePage({ user }: HomePageProps) {
       case "pending-payments":
         navigate("/pending-payments");
         break;
+      case "data":
+        navigate("/account?tab=data");
+        break;
     }
   };
 
