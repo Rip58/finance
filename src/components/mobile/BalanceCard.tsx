@@ -33,16 +33,15 @@ export function BalanceCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-2xl p-5",
+        "relative overflow-hidden rounded-2xl p-4",
         "bg-primary text-primary-foreground",
         "shadow-lg",
         className
       )}
     >
-      
-      <div className="relative z-10 flex justify-between">
-        {/* Left side - Main balance */}
-        <div className="flex-1">
+      <div className="relative z-10">
+        {/* Main balance - top section */}
+        <div className="mb-3">
           <p className="text-xs font-medium opacity-90">Balance</p>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-2xl font-bold tracking-tight">
@@ -58,28 +57,32 @@ export function BalanceCard({
             </Button>
           </div>
           {subtitle && (
-            <p className="text-xs opacity-75 mt-2 flex items-center gap-1.5">
+            <p className="text-xs opacity-75 mt-1 flex items-center gap-1.5">
               <span className="inline-block w-1 h-1 rounded-full bg-current opacity-60" />
               {subtitle}
             </p>
           )}
         </div>
 
-        {/* Right side - Savings & Investments */}
-        <div className="flex flex-col items-end justify-center gap-2 pl-4 border-l border-primary-foreground/20">
-          <div className="flex items-center gap-1.5">
-            <PiggyBank className="h-3.5 w-3.5 opacity-70" />
-            <span className="text-xs opacity-80">Ahorros</span>
-            <span className="text-sm font-semibold">
-              {hidden ? "••••" : formatCurrency(savingsTotal, currency)}
-            </span>
+        {/* Savings & Investments - bottom section in row */}
+        <div className="flex justify-between items-center border-t border-primary-foreground/20 pt-3">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <PiggyBank className="h-3.5 w-3.5 opacity-70 flex-shrink-0" />
+            <div className="min-w-0">
+              <span className="text-xs opacity-80 block">Ahorros</span>
+              <span className="text-sm font-semibold truncate block">
+                {hidden ? "••••" : formatCurrency(savingsTotal, currency)}
+              </span>
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <TrendingUp className="h-3.5 w-3.5 opacity-70" />
-            <span className="text-xs opacity-80">Inversiones</span>
-            <span className="text-sm font-semibold">
-              {hidden ? "••••" : formatCurrency(investmentsTotal, currency)}
-            </span>
+          <div className="flex items-center gap-1.5 min-w-0 text-right">
+            <div className="min-w-0">
+              <span className="text-xs opacity-80 block">Inversiones</span>
+              <span className="text-sm font-semibold truncate block">
+                {hidden ? "••••" : formatCurrency(investmentsTotal, currency)}
+              </span>
+            </div>
+            <TrendingUp className="h-3.5 w-3.5 opacity-70 flex-shrink-0" />
           </div>
         </div>
       </div>
