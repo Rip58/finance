@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { supabase } from "@/integrations/supabase/client";
 import { AuthForm } from "@/components/AuthForm";
+import { SplashScreen } from "@/components/SplashScreen";
 import { HomePage } from "@/pages/HomePage";
 import { ReportPage } from "@/pages/ReportPage";
 import { AccountPage } from "@/pages/AccountPage";
@@ -23,15 +24,26 @@ const queryClient = new QueryClient();
 function AppContent() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showSplash, setShowSplash] = useState(false);
+  const previousUserRef = useRef<User | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
+      previousUserRef.current = session?.user ?? null;
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const newUser = session?.user ?? null;
+      
+      // Detect new login (previously no user, now there is one)
+      if (!previousUserRef.current && newUser) {
+        setShowSplash(true);
+      }
+      
+      previousUserRef.current = newUser;
+      setUser(newUser);
     });
 
     return () => subscription.unsubscribe();
@@ -47,6 +59,11 @@ function AppContent() {
 
   if (!user) {
     return <AuthForm onSuccess={() => {}} />;
+  }
+
+  // Show splash after login
+  if (showSplash) {
+    return <SplashScreen onComplete={() => setShowSplash(false)} />;
   }
 
   return (
@@ -69,7 +86,7 @@ function AppContent() {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
+    <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
