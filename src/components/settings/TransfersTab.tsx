@@ -11,6 +11,7 @@ import { Plus, Pencil, Trash2, Loader2, RefreshCw, ArrowRightLeft, Check, Circle
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatCurrency } from "@/lib/utils";
 
 interface TransfersTabProps {
   userId: string;
@@ -112,12 +113,6 @@ export function TransfersTab({ userId }: TransfersTabProps) {
   };
 
   const getAccountName = (id: string) => accounts?.find(a => a.id === id)?.name || "-";
-
-  const formatCurrency = (value: number, currency: string) =>
-    new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: currency === "USDT" ? "USD" : currency,
-    }).format(value);
 
   if (isLoading) {
     return (

@@ -11,19 +11,12 @@ import {
 import { Interval } from "./IntervalSelector";
 import { useChartData } from "@/hooks/useChartData";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatCurrency, formatCompact } from "@/lib/utils";
 
 interface EvolutionChartProps {
   interval: Interval;
   userId: string | undefined;
 }
-
-const formatEUR = (value: number) =>
-  new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: "EUR",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
@@ -36,7 +29,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             className="text-sm"
             style={{ color: entry.color }}
           >
-            {entry.name}: {formatEUR(entry.value)}
+            {entry.name}: {formatCurrency(entry.value, "EUR")}
           </p>
         ))}
       </div>
@@ -107,7 +100,7 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
             axisLine={false}
             tickLine={false}
             tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
-            tickFormatter={(value) => `${(value / 1000).toFixed(0)}k`}
+            tickFormatter={(value) => formatCompact(value)}
             dx={-10}
           />
           <Tooltip content={<CustomTooltip />} />

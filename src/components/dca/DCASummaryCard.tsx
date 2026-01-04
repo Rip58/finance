@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 
 interface DCASummaryCardProps {
@@ -74,11 +74,7 @@ export function DCASummaryCard({
     return { totalInvested, currentValue, pnl, pnlPercent, averagePrice };
   }, [transactions, currentPrices]);
 
-  const formatUSDT = (value: number) => 
-    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
-
-  const formatUSD = (value: number) => 
-    `$${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const formatUSD = (value: number) => formatCurrency(value, "USD");
 
   const currentPrice = symbol ? currentPrices[symbol.toUpperCase()] : null;
 
@@ -113,13 +109,13 @@ export function DCASummaryCard({
           <div>
             <p className="text-sm text-muted-foreground">Total invertido</p>
             <p className="text-xl font-bold text-foreground">
-              {formatUSDT(totals.totalInvested)}
+              {formatCurrency(totals.totalInvested, "USDT")}
             </p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Valor actual</p>
             <p className="text-xl font-bold text-foreground">
-              {formatUSDT(totals.currentValue)}
+              {formatCurrency(totals.currentValue, "USDT")}
             </p>
           </div>
           <div>
@@ -128,7 +124,7 @@ export function DCASummaryCard({
               "text-xl font-bold",
               totals.pnl >= 0 ? "text-chart-income" : "text-destructive"
             )}>
-              {totals.pnl >= 0 ? "+" : ""}{formatUSDT(totals.pnl)}
+              {totals.pnl >= 0 ? "+" : ""}{formatCurrency(totals.pnl, "USDT")}
             </p>
           </div>
           <div>

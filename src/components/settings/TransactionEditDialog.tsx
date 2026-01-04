@@ -12,19 +12,13 @@ import { Pencil, Trash2, Loader2, Check, Circle, TrendingUp, TrendingDown } from
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface TransactionEditDialogProps {
   transaction: Transaction;
   userId: string;
   onClose: () => void;
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency: currency === "USDT" ? "USD" : currency,
-  }).format(value);
 
 export function TransactionEditDialog({ transaction, userId, onClose }: TransactionEditDialogProps) {
   const { update, delete: deleteTransaction, isUpdating, isDeleting } = useTransactions(userId, transaction.type);

@@ -30,6 +30,7 @@ import {
 import { useDCAPortfolios, type DCAPortfolio } from "@/hooks/useDCAPortfolios";
 import { useAssetTransactions } from "@/hooks/useAssetTransactions";
 import { useCryptoAssets } from "@/hooks/useCryptoAssets";
+import { formatCurrency } from "@/lib/utils";
 
 interface DCAsTabProps {
   userId: string;
@@ -136,9 +137,6 @@ export function DCAsTab({ userId }: DCAsTabProps) {
       setDeleteId(null);
     }
   };
-
-  const formatUSDT = (value: number) =>
-    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 
   const totalInitial = (parseFloat(formData.initialQuantity) || 0) * (parseFloat(formData.initialPrice) || 0);
 
@@ -309,7 +307,7 @@ export function DCAsTab({ userId }: DCAsTabProps) {
                 {totalInitial > 0 && (
                   <div className="p-2 rounded-lg bg-primary/10 text-center">
                     <p className="text-xs text-muted-foreground">Inversión inicial</p>
-                    <p className="font-bold text-primary">{formatUSDT(totalInitial)}</p>
+                    <p className="font-bold text-primary">{formatCurrency(totalInitial, "USDT")}</p>
                   </div>
                 )}
               </div>

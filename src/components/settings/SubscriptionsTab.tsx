@@ -14,7 +14,7 @@ import { Plus, Pencil, Trash2, Loader2, Repeat } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 const cadenceLabels: Record<Cadence, string> = {
   weekly: "Semanal",
@@ -99,12 +99,6 @@ export function SubscriptionsTab({ userId }: SubscriptionsTabProps) {
     });
     setIsDialogOpen(true);
   };
-
-  const formatCurrency = (value: number, currency: string) =>
-    new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: currency === "USDT" ? "USD" : currency,
-    }).format(value);
 
   if (isLoading) {
     return (

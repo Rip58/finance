@@ -23,7 +23,7 @@ import { useFxRates } from "@/hooks/useFxRates";
 import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
 interface HomePageProps {
@@ -192,22 +192,13 @@ export function HomePage({ user }: HomePageProps) {
     return ((lastValue - firstValue) / firstValue) * 100;
   }, [chartData]);
 
-  // Format currency based on account's currency
+  // Format account currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
-    if (currency === "USDT" || currency === "USD") {
-      return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: currency,
-      minimumFractionDigits: 2,
-    }).format(amount);
+    return formatCurrency(amount, currency);
   };
   
   // Format USD with $ symbol
-  const formatUsd = (amount: number) => {
-    return `$${amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const formatUsd = (amount: number) => formatCurrency(amount, "USD");
 
   // Get display value for account (holdings value for crypto, balance for others)
   const getAccountDisplayValue = (acc: typeof bankAccounts[0]) => {
@@ -218,13 +209,7 @@ export function HomePage({ user }: HomePageProps) {
     return formatAccountCurrency(accountBalances[acc.id] || 0, acc.currency);
   };
 
-  const formatEur = (amount: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "EUR",
-      minimumFractionDigits: 2,
-    }).format(amount);
-  };
+  const formatEur = (amount: number) => formatCurrency(amount, "EUR");
 
   const handleRefreshPrices = async () => {
     setIsRefreshing(true);
