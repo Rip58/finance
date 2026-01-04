@@ -75,8 +75,8 @@ export function DCAFormDialog({
     onOpenChange(false);
   };
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value);
+  const formatUSDT = (value: number) =>
+    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -116,7 +116,7 @@ export function DCAFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price_eur">Precio (EUR)</Label>
+              <Label htmlFor="price_eur">Precio (USDT)</Label>
               <Input
                 id="price_eur"
                 type="number"
@@ -134,7 +134,7 @@ export function DCAFormDialog({
           <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
             <p className="text-sm text-muted-foreground">Inversión total</p>
             <p className="text-2xl font-bold text-primary">
-              {formatCurrency(totalInvestment)}
+              {formatUSDT(totalInvestment)}
             </p>
           </div>
 
