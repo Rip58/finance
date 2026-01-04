@@ -1,7 +1,7 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronRight, TrendingUp, TrendingDown, ArrowRightLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export interface TransactionItem {
   id: string;
@@ -22,14 +22,6 @@ interface TransactionListProps {
   className?: string;
   maxItems?: number;
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 
 const getCategoryIcon = (type: string) => {
   switch (type) {

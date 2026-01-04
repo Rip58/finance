@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Pencil, Trash2 } from "lucide-react";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 import { CryptoLogo } from "./CryptoLogo";
+import { formatCurrency } from "@/lib/utils";
 
 interface DCAEntryListProps {
   transactions: AssetTransaction[] | undefined;
@@ -13,8 +14,6 @@ interface DCAEntryListProps {
 }
 
 export function DCAEntryList({ transactions, onEdit, onDelete }: DCAEntryListProps) {
-  const formatUSDT = (value: number) =>
-    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
 
   // Filter only buys and sort by date descending
   const dcaEntries = (transactions || [])
@@ -42,14 +41,14 @@ export function DCAEntryList({ transactions, onEdit, onDelete }: DCAEntryListPro
                   {format(new Date(tx.transaction_date), "dd MMM yyyy", { locale: es })}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  {tx.quantity} × {formatUSDT(tx.price_eur)}
+                  {tx.quantity} × {formatCurrency(tx.price_eur, "USDT")}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <div className="text-right mr-2">
                 <p className="font-bold text-foreground">
-                  {formatUSDT(tx.quantity * tx.price_eur)}
+                  {formatCurrency(tx.quantity * tx.price_eur, "USDT")}
                 </p>
                 <p className="text-xs text-muted-foreground">Inversión</p>
               </div>

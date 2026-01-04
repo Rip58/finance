@@ -1,5 +1,5 @@
 import { ChevronRight } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export interface CategorySummary {
   id: string;
@@ -17,14 +17,6 @@ interface CategorySummaryListProps {
   onCategoryClick?: (categoryId: string) => void;
   className?: string;
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 
 const categoryColors = [
   "bg-primary/10 text-primary",

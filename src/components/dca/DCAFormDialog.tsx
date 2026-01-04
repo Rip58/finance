@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
+import { formatCurrency } from "@/lib/utils";
 
 interface BankAccount {
   id: string;
@@ -94,9 +95,6 @@ export function DCAFormDialog({
     onOpenChange(false);
   };
 
-  const formatUSDT = (value: number) =>
-    `${value.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDT`;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -153,7 +151,7 @@ export function DCAFormDialog({
           <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
             <p className="text-sm text-muted-foreground">Inversión total</p>
             <p className="text-2xl font-bold text-primary">
-              {formatUSDT(totalInvestment)}
+              {formatCurrency(totalInvestment, "USDT")}
             </p>
           </div>
 

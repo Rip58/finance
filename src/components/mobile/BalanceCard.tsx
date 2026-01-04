@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, PiggyBank, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 interface BalanceCardProps {
   balance: number;
@@ -11,14 +11,6 @@ interface BalanceCardProps {
   investmentsTotal?: number;
   className?: string;
 }
-
-const formatCurrency = (value: number, currency: string) =>
-  new Intl.NumberFormat("es-ES", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
 
 export function BalanceCard({
   balance,

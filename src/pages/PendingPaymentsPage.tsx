@@ -16,6 +16,7 @@ import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { format, differenceInMonths, addMonths } from "date-fns";
 import { es } from "date-fns/locale";
 import type { User } from "@supabase/supabase-js";
+import { formatCurrency } from "@/lib/utils";
 
 interface PendingPaymentsPageProps {
   user: User;
@@ -172,12 +173,6 @@ export function PendingPaymentsPage({ user }: PendingPaymentsPageProps) {
     setNewAccountName("");
     setNewAccountCurrency("EUR");
   };
-
-  const formatCurrency = (value: number, currency: string) =>
-    new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: currency === "USDT" ? "USD" : currency,
-    }).format(value);
 
   const getAccountName = (id: string | null) => 
     id ? accounts?.find(a => a.id === id)?.name || "-" : "-";
