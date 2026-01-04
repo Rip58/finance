@@ -1,0 +1,76 @@
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Pencil, Trash2 } from "lucide-react";
+import type { AssetTransaction } from "@/hooks/useAssetTransactions";
+
+interface DCAEntryListProps {
+  transactions: AssetTransaction[] | undefined;
+  onEdit: (tx: AssetTransaction) => void;
+  onDelete: (id: string) => void;
+}
+
+export function DCAEntryList({ transactions, onEdit, onDelete }: DCAEntryListProps) {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(value);
+
+  // Filter only buys and sort by date descending
+  const dcaEntries = (transactions || [])
+    .filter((tx) => tx.side === "buy")
+    .sort((a, b) => new Date(b.transaction_date).getTime() - new Date(a.transaction_date).getTime());
+
+  if (dcaEntries.length === 0) {
+    return (
+      <div className="px-4 py-8 text-center text-muted-foreground">
+        <p>No hay entradas de DCA todavía.</p>
+        <p className="text-sm">Pulsa el botón + para añadir tu primera compra.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3 px-4">
+      {dcaEntries.map((tx) => (
+        <Card key={tx.id} className="p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-chart-assets/10 flex items-center justify-center">
+                <span className="font-mono font-bold text-chart-assets text-sm">
+                  {tx.symbol.substring(0, 4)}
+                </span>
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  {format(new Date(tx.transaction_date), "dd MMM yyyy", { locale: es })}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {tx.quantity} × {formatCurrency(tx.price_eur)}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="text-right mr-2">
+                <p className="font-bold text-foreground">
+                  {formatCurrency(tx.quantity * tx.price_eur)}
+                </p>
+                <p className="text-xs text-muted-foreground">Inversión</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => onEdit(tx)}>
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => onDelete(tx.id)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+          {tx.notes && (
+            <p className="mt-2 text-sm text-muted-foreground border-t border-border pt-2">
+              {tx.notes}
+            </p>
+          )}
+        </Card>
+      ))}
+    </div>
+  );
+}

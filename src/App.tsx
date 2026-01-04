@@ -14,6 +14,7 @@ import { AddIncomePage } from "@/pages/AddIncomePage";
 import { AddExpensePage } from "@/pages/AddExpensePage";
 import { AddTransferPage } from "@/pages/AddTransferPage";
 import { PendingPaymentsPage } from "@/pages/PendingPaymentsPage";
+import { DCAPage } from "@/pages/DCAPage";
 import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 
@@ -51,6 +52,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/" element={<HomePage user={user} />} />
+      <Route path="/dca" element={<DCAPage user={user} />} />
       <Route path="/report" element={<ReportPage user={user} />} />
       <Route path="/account" element={<AccountPage user={user} />} />
       <Route path="/add-income" element={<AddIncomePage user={user} />} />
