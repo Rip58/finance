@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { LogOut, RefreshCw, Building2, TrendingUp } from "lucide-react";
+import { LogOut, RefreshCw, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import {
   BalanceCard,
 } from "@/components/mobile";
 import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
+import { SortableAccountList } from "@/components/mobile/SortableAccountList";
 import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { useChartData } from "@/hooks/useChartData";
@@ -42,7 +43,7 @@ export function HomePage({ user }: HomePageProps) {
   const { data: metrics } = useDashboardMetrics(user.id);
   const { data: chartData } = useChartData(interval, user.id);
   const { data: transactions = [] } = useTransactions(user.id);
-  const { data: bankAccounts = [] } = useBankAccounts(user.id);
+  const { data: bankAccounts = [], updateSortOrder } = useBankAccounts(user.id);
   const { data: categories = [] } = useCategories(user.id, undefined);
   const { data: transfers = [] } = useTransfers(user.id);
   const { data: assetTransactions = [] } = useAssetTransactions(user.id);
@@ -181,16 +182,19 @@ export function HomePage({ user }: HomePageProps) {
     return total;
   }, [savingsAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
-  // Calculate percentage change from chart data
-  const percentageChange = useMemo(() => {
-    if (!chartData || chartData.length < 2) return null;
+  // Calculate percentage change and absolute variation from chart data
+  const { percentageChange, absoluteChange } = useMemo(() => {
+    if (!chartData || chartData.length < 2) return { percentageChange: null, absoluteChange: null };
     
     const firstValue = chartData[0].balanceTotal;
     const lastValue = chartData[chartData.length - 1].balanceTotal;
     
-    if (firstValue === 0) return null;
+    const absChange = lastValue - firstValue;
     
-    return ((lastValue - firstValue) / firstValue) * 100;
+    if (firstValue === 0) return { percentageChange: null, absoluteChange: absChange };
+    
+    const pctChange = ((lastValue - firstValue) / firstValue) * 100;
+    return { percentageChange: pctChange, absoluteChange: absChange };
   }, [chartData]);
 
   // Format account currency based on account's currency
@@ -285,10 +289,15 @@ export function HomePage({ user }: HomePageProps) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-sm text-muted-foreground">Evolución Balance</p>
-              <div className="flex items-center gap-2">
-                <p className="text-xl font-bold">
-                  {formatEur(metrics?.totalAssets ?? 0)}
-                </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                {absoluteChange !== null && (
+                  <p className={cn(
+                    "text-xl font-bold",
+                    absoluteChange >= 0 ? "text-green-500" : "text-red-500"
+                  )}>
+                    {absoluteChange >= 0 ? "+" : ""}{formatEur(absoluteChange)}
+                  </p>
+                )}
                 {percentageChange !== null && (
                   <span className={cn(
                     "text-xs font-medium px-1.5 py-0.5 rounded",
@@ -326,21 +335,12 @@ export function HomePage({ user }: HomePageProps) {
           </div>
           
           <div className="space-y-3">
-            {savingsAccounts.map(acc => (
-              <button 
-                key={acc.id} 
-                onClick={() => setSelectedAccount(acc)}
-                className="flex items-center justify-between w-full hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{acc.name}</span>
-                </div>
-                <span className="font-medium text-sm">
-                  {getAccountDisplayValue(acc)}
-                </span>
-              </button>
-            ))}
+            <SortableAccountList
+              accounts={savingsAccounts}
+              getDisplayValue={getAccountDisplayValue}
+              onAccountClick={(acc) => setSelectedAccount(acc as typeof bankAccounts[0])}
+              onReorder={updateSortOrder}
+            />
             
             {/* DCA Entry */}
             <div className="flex items-center justify-between p-2 -mx-2">
@@ -351,16 +351,6 @@ export function HomePage({ user }: HomePageProps) {
               <span className="font-medium text-sm text-primary">
                 {formatUsd(dcaTotalUsd)}
               </span>
-            </div>
-            
-            {/* Separator + Total */}
-            <div className="border-t border-border pt-3 mt-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold">Total Patrimonio</span>
-                <span className="text-lg font-bold">
-                  {formatEur(totalPatrimonio)}
-                </span>
-              </div>
             </div>
           </div>
         </div>

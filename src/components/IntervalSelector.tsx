@@ -1,6 +1,12 @@
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-export type Interval = "1M" | "3M" | "1Y";
+export type Interval = "7D" | "15D" | "1M" | "3M" | "1Y";
 
 interface IntervalSelectorProps {
   value: Interval;
@@ -8,28 +14,26 @@ interface IntervalSelectorProps {
 }
 
 const intervals: { value: Interval; label: string }[] = [
-  { value: "1M", label: "1M" },
-  { value: "3M", label: "3M" },
-  { value: "1Y", label: "1Y" },
+  { value: "7D", label: "7 días" },
+  { value: "15D", label: "15 días" },
+  { value: "1M", label: "1 mes" },
+  { value: "3M", label: "3 meses" },
+  { value: "1Y", label: "1 año" },
 ];
 
 export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {
   return (
-    <div className="inline-flex items-center gap-1 rounded-lg bg-secondary/50 p-1">
-      {intervals.map((interval) => (
-        <button
-          key={interval.value}
-          onClick={() => onChange(interval.value)}
-          className={cn(
-            "px-4 py-1.5 text-sm font-medium rounded-md transition-all duration-200",
-            value === interval.value
-              ? "bg-primary text-primary-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground hover:bg-secondary"
-          )}
-        >
-          {interval.label}
-        </button>
-      ))}
-    </div>
+    <Select value={value} onValueChange={onChange}>
+      <SelectTrigger className="w-[110px] h-8 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {intervals.map((interval) => (
+          <SelectItem key={interval.value} value={interval.value} className="text-xs">
+            {interval.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
