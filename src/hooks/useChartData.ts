@@ -291,7 +291,9 @@ export function useChartData(interval: Interval, userId: string | undefined) {
           accountHoldingsValue += quantity * price;
         }
         
-        const activos = dcaValue + accountHoldingsValue;
+        // Convert crypto assets from USD to EUR
+        const fxRate = getFxRateAtDate(fxRates, actualEnd);
+        const activos = (dcaValue + accountHoldingsValue) * fxRate;
         
         // Calculate savings account balance at end of period
         const ahorros = calculateSavingsAtDate(
