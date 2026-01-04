@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Bell, LogOut, ChevronDown, ChevronUp, RefreshCw, Building2, TrendingUp } from "lucide-react";
+import { LogOut, ChevronDown, ChevronUp, RefreshCw, Building2, TrendingUp } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,7 @@ import {
   type QuickActionType,
   type TransactionItem,
 } from "@/components/mobile";
+import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
 import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
 import { EvolutionChart } from "@/components/EvolutionChart";
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
@@ -38,6 +39,7 @@ export function HomePage({ user }: HomePageProps) {
   const [interval, setInterval] = useState<Interval>("1M");
   const [showTransactions, setShowTransactions] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [selectedAccount, setSelectedAccount] = useState<typeof bankAccounts[0] | null>(null);
 
   const { data: metrics } = useDashboardMetrics(user.id);
   const { data: transactions = [] } = useTransactions(user.id);
@@ -254,9 +256,6 @@ export function HomePage({ user }: HomePageProps) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-9 w-9">
-            <Bell className="h-5 w-5" />
-          </Button>
           <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
             <LogOut className="h-5 w-5" />
           </Button>
@@ -314,7 +313,11 @@ export function HomePage({ user }: HomePageProps) {
           
           <div className="space-y-3">
             {savingsAccounts.map(acc => (
-              <div key={acc.id} className="flex items-center justify-between">
+              <button 
+                key={acc.id} 
+                onClick={() => setSelectedAccount(acc)}
+                className="flex items-center justify-between w-full hover:bg-muted/50 rounded-lg p-2 -mx-2 transition-colors text-left"
+              >
                 <div className="flex items-center gap-2">
                   <Building2 className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">{acc.name}</span>
@@ -322,7 +325,7 @@ export function HomePage({ user }: HomePageProps) {
                 <span className="font-medium text-sm">
                   {formatAccountCurrency(accountBalances[acc.id] || 0, acc.currency)}
                 </span>
-              </div>
+              </button>
             ))}
             
             {/* DCA Entry */}
@@ -376,6 +379,14 @@ export function HomePage({ user }: HomePageProps) {
           </p>
         )}
       </div>
+
+      {/* Account Edit Dialog */}
+      <AccountEditDialog
+        open={!!selectedAccount}
+        onOpenChange={(open) => !open && setSelectedAccount(null)}
+        account={selectedAccount}
+        userId={user.id}
+      />
     </MobileLayout>
   );
 }

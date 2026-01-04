@@ -3,8 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   MobileLayout,
   MobilePageHeader,
-  CategorySummaryList,
-  type CategorySummary,
 } from "@/components/mobile";
 import {
   Select,
@@ -14,6 +12,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransfers } from "@/hooks/useTransfers";
@@ -49,8 +49,8 @@ export function ReportPage({ user }: ReportPageProps) {
   const navigate = useNavigate();
   const [range, setRange] = useState<RangeType>("monthly");
 
-  const { data: expenseTransactions = [] } = useTransactions(user.id, "expense");
-  const { data: incomeTransactions = [] } = useTransactions(user.id, "income");
+  const { data: expenseTransactions = [], update: updateTransaction } = useTransactions(user.id, "expense");
+  const { data: incomeTransactions = [], update: updateIncomeTransaction } = useTransactions(user.id, "income");
   const { data: categories = [] } = useCategories(user.id, "expense");
   const { data: allCategories = [] } = useCategories(user.id, undefined);
   const { data: transfers = [] } = useTransfers(user.id);
@@ -129,34 +129,28 @@ export function ReportPage({ user }: ReportPageProps) {
     return chartData.reduce((sum, m) => sum + m.ahorro, 0);
   }, [chartData]);
 
-  // Category breakdown
-  const categoryBreakdown: CategorySummary[] = useMemo(() => {
-    const categoryMap = new Map<string, { name: string; count: number; total: number }>();
+  // Get current month transactions
+  const currentMonthTransactions = useMemo(() => {
+    const start = startOfMonth(new Date());
+    const end = endOfMonth(new Date());
+    
+    const expenses = expenseTransactions.filter(tx => 
+      isWithinInterval(new Date(tx.date), { start, end })
+    );
+    const income = incomeTransactions.filter(tx => 
+      isWithinInterval(new Date(tx.date), { start, end })
+    );
+    
+    return { expenses, income };
+  }, [expenseTransactions, incomeTransactions]);
 
-    expenseTransactions.forEach((tx) => {
-      const cat = categories.find((c) => c.id === tx.category_id);
-      const catName = cat?.name || "Sin categoría";
-      const catId = tx.category_id || "uncategorized";
-
-      const existing = categoryMap.get(catId) || { name: catName, count: 0, total: 0 };
-      categoryMap.set(catId, {
-        name: catName,
-        count: existing.count + 1,
-        total: existing.total + tx.amount,
-      });
-    });
-
-    return Array.from(categoryMap.entries())
-      .map(([id, data]) => ({
-        id,
-        name: data.name,
-        count: data.count,
-        total: data.total,
-        currency: "EUR",
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 5);
-  }, [expenseTransactions, categories]);
+  const handleToggleValidation = async (id: string, isValidated: boolean, type: "income" | "expense") => {
+    if (type === "income") {
+      await updateIncomeTransaction({ id, is_validated: isValidated });
+    } else {
+      await updateTransaction({ id, is_validated: isValidated });
+    }
+  };
 
   const totalIncome = useMemo(() => {
     return chartData.reduce((sum, m) => sum + m.ingresos, 0);
@@ -251,11 +245,58 @@ export function ReportPage({ user }: ReportPageProps) {
               </ResponsiveContainer>
             </div>
 
-            {/* Category Breakdown */}
-            <CategorySummaryList
-              categories={categoryBreakdown}
-              onSeeAll={() => navigate("/account?tab=categories")}
-            />
+            {/* Income / Expense Validation Lists */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Ingresos */}
+              <div>
+                <h4 className="text-sm font-medium text-green-500 mb-3">Ingresos</h4>
+                <ScrollArea className="h-64">
+                  <div className="space-y-2 pr-2">
+                    {currentMonthTransactions.income.map(tx => (
+                      <div key={tx.id} className="flex items-start gap-2">
+                        <Checkbox 
+                          checked={tx.is_validated}
+                          onCheckedChange={(checked) => handleToggleValidation(tx.id, !!checked, "income")}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm truncate block">{tx.description || "Sin descripción"}</span>
+                          <span className="text-xs font-medium text-green-500">{formatCurrency(tx.amount)}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {currentMonthTransactions.income.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Sin ingresos este mes</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+              
+              {/* Gastos */}
+              <div>
+                <h4 className="text-sm font-medium text-destructive mb-3">Gastos</h4>
+                <ScrollArea className="h-64">
+                  <div className="space-y-2 pr-2">
+                    {currentMonthTransactions.expenses.map(tx => (
+                      <div key={tx.id} className="flex items-start gap-2">
+                        <Checkbox 
+                          checked={tx.is_validated}
+                          onCheckedChange={(checked) => handleToggleValidation(tx.id, !!checked, "expense")}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm truncate block">{tx.description || "Sin descripción"}</span>
+                          <span className="text-xs font-medium text-destructive">{formatCurrency(tx.amount)}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {currentMonthTransactions.expenses.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Sin gastos este mes</p>
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </div>
           </TabsContent>
 
           <TabsContent value="savings">
