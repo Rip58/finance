@@ -11,6 +11,7 @@ export interface BankAccount {
   is_archived: boolean;
   created_at: string;
   initial_balance: number;
+  sort_order?: number;
 }
 
 export function useBankAccounts(userId: string | undefined) {
@@ -26,6 +27,7 @@ export function useBankAccounts(userId: string | undefined) {
         .from("bank_accounts")
         .select("*")
         .eq("user_id", userId)
+        .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
       
       if (error) throw error;
@@ -92,11 +94,31 @@ export function useBankAccounts(userId: string | undefined) {
     },
   });
 
+  const updateSortOrderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const { id, sort_order } of updates) {
+        const { error } = await supabase
+          .from("bank_accounts")
+          .update({ sort_order })
+          .eq("id", id);
+        
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["bank-accounts", userId] });
+    },
+    onError: (error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   return {
     ...query,
     create: createMutation.mutateAsync,
     update: updateMutation.mutateAsync,
     delete: deleteMutation.mutateAsync,
+    updateSortOrder: updateSortOrderMutation.mutateAsync,
     isCreating: createMutation.isPending,
     isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,

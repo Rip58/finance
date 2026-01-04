@@ -137,6 +137,41 @@ export type Database = {
           },
         ]
       }
+      balance_snapshots: {
+        Row: {
+          balance: number
+          bank_account_id: string
+          created_at: string
+          id: string
+          snapshot_date: string
+          user_id: string
+        }
+        Insert: {
+          balance: number
+          bank_account_id: string
+          created_at?: string
+          id?: string
+          snapshot_date?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          bank_account_id?: string
+          created_at?: string
+          id?: string
+          snapshot_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "balance_snapshots_bank_account_id_fkey"
+            columns: ["bank_account_id"]
+            isOneToOne: false
+            referencedRelation: "bank_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bank_accounts: {
         Row: {
           category_id: string | null
@@ -146,6 +181,7 @@ export type Database = {
           initial_balance: number
           is_archived: boolean
           name: string
+          sort_order: number | null
           user_id: string
         }
         Insert: {
@@ -156,6 +192,7 @@ export type Database = {
           initial_balance?: number
           is_archived?: boolean
           name: string
+          sort_order?: number | null
           user_id: string
         }
         Update: {
@@ -166,6 +203,7 @@ export type Database = {
           initial_balance?: number
           is_archived?: boolean
           name?: string
+          sort_order?: number | null
           user_id?: string
         }
         Relationships: [
