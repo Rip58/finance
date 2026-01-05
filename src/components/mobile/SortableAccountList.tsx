@@ -17,6 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface Account {
   id: string;
@@ -76,7 +77,16 @@ function SortableAccountItem({
           onClick={onClick}
           className="flex items-center gap-2 flex-1 text-left"
         >
-          <Building2 className="h-4 w-4 text-muted-foreground" />
+          <Avatar className="h-5 w-5 mr-2">
+            <AvatarImage
+              src={`https://logo.clearbit.com/${account.name.toLowerCase().replace(/\s/g, "")}.com`}
+              alt={account.name}
+              className="object-contain"
+            />
+            <AvatarFallback className="bg-transparent">
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </AvatarFallback>
+          </Avatar>
           <span className="text-sm">{account.name}</span>
         </button>
       </div>
@@ -92,7 +102,7 @@ export function SortableAccountList({
   onReorder,
 }: SortableAccountListProps) {
   const [items, setItems] = useState(accounts);
-  
+
   // Update items when accounts prop changes
   if (accounts.length !== items.length || accounts.some((a, i) => a.id !== items[i]?.id)) {
     setItems(accounts);
