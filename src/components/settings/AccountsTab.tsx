@@ -40,7 +40,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
     initial_balance: "0",
   });
 
-  const DEFAULT_ACCOUNT_CATEGORIES = ["Corriente", "Ahorros", "Crypto", "Inversiones"];
+  const DEFAULT_ACCOUNT_CATEGORIES = ["Corriente", "Ahorros", "Inversiones"];
 
   useEffect(() => {
     if (!userId || !categories || categories.length > 0 || isCreatingCategory) return;
@@ -89,7 +89,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
       currency: formData.currency,
       category_id: formData.category_id,
       is_archived: formData.is_archived,
-      initial_balance: parseFloat(formData.initial_balance) || 0,
+      initial_balance: 0,
     };
     if (editingAccount) {
       await update({ id: editingAccount.id, ...dataToSave });
@@ -336,20 +336,11 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="USDT">USDT</SelectItem>
+                  <SelectItem value="USD">USD</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label>Saldo inicial</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={formData.initial_balance}
-                onChange={(e) => setFormData({ ...formData, initial_balance: e.target.value })}
-                placeholder="0.00"
-              />
-            </div>
+
             <div className="space-y-2">
               <Label>Categoría</Label>
               <Select
@@ -366,7 +357,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                   <SelectValue placeholder="Selecciona categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories?.filter(c => !c.is_archived).map((cat) => (
+                  {categories?.filter(c => !c.is_archived && !["crypto", "cryptocoin"].includes(c.name.toLowerCase())).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}
                   <div className="border-t border-border my-1" />

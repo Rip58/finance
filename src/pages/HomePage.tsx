@@ -53,7 +53,7 @@ export function HomePage({ user }: HomePageProps) {
   // Ensure default categories exist
   useEffect(() => {
     if (categories.length > 0) {
-      const defaults = ["Ahorros", "Inversiones", "Cryptocoin"];
+      const defaults = ["Ahorros", "Inversiones"];
       const missing = defaults.filter(def =>
         !categories.some(c => c.name.toLowerCase() === def.toLowerCase())
       );
