@@ -144,33 +144,19 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
             <div
               key={category.id}
               className={cn(
-                "flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/50",
+                "flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50",
                 category.is_archived && "opacity-50"
               )}
             >
-              <div className="h-10 w-10 rounded-full flex items-center justify-center text-lg shrink-0 bg-primary/10 text-primary">
+              <div className="h-9 w-9 rounded-full flex items-center justify-center text-base shrink-0 bg-primary/10 text-primary">
                 {category.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{category.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-muted-foreground">Orden: {category.sort_order}</span>
-                  {category.is_archived && (
-                    <Badge variant="secondary" className="text-xs">Archivada</Badge>
-                  )}
-                </div>
+                <p className="font-medium text-sm truncate">{category.name}</p>
               </div>
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(category)}>
                   <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => update({ id: category.id, is_archived: !category.is_archived })}
-                >
-                  <Archive className="h-4 w-4" />
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -215,14 +201,6 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Nombre de la categoría"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Orden</Label>
-              <Input
-                type="number"
-                value={formData.sort_order}
-                onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
               />
             </div>
           </div>
