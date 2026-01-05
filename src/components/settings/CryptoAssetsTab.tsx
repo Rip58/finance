@@ -41,36 +41,35 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
     { symbol: "TRX", name: "TRON" },
   ];
 
+  const handleInitializeDefaults = async () => {
+    setIsInitializing(true);
+    try {
+      const assetsToInsert = DEFAULT_CRYPTO_ASSETS.map(asset => ({
+        symbol: asset.symbol,
+        name: asset.name,
+        asset_type: "crypto",
+        is_active: true,
+        user_id: userId
+      }));
+
+      const { error } = await supabase
+        .from("crypto_assets")
+        .insert(assetsToInsert);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
+    } catch (error) {
+      console.error("Error creating default assets:", error);
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
   useEffect(() => {
     if (isLoading || isInitializing || !assets || assets.length > 0) return;
-
-    const initializeDefaults = async () => {
-      setIsInitializing(true);
-      try {
-        const assetsToInsert = DEFAULT_CRYPTO_ASSETS.map(asset => ({
-          symbol: asset.symbol,
-          name: asset.name,
-          asset_type: "crypto",
-          is_active: true,
-          user_id: userId
-        }));
-
-        const { error } = await supabase
-          .from("crypto_assets")
-          .insert(assetsToInsert);
-
-        if (error) throw error;
-
-        queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
-      } catch (error) {
-        console.error("Error creating default assets:", error);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
-    initializeDefaults();
-  }, [assets, isLoading, isInitializing, userId]);
+    handleInitializeDefaults();
+  }, [assets, isLoading, userId]);
 
   const handleSubmit = async () => {
     if (editingAsset) {
@@ -129,7 +128,11 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
         <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
           <Coins className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <p className="text-muted-foreground">No hay activos configurados</p>
-          <p className="text-sm text-muted-foreground mt-1">Añade activos para usarlos en DCAs y cuentas</p>
+          <p className="text-sm text-muted-foreground mt-1 mb-4">Añade activos para usarlos en DCAs y cuentas</p>
+          <Button variant="outline" onClick={handleInitializeDefaults} disabled={isInitializing}>
+            {isInitializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Cargar básicos
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">

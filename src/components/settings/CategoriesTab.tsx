@@ -53,36 +53,35 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
     "Ahorro", "Nómina", "Otros"
   ];
 
+  const handleInitializeDefaults = async () => {
+    setIsInitializing(true);
+    try {
+      const categoriesToInsert = DEFAULT_GENERAL_CATEGORIES.map((catName, index) => ({
+        name: catName,
+        scope: "general",
+        sort_order: index,
+        is_archived: false,
+        user_id: userId
+      }));
+
+      const { error } = await supabase
+        .from("categories")
+        .insert(categoriesToInsert);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["categories", userId] });
+    } catch (error) {
+      console.error("Error creating default categories:", error);
+    } finally {
+      setIsInitializing(false);
+    }
+  };
+
   useEffect(() => {
     if (isLoading || isInitializing || !categories || categories.length > 0) return;
-
-    const initializeDefaults = async () => {
-      setIsInitializing(true);
-      try {
-        const categoriesToInsert = DEFAULT_GENERAL_CATEGORIES.map((catName, index) => ({
-          name: catName,
-          scope: "general",
-          sort_order: index,
-          is_archived: false,
-          user_id: userId
-        }));
-
-        const { error } = await supabase
-          .from("categories")
-          .insert(categoriesToInsert);
-
-        if (error) throw error;
-
-        queryClient.invalidateQueries({ queryKey: ["categories", userId] });
-      } catch (error) {
-        console.error("Error creating default categories:", error);
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
-    initializeDefaults();
-  }, [categories, isLoading, isInitializing, userId]);
+    handleInitializeDefaults();
+  }, [categories, isLoading, userId]);
 
   const handleSubmit = async () => {
     if (editingCategory) {
@@ -135,7 +134,11 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
       {categories?.length === 0 ? (
         <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
           <Tag className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground">No hay categorías configuradas</p>
+          <p className="text-muted-foreground mb-4">No hay categorías configuradas</p>
+          <Button variant="outline" onClick={handleInitializeDefaults} disabled={isInitializing}>
+            {isInitializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Cargar básicas
+          </Button>
         </div>
       ) : (
         <div className="space-y-3">

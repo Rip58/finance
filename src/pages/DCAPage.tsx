@@ -12,6 +12,7 @@ import { DCASummaryCard } from "@/components/dca/DCASummaryCard";
 import { DCAEntryList } from "@/components/dca/DCAEntryList";
 import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { DCAFormDialog } from "@/components/dca/DCAFormDialog";
+import { DCAPortfolioDialog } from "@/components/dca/DCAPortfolioDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import {
@@ -33,6 +34,7 @@ export function DCAPage({ user }: DCAPageProps) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
+  const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [editingTx, setEditingTx] = useState<AssetTransaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -41,7 +43,7 @@ export function DCAPage({ user }: DCAPageProps) {
   const portfolios = useDCAPortfolios(user.id);
   const assetTransactions = useAssetTransactions(user.id);
   const bankAccounts = useBankAccounts(user.id);
-  
+
   // Filter only non-archived bank accounts for the select
   const activeBankAccounts = useMemo(() => {
     return (bankAccounts.data || []).filter(acc => !acc.is_archived);
@@ -85,10 +87,10 @@ export function DCAPage({ user }: DCAPageProps) {
       await refreshPrices();
       toast({ title: "Precios actualizados" });
     } catch (error) {
-      toast({ 
-        title: "Error", 
-        description: "No se pudieron actualizar los precios", 
-        variant: "destructive" 
+      toast({
+        title: "Error",
+        description: "No se pudieron actualizar los precios",
+        variant: "destructive"
       });
     } finally {
       setIsRefreshing(false);
@@ -151,9 +153,15 @@ export function DCAPage({ user }: DCAPageProps) {
           <p className="text-muted-foreground mb-6">
             Crea tu primer portafolio DCA para empezar a trackear tus inversiones
           </p>
-          <Button onClick={() => navigate("/account?tab=dcas")}>
+          <Button onClick={() => setShowPortfolioForm(true)}>
             Configurar DCAs
           </Button>
+
+          <DCAPortfolioDialog
+            userId={user.id}
+            open={showPortfolioForm}
+            onOpenChange={setShowPortfolioForm}
+          />
         </div>
       </MobileLayout>
     );
@@ -161,7 +169,14 @@ export function DCAPage({ user }: DCAPageProps) {
 
   return (
     <MobileLayout>
-      <MobilePageHeader title="DCA" />
+      <MobilePageHeader
+        title="DCA"
+        rightAction={
+          <Button variant="ghost" size="icon" onClick={() => setShowPortfolioForm(true)}>
+            <Plus className="h-5 w-5" />
+          </Button>
+        }
+      />
 
       {/* Portfolio selector */}
       <div className="px-4 py-3">
@@ -178,23 +193,36 @@ export function DCAPage({ user }: DCAPageProps) {
               <span>{portfolio.symbol}</span>
             </Button>
           ))}
+
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowPortfolioForm(true)}
+            className="flex-shrink-0 rounded-full px-3 text-muted-foreground border border-dashed border-border"
+          >
+            <Plus className="h-4 w-4 mr-1" /> Nuevo
+          </Button>
         </div>
       </div>
 
       <div className="space-y-4 pb-24">
-        <DCASummaryCard
-          transactions={filteredTransactions}
-          currentPrices={currentPrices || {}}
-          symbol={selectedPortfolio?.symbol || ""}
-          onRefresh={handleRefreshPrices}
-          isRefreshing={isRefreshing}
-        />
+        {selectedPortfolioId && (
+          <>
+            <DCASummaryCard
+              transactions={filteredTransactions}
+              currentPrices={currentPrices || {}}
+              symbol={selectedPortfolio?.symbol || ""}
+              onRefresh={handleRefreshPrices}
+              isRefreshing={isRefreshing}
+            />
 
-        <DCAEntryList
-          transactions={filteredTransactions}
-          onEdit={handleEdit}
-          onDelete={(id) => setDeleteId(id)}
-        />
+            <DCAEntryList
+              transactions={filteredTransactions}
+              onEdit={handleEdit}
+              onDelete={(id) => setDeleteId(id)}
+            />
+          </>
+        )}
       </div>
 
       {/* Floating action button */}
@@ -210,6 +238,7 @@ export function DCAPage({ user }: DCAPageProps) {
         </Button>
       )}
 
+      {/* Transaction Form (Entry) */}
       <DCAFormDialog
         open={showForm}
         onOpenChange={setShowForm}
@@ -218,6 +247,13 @@ export function DCAPage({ user }: DCAPageProps) {
         bankAccounts={activeBankAccounts}
         onSubmit={handleSubmit}
         isSubmitting={assetTransactions.isCreating || assetTransactions.isUpdating}
+      />
+
+      {/* Portfolio Form (New DCA) */}
+      <DCAPortfolioDialog
+        userId={user.id}
+        open={showPortfolioForm}
+        onOpenChange={setShowPortfolioForm}
       />
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>

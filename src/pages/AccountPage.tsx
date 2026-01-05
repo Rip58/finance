@@ -5,7 +5,7 @@ import { MobileLayout, MobilePageHeader } from "@/components/mobile";
 import { PreferencesTab } from "@/components/settings/PreferencesTab";
 import { AccountsTab } from "@/components/settings/AccountsTab";
 import { CategoriesTab } from "@/components/settings/CategoriesTab";
-import { DCAsTab } from "@/components/settings/DCAsTab";
+
 import { CryptoAssetsTab } from "@/components/settings/CryptoAssetsTab";
 import { CurrenciesTab } from "@/components/settings/CurrenciesTab";
 import { cn } from "@/lib/utils";
@@ -18,11 +18,10 @@ interface AccountPageProps {
 }
 
 const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
-  { id: "preferences", label: "Preferences", icon: Settings },
-  { id: "accounts", label: "Bank Accounts", icon: CreditCard },
-  { id: "categories", label: "Categories", icon: Tag },
-  { id: "dcas", label: "DCAs", icon: TrendingUp },
-  { id: "assets", label: "Activos Crypto", icon: Coins },
+  { id: "preferences", label: "Preferencias", icon: Settings },
+  { id: "accounts", label: "Cuentas Bancarias", icon: CreditCard },
+  { id: "categories", label: "Categorías", icon: Tag },
+  { id: "assets", label: "Activos Digitales", icon: Coins },
   { id: "currencies", label: "Divisas", icon: Coins },
 ];
 
@@ -78,7 +77,6 @@ export function AccountPage({ user }: AccountPageProps) {
         {currentTab === "preferences" && <PreferencesTab userId={user.id} />}
         {currentTab === "accounts" && <AccountsTab userId={user.id} />}
         {currentTab === "categories" && <CategoriesTab userId={user.id} />}
-        {currentTab === "dcas" && <DCAsTab userId={user.id} />}
         {currentTab === "assets" && <CryptoAssetsTab userId={user.id} />}
         {currentTab === "currencies" && <CurrenciesTab />}
       </div>
