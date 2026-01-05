@@ -132,28 +132,30 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
           <p className="text-sm text-muted-foreground mt-1">Añade activos para usarlos en DCAs y cuentas</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {assets?.map((asset) => (
             <div
               key={asset.id}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-card border border-border/50"
+              className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/50"
             >
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0">
-                {asset.symbol.charAt(0)}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium">{asset.symbol}</p>
-                <p className="text-sm text-muted-foreground truncate">{asset.name}</p>
+              <div className="flex items-center gap-3 overflow-hidden">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 text-xs">
+                  {asset.symbol.charAt(0)}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm truncate">{asset.symbol}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{asset.name}</p>
+                </div>
               </div>
 
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(asset)}>
-                  <Pencil className="h-4 w-4" />
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(asset)}>
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 hover:text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
