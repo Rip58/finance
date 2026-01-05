@@ -97,9 +97,7 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
     setIsDialogOpen(true);
   };
 
-  const toggleActive = async (asset: CryptoAsset) => {
-    await update({ id: asset.id, is_active: !asset.is_active });
-  };
+
 
   if (isLoading) {
     return (
@@ -147,10 +145,7 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
                 <p className="font-medium">{asset.symbol}</p>
                 <p className="text-sm text-muted-foreground truncate">{asset.name}</p>
               </div>
-              <Switch
-                checked={asset.is_active}
-                onCheckedChange={() => toggleActive(asset)}
-              />
+
               <div className="flex items-center gap-1">
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(asset)}>
                   <Pencil className="h-4 w-4" />
@@ -193,19 +188,19 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Símbolo</Label>
-              <Input
-                placeholder="BTC, ETH, SOL..."
-                value={formData.symbol}
-                onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-              />
-            </div>
-            <div className="space-y-2">
               <Label>Nombre</Label>
               <Input
                 placeholder="Bitcoin, Ethereum..."
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Símbolo</Label>
+              <Input
+                placeholder="BTC, ETH, SOL..."
+                value={formData.symbol}
+                onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
               />
             </div>
             <div className="space-y-2">
@@ -220,17 +215,8 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
                 <SelectContent>
                   <SelectItem value="crypto">Crypto</SelectItem>
                   <SelectItem value="institutional">Institucional</SelectItem>
-                  <SelectItem value="commodity">Commodity</SelectItem>
-                  <SelectItem value="other">Otro</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-            <div className="flex items-center justify-between">
-              <Label>Activo</Label>
-              <Switch
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
             </div>
           </div>
           <DialogFooter>
