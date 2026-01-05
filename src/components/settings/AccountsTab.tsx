@@ -275,14 +275,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(account)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => update({ id: account.id, is_archived: !account.is_archived })}
-                >
-                  <Archive className="h-4 w-4" />
-                </Button>
+
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -324,19 +317,32 @@ export function AccountsTab({ userId }: AccountsTabProps) {
               <Label>Nombre</Label>
               <Input
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Mi cuenta principal"
+                onChange={(e) => setFormData({ ...formData, name: e.target.value.toUpperCase() })}
+                placeholder="MI CUENTA PRINCIPAL"
               />
             </div>
             <div className="space-y-2">
               <Label>Moneda</Label>
-              <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
+              <Select value={formData.currency} onValueChange={(v) => {
+                if (v === "_new") {
+                  setIsCurrencyDialogOpen(true);
+                } else {
+                  setFormData({ ...formData, currency: v });
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="EUR">EUR</SelectItem>
                   <SelectItem value="USD">USD</SelectItem>
+                  {currencies.filter(c => c !== "EUR" && c !== "USD" && c !== "USDT").map((curr) => (
+                    <SelectItem key={curr} value={curr}>{curr}</SelectItem>
+                  ))}
+                  <div className="border-t border-border my-1" />
+                  <SelectItem value="_new" className="font-medium text-primary">
+                    + Nueva divisa
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>

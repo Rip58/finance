@@ -153,7 +153,8 @@ export function HomePage({ user }: HomePageProps) {
         c.name.toLowerCase().includes("inversión") ||
         c.name.toLowerCase().includes("inversion") ||
         c.name.toLowerCase().includes("crypto") ||
-        c.name.toLowerCase().includes("cripto")
+        c.name.toLowerCase().includes("cripto") ||
+        c.name.toLowerCase().includes("corriente")
       )
       .map(c => c.id);
 
