@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,7 +40,9 @@ export function DCAPortfolioDialog({
     const cryptoAssets = useCryptoAssets(userId);
 
     // Get unique symbols from user's crypto assets
-    const availableSymbols = cryptoAssets.data?.filter(a => a.is_active).map(a => a.symbol) || [];
+    const availableSymbols = useMemo(() => {
+        return cryptoAssets.data?.filter(a => a.is_active).map(a => a.symbol) || [];
+    }, [cryptoAssets.data]);
 
     const [formData, setFormData] = useState({
         name: "",
@@ -76,7 +78,7 @@ export function DCAPortfolioDialog({
                 initialDate: new Date().toISOString().split("T")[0],
             });
         }
-    }, [editingPortfolio, availableSymbols, open]);
+    }, [editingPortfolio, open]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
