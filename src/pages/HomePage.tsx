@@ -300,7 +300,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v2.1</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v2.3</span>
               </div>
             </div>
           </div>
