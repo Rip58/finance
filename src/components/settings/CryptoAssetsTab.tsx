@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Plus, Pencil, Trash2, Loader2, Coins } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
 interface CryptoAssetsTabProps {
   userId: string;
 }
@@ -132,16 +134,19 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
           <p className="text-sm text-muted-foreground mt-1">Añade activos para usarlos en DCAs y cuentas</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           {assets?.map((asset) => (
             <div
               key={asset.id}
               className="flex items-center justify-between p-3 rounded-xl bg-card border border-border/50"
             >
               <div className="flex items-center gap-3 overflow-hidden">
-                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold shrink-0 text-xs">
-                  {asset.symbol.charAt(0)}
-                </div>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={`https://assets.coincap.io/assets/icons/${asset.symbol.toLowerCase()}@2x.png`} />
+                  <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                    {asset.symbol.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
                 <div className="min-w-0">
                   <p className="font-semibold text-sm truncate">{asset.symbol}</p>
                   <p className="text-[10px] text-muted-foreground truncate">{asset.name}</p>
