@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Trash2 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 
@@ -11,14 +11,16 @@ interface DCASummaryCardProps {
   symbol: string;
   onRefresh: () => void;
   isRefreshing?: boolean;
+  onDelete?: () => void;
 }
 
-export function DCASummaryCard({ 
-  transactions, 
+export function DCASummaryCard({
+  transactions,
   currentPrices,
   symbol,
   onRefresh,
-  isRefreshing 
+  isRefreshing,
+  onDelete
 }: DCASummaryCardProps) {
   const totals = useMemo(() => {
     if (!transactions) return { totalInvested: 0, currentValue: 0, pnl: 0, pnlPercent: 0, averagePrice: 0 };
@@ -40,8 +42,8 @@ export function DCASummaryCard({
         positions[symbol].costBasis += tx.quantity * tx.price_eur;
       } else {
         // For sells, reduce quantity proportionally
-        const avgCost = positions[symbol].quantity > 0 
-          ? positions[symbol].costBasis / positions[symbol].quantity 
+        const avgCost = positions[symbol].quantity > 0
+          ? positions[symbol].costBasis / positions[symbol].quantity
           : 0;
         positions[symbol].quantity -= tx.quantity;
         positions[symbol].costBasis -= tx.quantity * avgCost;
@@ -83,16 +85,16 @@ export function DCASummaryCard({
       <CardContent className="pt-4">
         <div className="flex items-center justify-between mb-1">
           <h3 className="font-semibold text-foreground">Resumen DCA</h3>
-          <Button 
-            variant="ghost" 
-            size="sm" 
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={onRefresh}
             disabled={isRefreshing}
           >
             <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
           </Button>
         </div>
-        
+
         {/* Valor BTC y Precio promedio en la misma línea */}
         {currentPrice && (
           <div className="flex items-center justify-between mb-4">
@@ -104,7 +106,7 @@ export function DCASummaryCard({
             </p>
           </div>
         )}
-        
+
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-sm text-muted-foreground">Total invertido</p>
@@ -137,6 +139,21 @@ export function DCASummaryCard({
             </p>
           </div>
         </div>
+
+        {/* Delete button aligned with refresh */}
+        {onDelete && (
+          <div className="flex justify-end mt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onDelete}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4 mr-2" />
+              Eliminar DCA
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

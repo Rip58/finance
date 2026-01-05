@@ -37,6 +37,7 @@ export function DCAPage({ user }: DCAPageProps) {
   const [showPortfolioForm, setShowPortfolioForm] = useState(false);
   const [editingTx, setEditingTx] = useState<AssetTransaction | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deletePortfolioId, setDeletePortfolioId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
 
@@ -140,6 +141,18 @@ export function DCAPage({ user }: DCAPageProps) {
     }
   };
 
+  const handleDeletePortfolio = async () => {
+    if (deletePortfolioId) {
+      await portfolios.delete(deletePortfolioId);
+      setDeletePortfolioId(null);
+      // If deleted portfolio was selected, clear selection
+      if (selectedPortfolioId === deletePortfolioId) {
+        setSelectedPortfolioId(null);
+      }
+      toast({ title: "DCA eliminado" });
+    }
+  };
+
   // No portfolios state
   if (portfolios.data && portfolios.data.length === 0) {
     return (
@@ -208,6 +221,7 @@ export function DCAPage({ user }: DCAPageProps) {
                 symbol={selectedPortfolio?.symbol || ""}
                 onRefresh={handleRefreshPrices}
                 isRefreshing={isRefreshing}
+                onDelete={() => setDeletePortfolioId(selectedPortfolioId)}
               />
 
               <DCAEntryList
@@ -263,6 +277,21 @@ export function DCAPage({ user }: DCAPageProps) {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!deletePortfolioId} onOpenChange={() => setDeletePortfolioId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar DCA?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará el portafolio DCA y todas sus transacciones asociadas. No se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePortfolio}>Eliminar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
