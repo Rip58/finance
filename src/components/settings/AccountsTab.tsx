@@ -261,11 +261,6 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                 <p className="font-medium truncate">{account.name}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge variant="outline" className="text-xs">{account.currency}</Badge>
-                  {account.initial_balance > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      Saldo: {new Intl.NumberFormat("es-ES", { style: "currency", currency: account.currency === "USDT" ? "USD" : account.currency }).format(account.initial_balance)}
-                    </Badge>
-                  )}
                   {account.is_archived && (
                     <Badge variant="secondary" className="text-xs">Archivada</Badge>
                   )}
