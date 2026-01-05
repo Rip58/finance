@@ -6,7 +6,7 @@ const navItems = [
   { to: "/", icon: Home, label: "Home" },
   { to: "/dca", icon: TrendingUp, label: "DCA" },
   { to: "/report", icon: BarChart3, label: "Report" },
-  { to: "/account", icon: User, label: "Account" },
+  { to: "/account", icon: User, label: "Cuenta" },
 ];
 
 export function BottomNav() {

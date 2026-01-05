@@ -35,12 +35,16 @@ export function useCurrentPrices(symbols: string[]) {
     if (uniqueSymbols.length === 0) return;
 
     try {
-      const { error } = await supabase.functions.invoke("get-asset-prices", {
-        body: { symbols: uniqueSymbols },
-      });
+      // Import dynamically to avoid circular dependencies
+      const { fetchCryptoPrices, savePricesToDatabase } = await import("@/lib/cryptoPrices");
 
-      if (error) throw error;
+      // Fetch prices from CoinCap API
+      const prices = await fetchCryptoPrices(uniqueSymbols);
 
+      // Save to database
+      await savePricesToDatabase(prices);
+
+      // Invalidate cache to refetch
       queryClient.invalidateQueries({ queryKey: ["current-prices"] });
     } catch (err) {
       console.error("Error refreshing prices:", err);
