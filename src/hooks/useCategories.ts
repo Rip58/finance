@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-export type CategoryScope = "expense" | "income" | "subscription" | "account" | "asset";
+export type CategoryScope = "expense" | "income" | "subscription" | "account" | "asset" | "general";
 
 export interface Category {
   id: string;
@@ -22,34 +22,35 @@ export function useCategories(userId: string | undefined, scope?: CategoryScope)
     queryKey: ["categories", userId, scope],
     queryFn: async (): Promise<Category[]> => {
       if (!userId) return [];
-      
+
       let q = supabase
         .from("categories")
         .select("*")
         .eq("user_id", userId)
         .order("sort_order", { ascending: true });
-      
+
       if (scope) {
         q = q.eq("scope", scope);
       }
-      
+
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as Category[];
     },
     enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
     mutationFn: async (category: Omit<Category, "id" | "user_id" | "created_at">): Promise<string> => {
       if (!userId) throw new Error("No user");
-      
+
       const { data, error } = await supabase
         .from("categories")
         .insert({ ...category, user_id: userId })
         .select("id")
         .single();
-      
+
       if (error) {
         if (error.code === "23505") {
           throw new Error("Ya existe una categoría con ese nombre");
@@ -73,7 +74,7 @@ export function useCategories(userId: string | undefined, scope?: CategoryScope)
         .from("categories")
         .update(updates)
         .eq("id", id);
-      
+
       if (error) {
         if (error.code === "23505") {
           throw new Error("Ya existe una categoría con ese nombre");
@@ -96,7 +97,7 @@ export function useCategories(userId: string | undefined, scope?: CategoryScope)
         .from("categories")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {

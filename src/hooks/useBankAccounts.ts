@@ -22,30 +22,31 @@ export function useBankAccounts(userId: string | undefined) {
     queryKey: ["bank-accounts", userId],
     queryFn: async (): Promise<BankAccount[]> => {
       if (!userId) return [];
-      
+
       const { data, error } = await supabase
         .from("bank_accounts")
         .select("*")
         .eq("user_id", userId)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
-      
+
       if (error) throw error;
       return data || [];
     },
     enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
     mutationFn: async (account: Omit<BankAccount, "id" | "user_id" | "created_at">): Promise<string> => {
       if (!userId) throw new Error("No user");
-      
+
       const { data, error } = await supabase
         .from("bank_accounts")
         .insert({ ...account, user_id: userId })
         .select("id")
         .single();
-      
+
       if (error) throw error;
       return data.id;
     },
@@ -64,7 +65,7 @@ export function useBankAccounts(userId: string | undefined) {
         .from("bank_accounts")
         .update(updates)
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -82,7 +83,7 @@ export function useBankAccounts(userId: string | undefined) {
         .from("bank_accounts")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -101,7 +102,7 @@ export function useBankAccounts(userId: string | undefined) {
           .from("bank_accounts")
           .update({ sort_order })
           .eq("id", id);
-        
+
         if (error) throw error;
       }
     },

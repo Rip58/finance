@@ -24,10 +24,10 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const { toast } = useToast();
-  
+
   const { data: allTransactions, create: createTransaction, update: updateTransaction, delete: deleteTransaction, isCreating } = useTransactions(user.id);
   const { create: createRecurring } = useRecurringTransactions(user.id);
-  const { data: categories } = useCategories(user.id, "income");
+  const { data: categories } = useCategories(user.id, "general");
   const { data: accounts } = useBankAccounts(user.id);
 
   const [formData, setFormData] = useState({
@@ -81,7 +81,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         toast({ title: "Ingreso actualizado" });
       } else {
         await createTransaction(payload);
-        
+
         // If recurring, also create the recurring template
         if (isRecurring) {
           createRecurring({
@@ -246,9 +246,9 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         )}
 
         {/* Submit */}
-        <Button 
-          className="w-full" 
-          size="lg" 
+        <Button
+          className="w-full"
+          size="lg"
           onClick={handleSubmit}
           disabled={isSubmitting || isCreating || !formData.amount}
         >
@@ -258,10 +258,10 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
 
         {/* Delete Button (only in edit mode) */}
         {editId && (
-          <Button 
+          <Button
             variant="destructive"
-            className="w-full" 
-            size="lg" 
+            className="w-full"
+            size="lg"
             onClick={handleDelete}
             disabled={isSubmitting}
           >

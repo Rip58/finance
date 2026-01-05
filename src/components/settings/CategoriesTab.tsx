@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCategories, Category, CategoryScope } from "@/hooks/useCategories";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +17,7 @@ const scopeLabels: Record<CategoryScope, string> = {
   subscription: "Suscripciones",
   account: "Cuentas",
   asset: "Activos",
+  general: "General",
 };
 
 const scopeColors: Record<CategoryScope, string> = {
@@ -23,6 +26,7 @@ const scopeColors: Record<CategoryScope, string> = {
   subscription: "bg-warning/10 text-warning",
   account: "bg-primary/10 text-primary",
   asset: "bg-chart-assets/10 text-chart-assets",
+  general: "bg-primary/10 text-primary",
 };
 
 interface CategoriesTabProps {
@@ -30,7 +34,8 @@ interface CategoriesTabProps {
 }
 
 export function CategoriesTab({ userId }: CategoriesTabProps) {
-  const [selectedScope, setSelectedScope] = useState<CategoryScope>("expense");
+  const queryClient = useQueryClient();
+  const selectedScope = "general";
   const { data: categories, isLoading, create, update, delete: deleteCategory, isCreating, isUpdating } = useCategories(userId, selectedScope);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -39,6 +44,45 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
     sort_order: 0,
     is_archived: false,
   });
+  const [isInitializing, setIsInitializing] = useState(false);
+
+  const DEFAULT_GENERAL_CATEGORIES = [
+    "Vivienda", "Alimentación", "Transporte", "Servicios",
+    "Ocio", "Compras", "Salud", "Educación",
+    "Familia", "Regalos", "Viajes", "Inversiones",
+    "Ahorro", "Nómina", "Otros"
+  ];
+
+  useEffect(() => {
+    if (isLoading || isInitializing || !categories || categories.length > 0) return;
+
+    const initializeDefaults = async () => {
+      setIsInitializing(true);
+      try {
+        const categoriesToInsert = DEFAULT_GENERAL_CATEGORIES.map((catName, index) => ({
+          name: catName,
+          scope: "general",
+          sort_order: index,
+          is_archived: false,
+          user_id: userId
+        }));
+
+        const { error } = await supabase
+          .from("categories")
+          .insert(categoriesToInsert);
+
+        if (error) throw error;
+
+        queryClient.invalidateQueries({ queryKey: ["categories", userId] });
+      } catch (error) {
+        console.error("Error creating default categories:", error);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    initializeDefaults();
+  }, [categories, isLoading, isInitializing, userId]);
 
   const handleSubmit = async () => {
     if (editingCategory) {
@@ -87,26 +131,11 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
         </Button>
       </div>
 
-      {/* Scope Tabs */}
-      <div className="flex flex-wrap gap-2">
-        {(Object.keys(scopeLabels) as CategoryScope[]).map((scope) => (
-          <Button
-            key={scope}
-            variant={selectedScope === scope ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedScope(scope)}
-            className="text-xs"
-          >
-            {scopeLabels[scope]}
-          </Button>
-        ))}
-      </div>
-
       {/* Categories List */}
       {categories?.length === 0 ? (
         <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
           <Tag className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground">No hay categorías de {scopeLabels[selectedScope].toLowerCase()}</p>
+          <p className="text-muted-foreground">No hay categorías configuradas</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -118,10 +147,7 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
                 category.is_archived && "opacity-50"
               )}
             >
-              <div className={cn(
-                "h-10 w-10 rounded-full flex items-center justify-center text-lg shrink-0",
-                scopeColors[selectedScope]
-              )}>
+              <div className="h-10 w-10 rounded-full flex items-center justify-center text-lg shrink-0 bg-primary/10 text-primary">
                 {category.name.charAt(0).toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
@@ -178,7 +204,7 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
           <DialogHeader>
             <DialogTitle>{editingCategory ? "Editar categoría" : "Nueva categoría"}</DialogTitle>
             <DialogDescription>
-              Categoría para: {scopeLabels[selectedScope]}
+              Crea o edita una categoría para tus transacciones
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">

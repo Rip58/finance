@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCryptoAssets, CryptoAsset } from "@/hooks/useCryptoAssets";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +16,9 @@ interface CryptoAssetsTabProps {
 }
 
 export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
+  const queryClient = useQueryClient();
   const { data: assets, isLoading, create, update, delete: deleteAsset, isCreating, isUpdating } = useCryptoAssets(userId);
+  const [isInitializing, setIsInitializing] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAsset, setEditingAsset] = useState<CryptoAsset | null>(null);
   const [formData, setFormData] = useState({
@@ -23,6 +27,50 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
     asset_type: "crypto",
     is_active: true,
   });
+
+  const DEFAULT_CRYPTO_ASSETS = [
+    { symbol: "BTC", name: "Bitcoin" },
+    { symbol: "ETH", name: "Ethereum" },
+    { symbol: "USDT", name: "Tether" },
+    { symbol: "XRP", name: "XRP" },
+    { symbol: "BNB", name: "BNB" },
+    { symbol: "SOL", name: "Solana" },
+    { symbol: "USDC", name: "USDC" },
+    { symbol: "ADA", name: "Cardano" },
+    { symbol: "DOGE", name: "Dogecoin" },
+    { symbol: "TRX", name: "TRON" },
+  ];
+
+  useEffect(() => {
+    if (isLoading || isInitializing || !assets || assets.length > 0) return;
+
+    const initializeDefaults = async () => {
+      setIsInitializing(true);
+      try {
+        const assetsToInsert = DEFAULT_CRYPTO_ASSETS.map(asset => ({
+          symbol: asset.symbol,
+          name: asset.name,
+          asset_type: "crypto",
+          is_active: true,
+          user_id: userId
+        }));
+
+        const { error } = await supabase
+          .from("crypto_assets")
+          .insert(assetsToInsert);
+
+        if (error) throw error;
+
+        queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
+      } catch (error) {
+        console.error("Error creating default assets:", error);
+      } finally {
+        setIsInitializing(false);
+      }
+    };
+
+    initializeDefaults();
+  }, [assets, isLoading, isInitializing, userId]);
 
   const handleSubmit = async () => {
     if (editingAsset) {

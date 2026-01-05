@@ -1,7 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useBankAccounts, BankAccount } from "@/hooks/useBankAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useCurrencies } from "@/hooks/useCurrencies";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +19,7 @@ interface AccountsTabProps {
 }
 
 export function AccountsTab({ userId }: AccountsTabProps) {
+  const queryClient = useQueryClient();
   const { data: accounts, isLoading, create, update, delete: deleteAccount, isCreating, isUpdating } = useBankAccounts(userId);
   const { data: categories, create: createCategory, isCreating: isCreatingCategory } = useCategories(userId, "account");
   const { currencies, addCurrency, isAdding: isAddingCurrency } = useCurrencies();
@@ -37,11 +40,54 @@ export function AccountsTab({ userId }: AccountsTabProps) {
     initial_balance: "0",
   });
 
+  const DEFAULT_ACCOUNT_CATEGORIES = ["Corriente", "Ahorros", "Crypto", "Inversiones"];
+
+  useEffect(() => {
+    if (!userId || !categories || categories.length > 0 || isCreatingCategory) return;
+
+    const initializeDefaults = async () => {
+      try {
+        const categoriesToInsert = DEFAULT_ACCOUNT_CATEGORIES.map((catName, index) => ({
+          name: catName,
+          scope: "account",
+          sort_order: index,
+          is_archived: false,
+          user_id: userId
+        }));
+
+        const { error } = await supabase
+          .from("categories")
+          .insert(categoriesToInsert);
+
+        if (error) throw error;
+
+        // Invalidate once after all inserts
+        queryClient.invalidateQueries({ queryKey: ["categories", userId] });
+      } catch (error) {
+        console.error("Error creating default categories:", error);
+      }
+    };
+
+    initializeDefaults();
+  }, [categories, userId, isCreatingCategory]);
+
+  useEffect(() => {
+    if (categories && categories.length > 0 && formData.category_id === "none") {
+      const corrienteCat = categories.find(c => c.name === "Corriente");
+      if (corrienteCat) {
+        setFormData(prev => ({ ...prev, category_id: corrienteCat.id }));
+      } else {
+        setFormData(prev => ({ ...prev, category_id: categories[0].id }));
+      }
+    }
+  }, [categories, formData.category_id]);
+
   const handleSubmit = async () => {
+    if (formData.category_id === "none") return;
     const dataToSave = {
       name: formData.name,
       currency: formData.currency,
-      category_id: formData.category_id === "none" ? null : formData.category_id,
+      category_id: formData.category_id,
       is_archived: formData.is_archived,
       initial_balance: parseFloat(formData.initial_balance) || 0,
     };
@@ -85,7 +131,12 @@ export function AccountsTab({ userId }: AccountsTabProps) {
   };
 
   const resetForm = () => {
-    setFormData({ name: "", currency: "EUR", category_id: "none", is_archived: false, initial_balance: "0" });
+    let defaultCatId = "none";
+    if (categories && categories.length > 0) {
+      const corrienteCat = categories.find(c => c.name === "Corriente");
+      defaultCatId = corrienteCat ? corrienteCat.id : categories[0].id;
+    }
+    setFormData({ name: "", currency: "EUR", category_id: defaultCatId, is_archived: false, initial_balance: "0" });
     setEditingAccount(null);
   };
 
@@ -300,7 +351,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
               />
             </div>
             <div className="space-y-2">
-              <Label>Categoría (opcional)</Label>
+              <Label>Categoría</Label>
               <Select
                 value={formData.category_id}
                 onValueChange={(v) => {
@@ -312,10 +363,9 @@ export function AccountsTab({ userId }: AccountsTabProps) {
                 }}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Sin categoría" />
+                  <SelectValue placeholder="Selecciona categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sin categoría</SelectItem>
                   {categories?.filter(c => !c.is_archived).map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
                   ))}

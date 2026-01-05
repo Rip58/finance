@@ -20,27 +20,28 @@ export function useCryptoAssets(userId: string | undefined) {
     queryKey: ["crypto-assets", userId],
     queryFn: async (): Promise<CryptoAsset[]> => {
       if (!userId) return [];
-      
+
       const { data, error } = await supabase
         .from("crypto_assets")
         .select("*")
         .eq("user_id", userId)
         .order("symbol", { ascending: true });
-      
+
       if (error) throw error;
       return (data || []) as CryptoAsset[];
     },
     enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
     mutationFn: async (asset: Omit<CryptoAsset, "id" | "user_id" | "created_at">) => {
       if (!userId) throw new Error("No user");
-      
+
       const { error } = await supabase
         .from("crypto_assets")
         .insert({ ...asset, user_id: userId });
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -58,7 +59,7 @@ export function useCryptoAssets(userId: string | undefined) {
         .from("crypto_assets")
         .update(updates)
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -76,7 +77,7 @@ export function useCryptoAssets(userId: string | undefined) {
         .from("crypto_assets")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
