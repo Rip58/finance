@@ -128,11 +128,10 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
         <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
           <Coins className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
           <p className="text-muted-foreground">No hay activos configurados</p>
-          <p className="text-sm text-muted-foreground mt-1 mb-4">Añade activos para usarlos en DCAs y cuentas</p>
-          <Button variant="outline" onClick={handleInitializeDefaults} disabled={isInitializing}>
-            {isInitializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Cargar básicos
-          </Button>
+          <p className="text-muted-foreground">
+            {isInitializing ? "Configurando activos por defecto..." : "No hay activos configurados"}
+          </p>
+          <p className="text-sm text-muted-foreground mt-1">Añade activos para usarlos en DCAs y cuentas</p>
         </div>
       ) : (
         <div className="space-y-3">

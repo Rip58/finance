@@ -134,11 +134,9 @@ export function CategoriesTab({ userId }: CategoriesTabProps) {
       {categories?.length === 0 ? (
         <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
           <Tag className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground mb-4">No hay categorías configuradas</p>
-          <Button variant="outline" onClick={handleInitializeDefaults} disabled={isInitializing}>
-            {isInitializing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-            Cargar básicas
-          </Button>
+          <p className="text-muted-foreground">
+            {isInitializing ? "Configurando categorías por defecto..." : "No hay categorías configuradas"}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
