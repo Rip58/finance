@@ -144,7 +144,7 @@ export function DCAPortfolioDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md">
+            <DialogContent className="max-w-md z-[200] pointer-events-auto">
                 <DialogHeader>
                     <DialogTitle>
                         {editingPortfolio ? "Editar DCA" : "Nuevo DCA"}
@@ -152,9 +152,9 @@ export function DCAPortfolioDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="name">Nombre</Label>
+                        <Label htmlFor="dca-port-name">Nombre</Label>
                         <Input
-                            id="name"
+                            id="dca-port-name"
                             placeholder="Ej: Mi DCA Bitcoin"
                             value={formData.name}
                             onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
@@ -164,15 +164,15 @@ export function DCAPortfolioDialog({
 
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <Label htmlFor="symbol">Activo</Label>
+                            <Label htmlFor="dca-port-symbol">Activo</Label>
                             <Select
                                 value={formData.symbol}
                                 onValueChange={(val) => setFormData((prev) => ({ ...prev, symbol: val }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="dca-port-symbol">
                                     <SelectValue placeholder="Seleccionar" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="z-[250]">
                                     {availableSymbols.length === 0 ? (
                                         <SelectItem value="NONE" disabled>
                                             Sin activos configurados
@@ -190,15 +190,15 @@ export function DCAPortfolioDialog({
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="asset_type">Tipo</Label>
+                            <Label htmlFor="dca-port-type">Tipo</Label>
                             <Select
                                 value={formData.asset_type}
                                 onValueChange={(val) => setFormData((prev) => ({ ...prev, asset_type: val }))}
                             >
-                                <SelectTrigger>
+                                <SelectTrigger id="dca-port-type">
                                     <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="z-[250]">
                                     <SelectItem value="crypto">Crypto</SelectItem>
                                     <SelectItem value="institutional">Institucional</SelectItem>
                                 </SelectContent>
@@ -208,9 +208,9 @@ export function DCAPortfolioDialog({
 
                     {formData.symbol === "OTHER" && (
                         <div className="space-y-2">
-                            <Label htmlFor="customSymbol">Símbolo personalizado</Label>
+                            <Label htmlFor="dca-port-customSymbol">Símbolo personalizado</Label>
                             <Input
-                                id="customSymbol"
+                                id="dca-port-customSymbol"
                                 placeholder="Ej: DOGE"
                                 value={formData.customSymbol}
                                 onChange={(e) => setFormData((prev) => ({ ...prev, customSymbol: e.target.value.toUpperCase() }))}
@@ -225,18 +225,18 @@ export function DCAPortfolioDialog({
                             <p className="text-sm font-medium text-muted-foreground">Primera compra (opcional)</p>
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                    <Label htmlFor="initialDate" className="text-xs">Fecha</Label>
+                                    <Label htmlFor="dca-port-initialDate" className="text-xs">Fecha</Label>
                                     <Input
-                                        id="initialDate"
+                                        id="dca-port-initialDate"
                                         type="date"
                                         value={formData.initialDate}
                                         onChange={(e) => setFormData((prev) => ({ ...prev, initialDate: e.target.value }))}
                                     />
                                 </div>
                                 <div className="space-y-1">
-                                    <Label htmlFor="initialQuantity" className="text-xs">Cantidad</Label>
+                                    <Label htmlFor="dca-port-initialQuantity" className="text-xs">Cantidad</Label>
                                     <Input
-                                        id="initialQuantity"
+                                        id="dca-port-initialQuantity"
                                         type="number"
                                         step="any"
                                         placeholder="0.05"
@@ -246,9 +246,9 @@ export function DCAPortfolioDialog({
                                 </div>
                             </div>
                             <div className="space-y-1">
-                                <Label htmlFor="initialPrice" className="text-xs">Precio (USDT)</Label>
+                                <Label htmlFor="dca-port-initialPrice" className="text-xs">Precio (USDT)</Label>
                                 <Input
-                                    id="initialPrice"
+                                    id="dca-port-initialPrice"
                                     type="number"
                                     step="0.01"
                                     placeholder="85000"
