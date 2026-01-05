@@ -168,68 +168,71 @@ export function DCAPage({ user }: DCAPageProps) {
   }
 
   return (
-    <MobileLayout>
-      <MobilePageHeader
-        title="DCA"
-        rightAction={
-          <Button variant="ghost" size="icon" onClick={() => setShowPortfolioForm(true)}>
-            <Plus className="h-5 w-5" />
-          </Button>
-        }
-      />
-
-      {/* Portfolio selector */}
-      <div className="px-4 py-3">
-        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-          {portfolios.data?.map((portfolio) => (
-            <Button
-              key={portfolio.id}
-              variant={selectedPortfolioId === portfolio.id ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedPortfolioId(portfolio.id)}
-              className="flex-shrink-0 rounded-full flex items-center gap-2 px-3"
-            >
-              <CryptoLogo symbol={portfolio.symbol} size={20} />
-              <span>{portfolio.symbol}</span>
+    <>
+      <MobileLayout>
+        <MobilePageHeader
+          title="DCA"
+          rightAction={
+            <Button variant="ghost" size="icon" onClick={() => setShowPortfolioForm(true)}>
+              <Plus className="h-5 w-5" />
             </Button>
-          ))}
+          }
+        />
+
+        {/* Portfolio selector */}
+        <div className="px-4 py-3">
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {portfolios.data?.map((portfolio) => (
+              <Button
+                key={portfolio.id}
+                variant={selectedPortfolioId === portfolio.id ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedPortfolioId(portfolio.id)}
+                className="flex-shrink-0 rounded-full flex items-center gap-2 px-3"
+              >
+                <CryptoLogo symbol={portfolio.symbol} size={20} />
+                <span>{portfolio.symbol}</span>
+              </Button>
+            ))}
 
 
+          </div>
         </div>
-      </div>
 
-      <div className="space-y-4 pb-24">
+        <div className="space-y-4 pb-24">
+          {selectedPortfolioId && (
+            <>
+              <DCASummaryCard
+                transactions={filteredTransactions}
+                currentPrices={currentPrices || {}}
+                symbol={selectedPortfolio?.symbol || ""}
+                onRefresh={handleRefreshPrices}
+                isRefreshing={isRefreshing}
+              />
+
+              <DCAEntryList
+                transactions={filteredTransactions}
+                onEdit={handleEdit}
+                onDelete={(id) => setDeleteId(id)}
+              />
+            </>
+          )}
+        </div>
+
+        {/* Floating action button */}
         {selectedPortfolioId && (
-          <>
-            <DCASummaryCard
-              transactions={filteredTransactions}
-              currentPrices={currentPrices || {}}
-              symbol={selectedPortfolio?.symbol || ""}
-              onRefresh={handleRefreshPrices}
-              isRefreshing={isRefreshing}
-            />
-
-            <DCAEntryList
-              transactions={filteredTransactions}
-              onEdit={handleEdit}
-              onDelete={(id) => setDeleteId(id)}
-            />
-          </>
+          <Button
+            className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg"
+            onClick={() => {
+              setEditingTx(null);
+              setShowForm(true);
+            }}
+          >
+            <Plus className="h-6 w-6" />
+          </Button>
         )}
-      </div>
 
-      {/* Floating action button */}
-      {selectedPortfolioId && (
-        <Button
-          className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg"
-          onClick={() => {
-            setEditingTx(null);
-            setShowForm(true);
-          }}
-        >
-          <Plus className="h-6 w-6" />
-        </Button>
-      )}
+      </MobileLayout>
 
       {/* Transaction Form (Entry) */}
       <DCAFormDialog
@@ -263,6 +266,6 @@ export function DCAPage({ user }: DCAPageProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </MobileLayout>
+    </>
   );
 }
