@@ -8,10 +8,11 @@ import { CategoriesTab } from "@/components/settings/CategoriesTab";
 
 import { CryptoAssetsTab } from "@/components/settings/CryptoAssetsTab";
 import { CurrenciesTab } from "@/components/settings/CurrenciesTab";
+import { BackupTab } from "@/components/settings/BackupTab";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
-type TabId = "preferences" | "accounts" | "categories" | "dcas" | "assets" | "currencies";
+type TabId = "preferences" | "accounts" | "categories" | "dcas" | "assets" | "currencies" | "backup";
 
 interface AccountPageProps {
   user: User;
@@ -23,6 +24,7 @@ const tabs: { id: TabId; label: string; icon: typeof Settings }[] = [
   { id: "categories", label: "Categorías", icon: Tag },
   { id: "assets", label: "Activos Digitales", icon: Coins },
   { id: "currencies", label: "Divisas", icon: Coins },
+  { id: "backup", label: "Backup & Restore", icon: Database },
 ];
 
 export function AccountPage({ user }: AccountPageProps) {
@@ -41,7 +43,7 @@ export function AccountPage({ user }: AccountPageProps) {
   if (!currentTab) {
     return (
       <MobileLayout>
-        <MobilePageHeader title="Account" />
+        <MobilePageHeader title="Cuenta" />
 
         <div className="px-4 py-4">
           <div className="space-y-2">
@@ -69,7 +71,7 @@ export function AccountPage({ user }: AccountPageProps) {
   return (
     <MobileLayout>
       <MobilePageHeader
-        title={activeTab?.label || "Account"}
+        title={activeTab?.label || "Cuenta"}
         showBack
       />
 
@@ -79,6 +81,7 @@ export function AccountPage({ user }: AccountPageProps) {
         {currentTab === "categories" && <CategoriesTab userId={user.id} />}
         {currentTab === "assets" && <CryptoAssetsTab userId={user.id} />}
         {currentTab === "currencies" && <CurrenciesTab />}
+        {currentTab === "backup" && <BackupTab userId={user.id} />}
       </div>
     </MobileLayout>
   );
