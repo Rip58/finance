@@ -194,14 +194,7 @@ export function DCAPage({ user }: DCAPageProps) {
             </Button>
           ))}
 
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowPortfolioForm(true)}
-            className="flex-shrink-0 rounded-full px-3 text-muted-foreground border border-dashed border-border"
-          >
-            <Plus className="h-4 w-4 mr-1" /> Nuevo
-          </Button>
+
         </div>
       </div>
 
