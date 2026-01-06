@@ -254,25 +254,38 @@ export function HomePage({ user }: HomePageProps) {
   const formatEur = (amount: number) => formatCurrency(amount, "EUR");
 
   const handleRefreshPrices = async () => {
-    setIsRefreshing(true);
-    try {
-      console.log("Refleshing prices for:", allSymbols);
+    console.log("[HomePage] 🔍 Checking symbols list:", allSymbols);
 
+    if (allSymbols.length === 0) {
+      toast({
+        title: "Sin activos crypto",
+        description: "No hay criptomonedas configuradas para actualizar",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsRefreshing(true);
+    console.log("[HomePage] 🚀 Starting refresh for symbols:", allSymbols);
+
+    try {
       await Promise.all([
         refreshPrices(),
         fxRates.fetchRate(),
       ]);
 
+      console.log("[HomePage] 🔄 Invalidating queries...");
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["chart-data"] });
 
+      console.log("[HomePage] ✅ Refresh completed successfully");
       toast({ title: "Precios actualizados" });
     } catch (error) {
-      console.error("Refresh error detail:", error);
-      alert(`ERROR: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
+      console.error("[HomePage] ❌ Refresh failed:", error);
+      const errorMessage = error instanceof Error ? error.message : "Error desconocido";
       toast({
-        title: "Error al actualizar",
-        description: error instanceof Error ? error.message : "Error desconocido al actualizar precios",
+        title: "Error al actualizar precios",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {

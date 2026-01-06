@@ -16,6 +16,7 @@ import { AddExpensePage } from "@/pages/AddExpensePage";
 import { AddTransferPage } from "@/pages/AddTransferPage";
 import { PendingPaymentsPage } from "@/pages/PendingPaymentsPage";
 import { DCAPage } from "@/pages/DCAPage";
+import { CryptoPage } from "@/pages/CryptoPage";
 import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 
@@ -36,12 +37,12 @@ function AppContent() {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const newUser = session?.user ?? null;
-      
+
       // Detect new login (previously no user, now there is one)
       if (!previousUserRef.current && newUser) {
         setShowSplash(true);
       }
-      
+
       previousUserRef.current = newUser;
       setUser(newUser);
     });
@@ -58,7 +59,7 @@ function AppContent() {
   }
 
   if (!user) {
-    return <AuthForm onSuccess={() => {}} />;
+    return <AuthForm onSuccess={() => { }} />;
   }
 
   // Show splash after login
@@ -69,6 +70,7 @@ function AppContent() {
   return (
     <Routes>
       <Route path="/" element={<HomePage user={user} />} />
+      <Route path="/crypto" element={<CryptoPage user={user} />} />
       <Route path="/dca" element={<DCAPage user={user} />} />
       <Route path="/report" element={<ReportPage user={user} />} />
       <Route path="/account" element={<AccountPage user={user} />} />

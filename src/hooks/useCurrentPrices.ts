@@ -33,19 +33,28 @@ export function useCurrentPrices(symbols: string[]) {
 
   const refreshPrices = async (symbolsOverride?: string[]) => {
     const symbolsToUse = symbolsOverride || uniqueSymbols;
-    if (symbolsToUse.length === 0) return;
+    console.log("[useCurrentPrices] 🔄 refreshPrices called with symbols:", symbolsToUse);
+
+    if (symbolsToUse.length === 0) {
+      console.warn("[useCurrentPrices] ⚠️ No symbols to refresh, returning early");
+      return;
+    }
 
     try {
+      console.log("[useCurrentPrices] 📦 Importing cryptoPrices module...");
       // Import dynamically to avoid circular dependencies
       const { updateCryptoPrices } = await import("@/lib/cryptoPrices");
 
+      console.log("[useCurrentPrices] ⏳ Calling updateCryptoPrices...");
       // Update prices using Edge Function (which fetches from CMC and saves to DB)
       await updateCryptoPrices(symbolsToUse);
 
+      console.log("[useCurrentPrices] 🔄 Invalidating queries...");
       // Invalidate cache to refetch
       queryClient.invalidateQueries({ queryKey: ["current-prices"] });
+      console.log("[useCurrentPrices] ✅ Refresh complete");
     } catch (err) {
-      console.error("Error refreshing prices:", err);
+      console.error("[useCurrentPrices] ❌ Error refreshing prices:", err);
       throw err;
     }
   };
