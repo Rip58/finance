@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useCryptoAssets, CryptoAsset } from "@/hooks/useCryptoAssets";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +19,7 @@ interface CryptoAssetsTabProps {
 }
 
 export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
+  const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: assets, isLoading, create, update, delete: deleteAsset, isCreating, isUpdating } = useCryptoAssets(userId);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -74,6 +76,53 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
   }, [assets, isLoading, userId]);
 
   const handleSubmit = async () => {
+    // Basic validation
+    if (!formData.symbol || !formData.name) return;
+
+    // CMC Validation for new assets or if symbol changed
+    const needsValidation = !editingAsset || (editingAsset.symbol !== formData.symbol);
+
+    if (needsValidation && formData.asset_type === 'crypto') {
+      try {
+        const { data, error } = await supabase.functions.invoke('validate-crypto-symbol', {
+          body: { symbol: formData.symbol }
+        });
+
+        if (error) throw error;
+
+        if (!data.valid) {
+          toast({
+            title: "Símbolo inválido",
+            description: data.message || "El símbolo no existe en CoinMarketCap",
+            variant: "destructive"
+          });
+          return; // Stop saving
+        }
+
+        // If valid, check name match and maybe auto-correct
+        if (data.name && data.name.toLowerCase() !== formData.name.toLowerCase()) {
+          // We could auto-correct or ask, but for now let's just warn or use the official name?
+          // The user said "ponga el correcto". Let's update the name automatically or notify.
+          setFormData(prev => ({ ...prev, name: data.name }));
+          toast({
+            title: "Nombre actualizado",
+            description: `Se actualizado el nombre a: ${data.name} (oficial de CMC)`,
+          });
+          // We continue to save with the new name
+        }
+
+      } catch (err) {
+        console.error("Validation error:", err);
+        toast({
+          title: "Error de validación",
+          description: "No se pudo verificar el símbolo. Inténtalo de nuevo.",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
+    // Proceed to save
     if (editingAsset) {
       await update({ id: editingAsset.id, ...formData });
     } else {

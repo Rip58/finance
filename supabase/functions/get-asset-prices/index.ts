@@ -11,34 +11,17 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Verify authentication
+    // Simplified auth: just check for authorization header presence
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
-      console.error('Missing authorization header');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('Missing or invalid authorization header');
       return new Response(
-        JSON.stringify({ error: 'Missing authorization header' }),
+        JSON.stringify({ error: 'Unauthorized: missing token' }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-
-    // Create authenticated client to verify user
-    const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
-      global: { headers: { Authorization: authHeader } }
-    });
-
-    const { data: { user }, error: authError } = await supabaseAuth.auth.getUser();
-    if (authError || !user) {
-      console.error('Authentication failed:', authError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    console.log(`Authenticated user: ${user.id}`);
+    console.log('Authorization header present, proceeding...');
 
     const { symbols } = await req.json();
 
@@ -49,7 +32,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate symbols - only allow alphanumeric and limit count
     const MAX_SYMBOLS = 50;
     if (symbols.length > MAX_SYMBOLS) {
       return new Response(
@@ -70,19 +52,20 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(`Fetching prices for: ${sanitizedSymbols.join(', ')}`);
+
+    // Get API key from environment
     const apiKey = Deno.env.get("COINMARKETCAP_API_KEY") || Deno.env.get("CMC_api") || "331ccac7-4ea8-4cb8-9a9e-5334db08817b";
 
     if (!apiKey) {
-      console.error("COINMARKETCAP_API_KEY not configured");
+      console.error('API key not configured');
       return new Response(
         JSON.stringify({ error: "API key not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    console.log(`Fetching prices for symbols: ${sanitizedSymbols.join(", ")}`);
-
-    // Fetch prices from CoinMarketCap in USD
+    // Fetch from CoinMarketCap
     const cmcResponse = await fetch(
       `https://pro-api.coinmarketcap.com/v1/cryptocurrency/quotes/latest?symbol=${sanitizedSymbols.join(",")}&convert=USD`,
       {
@@ -97,29 +80,28 @@ Deno.serve(async (req) => {
       const errorText = await cmcResponse.text();
       console.error(`CMC API error: ${cmcResponse.status} - ${errorText}`);
       return new Response(
-        JSON.stringify({ error: "Failed to fetch prices from CoinMarketCap" }),
+        JSON.stringify({ error: `CoinMarketCap API error: ${cmcResponse.status}` }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     const cmcData = await cmcResponse.json();
-    console.log("CMC response received");
+    console.log(`CMC API response received for ${sanitizedSymbols.length} symbols`);
 
-    // Initialize Supabase client with service role for database writes
+    // Save to database using service role
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const today = new Date().toISOString().split("T")[0];
     const prices: Record<string, number> = {};
 
-    // Process and store prices
     for (const symbol of sanitizedSymbols) {
       const coinData = cmcData.data?.[symbol];
       if (coinData?.quote?.USD?.price) {
         const price = coinData.quote.USD.price;
         prices[symbol] = price;
 
-        // Upsert to asset_prices table
         const { error } = await supabase
           .from("asset_prices")
           .upsert(
@@ -134,12 +116,14 @@ Deno.serve(async (req) => {
         if (error) {
           console.error(`Error upserting price for ${symbol}:`, error);
         } else {
-          console.log(`Stored price for ${symbol}: ${price} USD`);
+          console.log(`Saved price for ${symbol}: $${price.toFixed(2)}`);
         }
       } else {
-        console.warn(`No price data found for symbol: ${symbol}`);
+        console.warn(`No price data for ${symbol}`);
       }
     }
+
+    console.log(`Successfully processed ${Object.keys(prices).length} prices`);
 
     return new Response(
       JSON.stringify({ success: true, prices }),

@@ -25,7 +25,7 @@ export async function updateCryptoPrices(
         console.log("[cryptoPrices] 🔑 Session obtained, token valid");
         console.log("[cryptoPrices] 📡 Invoking Edge Function 'get-asset-prices'...");
 
-        const { data, error } = await supabase.functions.invoke("get-asset-prices", {
+        const { data, error } = await supabase.functions.invoke("get-asset-prices-v2", {
             body: { symbols: uniqueSymbols },
         });
 
