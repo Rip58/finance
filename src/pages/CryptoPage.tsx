@@ -5,7 +5,6 @@ import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { useCryptoAssets } from "@/hooks/useCryptoAssets";
-import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { useToast } from "@/hooks/use-toast";
