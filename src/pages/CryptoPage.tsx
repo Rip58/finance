@@ -14,6 +14,24 @@ interface CryptoPageProps {
     user: User;
 }
 
+// Helper to format crypto prices with appropriate precision
+const formatCryptoPrice = (price: number): string => {
+    if (price === 0) return "—";
+
+    // For very small numbers (less than 1), show 4 significant digits
+    if (price < 1) {
+        return new Intl.NumberFormat("es-ES", {
+            style: "currency",
+            currency: "USD",
+            minimumSignificantDigits: 4,
+            maximumSignificantDigits: 4,
+        }).format(price);
+    }
+
+    // For regular numbers, standard 2 decimal places
+    return formatCurrency(price, "USD");
+};
+
 export function CryptoPage({ user }: CryptoPageProps) {
     const { toast } = useToast();
     const [isRefreshing, setIsRefreshing] = useState(false);
@@ -115,10 +133,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                 {/* Price & Change */}
                                 <div className="text-right">
                                     <p className="font-bold text-lg">
-                                        {asset.currentPrice > 0
-                                            ? formatCurrency(asset.currentPrice, "USD")
-                                            : "—"
-                                        }
+                                        {formatCryptoPrice(asset.currentPrice)}
                                     </p>
                                     {asset.currentPrice > 0 && (
                                         <div className={cn(
