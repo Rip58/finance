@@ -14,6 +14,15 @@ export async function updateCryptoPrices(
             return;
         }
 
+        // Get current session to ensure we have a valid token
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+        if (sessionError || !session) {
+            console.error("[cryptoPrices] ❌ No valid session:", sessionError);
+            throw new Error("Not authenticated");
+        }
+
+        console.log("[cryptoPrices] 🔑 Session obtained, token valid");
         console.log("[cryptoPrices] 📡 Invoking Edge Function 'get-asset-prices'...");
 
         const { data, error } = await supabase.functions.invoke("get-asset-prices", {
