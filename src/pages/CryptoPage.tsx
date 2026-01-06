@@ -33,7 +33,7 @@ const formatCryptoPrice = (price: number): string => {
 };
 
 // Helper to format volume compactly
-const formatVolume = (volume: number | null): string => {
+const formatVolume = (volume: number | null | undefined): string => {
     if (!volume) return "Vol: —";
     if (volume >= 1e9) return `Vol: ${(volume / 1e9).toFixed(1)}B`;
     if (volume >= 1e6) return `Vol: ${(volume / 1e6).toFixed(1)}M`;
@@ -124,15 +124,15 @@ export function CryptoPage({ user }: CryptoPageProps) {
 
             {/* Timeframe Selector */}
             <div className="px-4 py-2 flex justify-center">
-                <div className="flex bg-muted/30 rounded-lg p-1 gap-1">
+                <div className="flex bg-muted/30 rounded-lg p-1 gap-1 shadow-sm border border-border/10">
                     {(["24h", "7d", "30d"] as Timeframe[]).map((tf) => (
                         <button
                             key={tf}
                             onClick={() => setTimeframe(tf)}
                             className={cn(
-                                "px-4 py-1.5 rounded-md text-xs font-medium transition-all",
+                                "px-4 py-1.5 rounded-md text-xs font-medium transition-all duration-200",
                                 timeframe === tf
-                                    ? "bg-background shadow-sm text-foreground"
+                                    ? "bg-background shadow-sm text-foreground scale-105 font-semibold"
                                     : "text-muted-foreground hover:text-foreground"
                             )}
                         >
@@ -152,7 +152,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-1">
+                    <div className="space-y-3">
                         {aggregatedAssets.map((asset) => {
                             const variation = asset.variations[timeframe];
                             const isPositive = variation >= 0;
@@ -160,43 +160,44 @@ export function CryptoPage({ user }: CryptoPageProps) {
                             return (
                                 <div
                                     key={asset.symbol}
-                                    className="group flex items-center justify-between py-3 px-2 rounded-xl transition-colors hover:bg-muted/30 border-b border-border/20 last:border-0"
+                                    className="group flex items-center justify-between py-3 px-4 rounded-2xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
                                 >
                                     {/* Left: Rank + Logo + Symbol/Name */}
                                     <div className="flex items-center gap-3">
-                                        <span className="text-xs font-medium text-muted-foreground w-5 text-center">
-                                            {asset.rank < 999999 ? `#${asset.rank}` : "-"}
+                                        <span className="text-[10px] font-bold text-muted-foreground/70 w-5 text-center bg-muted/30 rounded-sm py-0.5">
+                                            {asset.rank < 999999 ? `${asset.rank}` : "-"}
                                         </span>
-                                        <CryptoLogo symbol={asset.symbol} size={32} />
+                                        <div className="relative">
+                                            <CryptoLogo symbol={asset.symbol} size={36} />
+                                        </div>
                                         <div className="flex flex-col">
                                             <div className="flex items-baseline gap-1.5">
-                                                <span className="font-bold text-sm">{asset.symbol}</span>
-                                                <span className="text-xs text-muted-foreground hidden sm:inline-block">{asset.name}</span>
+                                                <span className="font-bold text-base tracking-tight">{asset.symbol}</span>
                                             </div>
+                                            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{asset.name}</span>
                                         </div>
                                     </div>
 
                                     {/* Right: Price + Variation + Volume */}
-                                    <div className="flex flex-col items-end gap-0.5">
-                                        <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-sm tabular-nums">
-                                                {formatCryptoPrice(asset.currentPrice)}
-                                            </p>
+                                    <div className="flex flex-col items-end gap-1">
+                                        <p className="font-bold text-base tabular-nums tracking-tight">
+                                            {formatCryptoPrice(asset.currentPrice)}
+                                        </p>
 
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[9px] font-medium text-muted-foreground/60 tabular-nums">
+                                                {formatVolume(asset.volume24h)}
+                                            </span>
                                             <div className={cn(
-                                                "flex items-center justify-end w-14 px-1 py-0.5 rounded text-[10px] font-bold tabular-nums",
+                                                "flex items-center justify-center min-w-[50px] px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums",
                                                 isPositive
-                                                    ? "text-green-500 bg-green-500/10"
-                                                    : "text-red-500 bg-red-500/10"
+                                                    ? "text-green-600 bg-green-500/15 dark:text-green-400 dark:bg-green-500/20"
+                                                    : "text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/20"
                                             )}>
                                                 {isPositive ? "+" : ""}
-                                                {variation.toFixed(2)}%
+                                                {variation ? variation.toFixed(2) : "0.00"}%
                                             </div>
                                         </div>
-                                        {/* Volume sub-row */}
-                                        <p className="text-[10px] text-muted-foreground/70 tabular-nums pr-1">
-                                            {formatVolume(asset.volume24h)}
-                                        </p>
                                     </div>
                                 </div>
                             );
