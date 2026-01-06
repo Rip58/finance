@@ -111,11 +111,12 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
           // We continue to save with the new name
         }
 
-      } catch (err) {
+      } catch (err: any) {
         console.error("Validation error:", err);
+        const errorMessage = err.message || "Error desconocido al contactar con el servidor";
         toast({
-          title: "Error de validación",
-          description: "No se pudo verificar el símbolo. Inténtalo de nuevo.",
+          title: "Error de conexión",
+          description: `No se pudo verificar: ${errorMessage}. Asegúrate de que la función 'validate-crypto-symbol' está desplegada.`,
           variant: "destructive"
         });
         return;
