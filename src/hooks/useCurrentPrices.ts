@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { updateCryptoPrices } from "@/lib/cryptoPrices";
 
 export function useCurrentPrices(symbols: string[]) {
   const queryClient = useQueryClient();
@@ -41,10 +42,6 @@ export function useCurrentPrices(symbols: string[]) {
     }
 
     try {
-      console.log("[useCurrentPrices] 📦 Importing cryptoPrices module...");
-      // Import dynamically to avoid circular dependencies
-      const { updateCryptoPrices } = await import("@/lib/cryptoPrices");
-
       console.log("[useCurrentPrices] ⏳ Calling updateCryptoPrices...");
       // Update prices using Edge Function (which fetches from CMC and saves to DB)
       await updateCryptoPrices(symbolsToUse);
