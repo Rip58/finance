@@ -32,9 +32,12 @@ const formatCryptoPrice = (price: number): string => {
     return formatCurrency(price, "USD");
 };
 
+type Timeframe = "24h" | "7d" | "30d";
+
 export function CryptoPage({ user }: CryptoPageProps) {
     const { toast } = useToast();
     const [isRefreshing, setIsRefreshing] = useState(false);
+    const [timeframe, setTimeframe] = useState<Timeframe>("24h");
 
     const { data: cryptoAssets = [] } = useCryptoAssets(user.id);
 
@@ -51,14 +54,20 @@ export function CryptoPage({ user }: CryptoPageProps) {
             const symbol = asset.symbol.toUpperCase();
             const currentPrice = currentPrices[symbol] || 0;
 
-            // Mock 24h change - in production would fetch from CMC API
-            const change24h = Math.random() * 20 - 10;
+            // Mock variations - in production would fetch from CMC API
+            // using symbol string to generate consistent pseudo-random numbers
+            const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+            const random = (offset: number) => (Math.sin(seed + offset) * 20); // -20 to +20 range
 
             return {
                 symbol: asset.symbol,
                 name: asset.name,
                 currentPrice,
-                change24h,
+                variations: {
+                    "24h": random(1),
+                    "7d": random(2),
+                    "30d": random(3)
+                }
             };
         }).sort((a, b) => b.currentPrice - a.currentPrice);
     }, [cryptoAssets, currentPrices]);
@@ -99,14 +108,35 @@ export function CryptoPage({ user }: CryptoPageProps) {
                         size="icon"
                         onClick={handleRefresh}
                         disabled={isRefreshing}
+                        className="h-8 w-8"
                     >
-                        <RefreshCw className={cn("h-5 w-5", isRefreshing && "animate-spin")} />
+                        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
                     </Button>
                 }
             />
 
+            {/* Timeframe Selector */}
+            <div className="px-4 py-2 flex justify-center">
+                <div className="flex bg-muted/30 rounded-lg p-1 gap-1">
+                    {(["24h", "7d", "30d"] as Timeframe[]).map((tf) => (
+                        <button
+                            key={tf}
+                            onClick={() => setTimeframe(tf)}
+                            className={cn(
+                                "px-4 py-1.5 rounded-md text-xs font-medium transition-all",
+                                timeframe === tf
+                                    ? "bg-background shadow-sm text-foreground"
+                                    : "text-muted-foreground hover:text-foreground"
+                            )}
+                        >
+                            {tf === "30d" ? "1m" : tf}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {/* Crypto Grid */}
-            <div className="px-4 py-6 pb-24">
+            <div className="px-4 py-2 pb-24">
                 {aggregatedAssets.length === 0 ? (
                     <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
                         <p className="text-muted-foreground">No hay criptomonedas configuradas</p>
@@ -115,45 +145,48 @@ export function CryptoPage({ user }: CryptoPageProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 gap-3">
-                        {aggregatedAssets.map((asset) => (
-                            <div
-                                key={asset.symbol}
-                                className="rounded-2xl bg-card border border-border/50 p-4 flex items-center justify-between"
-                            >
-                                {/* Logo & Symbol */}
-                                <div className="flex items-center gap-3">
-                                    <CryptoLogo symbol={asset.symbol} size={40} />
-                                    <div>
-                                        <p className="font-bold text-lg">{asset.symbol}</p>
-                                        <p className="text-sm text-muted-foreground">{asset.name}</p>
+                    <div className="space-y-1">
+                        {aggregatedAssets.map((asset) => {
+                            const variation = asset.variations[timeframe];
+                            const isPositive = variation >= 0;
+
+                            return (
+                                <div
+                                    key={asset.symbol}
+                                    className="group flex items-center justify-between py-3 px-2 rounded-xl transition-colors hover:bg-muted/30 border-b border-border/20 last:border-0"
+                                >
+                                    {/* Left: Logo + Symbol/Name */}
+                                    <div className="flex items-center gap-3">
+                                        <CryptoLogo symbol={asset.symbol} size={32} />
+                                        <div className="flex flex-col">
+                                            <div className="flex items-baseline gap-1.5">
+                                                <span className="font-bold text-sm">{asset.symbol}</span>
+                                                <span className="text-xs text-muted-foreground hidden sm:inline-block">{asset.name}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Price + Variation */}
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <p className="font-semibold text-sm tabular-nums">
+                                                {formatCryptoPrice(asset.currentPrice)}
+                                            </p>
+                                        </div>
+
+                                        <div className={cn(
+                                            "flex items-center justify-end w-16 px-1.5 py-0.5 rounded text-xs font-medium tabular-nums",
+                                            isPositive
+                                                ? "text-green-500 bg-green-500/10"
+                                                : "text-red-500 bg-red-500/10"
+                                        )}>
+                                            {isPositive ? "+" : ""}
+                                            {variation.toFixed(2)}%
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Price & Change */}
-                                <div className="text-right">
-                                    <p className="font-bold text-lg">
-                                        {formatCryptoPrice(asset.currentPrice)}
-                                    </p>
-                                    {asset.currentPrice > 0 && (
-                                        <div className={cn(
-                                            "flex items-center gap-1 text-sm font-medium justify-end",
-                                            asset.change24h >= 0 ? "text-green-500" : "text-red-500"
-                                        )}>
-                                            {asset.change24h >= 0 ? (
-                                                <TrendingUp className="h-3 w-3" />
-                                            ) : (
-                                                <TrendingDown className="h-3 w-3" />
-                                            )}
-                                            <span>
-                                                {asset.change24h >= 0 ? "+" : ""}
-                                                {asset.change24h.toFixed(2)}%
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
