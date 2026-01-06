@@ -23,7 +23,7 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    
+
     // Create authenticated client to verify user
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: authHeader } }
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
     console.log(`Authenticated user: ${user.id}`);
 
     const { symbols } = await req.json();
-    
+
     if (!symbols || !Array.isArray(symbols) || symbols.length === 0) {
       return new Response(
         JSON.stringify({ error: "symbols array is required" }),
@@ -70,7 +70,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const apiKey = Deno.env.get("COINMARKETCAP_API_KEY");
+    const apiKey = Deno.env.get("COINMARKETCAP_API_KEY") || Deno.env.get("CMC_api") || "331ccac7-4ea8-4cb8-9a9e-5334db08817b";
+
     if (!apiKey) {
       console.error("COINMARKETCAP_API_KEY not configured");
       return new Response(

@@ -226,6 +226,7 @@ export function DCAPage({ user }: DCAPageProps) {
 
               <DCAEntryList
                 transactions={filteredTransactions}
+                bankAccounts={bankAccounts.data || []}
                 onEdit={handleEdit}
                 onDelete={(id) => setDeleteId(id)}
               />

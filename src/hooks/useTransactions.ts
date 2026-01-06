@@ -15,7 +15,7 @@ export interface Transaction {
   description: string | null;
   date: string;
   value_date: string | null;
-  is_validated: boolean;
+  is_validated?: boolean;
   created_at: string;
 }
 
@@ -27,17 +27,17 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
     queryKey: ["transactions", userId, type],
     queryFn: async (): Promise<Transaction[]> => {
       if (!userId) return [];
-      
+
       let q = supabase
         .from("transactions")
         .select("*")
         .eq("user_id", userId)
         .order("date", { ascending: false });
-      
+
       if (type) {
         q = q.eq("type", type);
       }
-      
+
       const { data, error } = await q;
       if (error) throw error;
       return (data || []) as Transaction[];
@@ -48,11 +48,11 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
   const createMutation = useMutation({
     mutationFn: async (transaction: Omit<Transaction, "id" | "user_id" | "created_at">) => {
       if (!userId) throw new Error("No user");
-      
+
       const { error } = await supabase
         .from("transactions")
         .insert({ ...transaction, user_id: userId });
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -72,7 +72,7 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
         .from("transactions")
         .update(updates)
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -92,7 +92,7 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
         .from("transactions")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {

@@ -1,79 +1,33 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const COINCAP_API = "https://api.coincap.io/v2";
-
-// Map common symbols to CoinCap IDs
-const SYMBOL_TO_ID: Record<string, string> = {
-    BTC: "bitcoin",
-    ETH: "ethereum",
-    USDT: "tether",
-    BNB: "binance-coin",
-    SOL: "solana",
-    XRP: "xrp",
-    ADA: "cardano",
-    DOGE: "dogecoin",
-    DOT: "polkadot",
-    MATIC: "polygon",
-    LTC: "litecoin",
-    AVAX: "avalanche",
-    LINK: "chainlink",
-    UNI: "uniswap",
-    ATOM: "cosmos",
-};
-
-interface CoinCapAsset {
-    id: string;
-    symbol: string;
-    priceUsd: string;
-}
-
-export async function fetchCryptoPrices(
+export async function updateCryptoPrices(
     symbols: string[]
-): Promise<Record<string, number>> {
-    try {
-        const prices: Record<string, number> = {};
-
-        // Fetch prices from CoinCap
-        for (const symbol of symbols) {
-            const coinId = SYMBOL_TO_ID[symbol.toUpperCase()];
-            if (!coinId) {
-                console.warn(`No CoinCap ID found for symbol: ${symbol}`);
-                continue;
-            }
-
-            const response = await fetch(`${COINCAP_API}/assets/${coinId}`);
-            if (!response.ok) continue;
-
-            const { data } = await response.json();
-            if (data && data.priceUsd) {
-                prices[symbol.toUpperCase()] = parseFloat(data.priceUsd);
-            }
-        }
-
-        return prices;
-    } catch (error) {
-        console.error("Error fetching crypto prices:", error);
-        throw error;
-    }
-}
-
-export async function savePricesToDatabase(
-    prices: Record<string, number>
 ): Promise<void> {
     try {
-        const priceRecords = Object.entries(prices).map(([symbol, price]) => ({
-            symbol: symbol.toUpperCase(),
-            close_price: price,
-            price_date: new Date().toISOString().split("T")[0],
-        }));
+        const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
 
-        const { error } = await supabase.from("asset_prices").upsert(priceRecords, {
-            onConflict: "symbol,price_date",
+        if (uniqueSymbols.length === 0) return;
+
+        console.log("Updating prices via Edge Function for:", uniqueSymbols);
+
+        const { data, error } = await supabase.functions.invoke("get-asset-prices", {
+            body: { symbols: uniqueSymbols },
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error("Error invoking get-asset-prices:", error);
+            throw error;
+        }
+
+        if (data && !data.success) {
+            // Even if function invocation worked, it might have returned an applicative error
+            throw new Error(data.error || "Unknown error updating prices");
+        }
+
+        // Edge function handles saving to DB, so we don't need to do anything else.
+
     } catch (error) {
-        console.error("Error saving prices to database:", error);
+        console.error("Error updating crypto prices:", error);
         throw error;
     }
 }

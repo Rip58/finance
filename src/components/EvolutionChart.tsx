@@ -12,7 +12,7 @@ import {
 import { Interval } from "./IntervalSelector";
 import { useChartData } from "@/hooks/useChartData";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatCurrency, formatCompact, cn } from "@/lib/utils";
+import { formatCurrency, formatCompact, cn, formatPercent } from "@/lib/utils";
 
 interface EvolutionChartProps {
   interval: Interval;
@@ -38,7 +38,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
               {isPositive ? "+" : ""}{formatCurrency(change, "EUR")}
             </span>
             <span className={cn("text-xs px-1.5 py-0.5 rounded font-medium", isPositive ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500")}>
-              {isPositive ? "+" : ""}{pctChange.toFixed(2)}%
+              {formatPercent(pctChange)}
             </span>
           </div>
         </div>

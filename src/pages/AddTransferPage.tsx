@@ -23,7 +23,7 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
   const [searchParams] = useSearchParams();
   const editId = searchParams.get("edit");
   const { toast } = useToast();
-  
+
   const { data: allTransfers, create: createTransfer, update: updateTransfer, delete: deleteTransfer, isCreating } = useTransfers(user.id);
   const { create: createRecurring } = useRecurringTransactions(user.id);
   const { data: accounts } = useBankAccounts(user.id);
@@ -72,8 +72,8 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
         setFormData(prev => ({ ...prev, fx_rate: rate }));
         const amountFrom = parseFloat(formData.amount_from);
         if (!isNaN(amountFrom)) {
-          const amountTo = fromAccount.currency === "EUR" 
-            ? amountFrom / rate 
+          const amountTo = fromAccount.currency === "EUR"
+            ? amountFrom / rate
             : amountFrom * rate;
           setFormData(prev => ({ ...prev, amount_to: amountTo.toFixed(2) }));
         }
@@ -100,7 +100,6 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
         date: new Date(formData.date).toISOString(),
         value_date: null,
         description: formData.description || null,
-        is_validated: false,
       };
 
       if (editId) {
@@ -225,7 +224,7 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
 
         {needsConversion && formData.fx_rate && (
           <p className="text-sm text-muted-foreground">
-            1 USDT = {formData.fx_rate.toFixed(4)} EUR
+            1 USDT = {formData.fx_rate.toLocaleString("es-ES", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} EUR
           </p>
         )}
 
@@ -279,9 +278,9 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
         )}
 
         {/* Submit */}
-        <Button 
-          className="w-full" 
-          size="lg" 
+        <Button
+          className="w-full"
+          size="lg"
           onClick={handleSubmit}
           disabled={isSubmitting || isCreating || !formData.from_account_id || !formData.to_account_id || !formData.amount_from}
         >
@@ -291,10 +290,10 @@ export function AddTransferPage({ user }: AddTransferPageProps) {
 
         {/* Delete Button (only in edit mode) */}
         {editId && (
-          <Button 
+          <Button
             variant="destructive"
-            className="w-full" 
-            size="lg" 
+            className="w-full"
+            size="lg"
             onClick={handleDelete}
             disabled={isSubmitting}
           >

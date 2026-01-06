@@ -15,7 +15,7 @@ export interface Transfer {
   date: string;
   value_date: string | null;
   description: string | null;
-  is_validated: boolean;
+  is_validated?: boolean;
   created_at: string;
 }
 
@@ -27,13 +27,13 @@ export function useTransfers(userId: string | undefined) {
     queryKey: ["transfers", userId],
     queryFn: async (): Promise<Transfer[]> => {
       if (!userId) return [];
-      
+
       const { data, error } = await supabase
         .from("transfers")
         .select("*")
         .eq("user_id", userId)
         .order("date", { ascending: false });
-      
+
       if (error) throw error;
       return data || [];
     },
@@ -43,11 +43,11 @@ export function useTransfers(userId: string | undefined) {
   const createMutation = useMutation({
     mutationFn: async (transfer: Omit<Transfer, "id" | "user_id" | "created_at">) => {
       if (!userId) throw new Error("No user");
-      
+
       const { error } = await supabase
         .from("transfers")
         .insert({ ...transfer, user_id: userId });
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -66,7 +66,7 @@ export function useTransfers(userId: string | undefined) {
         .from("transfers")
         .update(updates)
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
@@ -85,7 +85,7 @@ export function useTransfers(userId: string | undefined) {
         .from("transfers")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {

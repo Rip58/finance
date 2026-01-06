@@ -25,7 +25,7 @@ import { useFxRates } from "@/hooks/useFxRates";
 import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
 interface HomePageProps {
@@ -256,17 +256,23 @@ export function HomePage({ user }: HomePageProps) {
   const handleRefreshPrices = async () => {
     setIsRefreshing(true);
     try {
+      console.log("Refleshing prices for:", allSymbols);
+
       await Promise.all([
         refreshPrices(),
         fxRates.fetchRate(),
       ]);
+
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
       queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+
       toast({ title: "Precios actualizados" });
     } catch (error) {
+      console.error("Refresh error detail:", error);
+      alert(`ERROR: ${error instanceof Error ? error.message : JSON.stringify(error)}`);
       toast({
-        title: "Error",
-        description: "No se pudieron actualizar los precios",
+        title: "Error al actualizar",
+        description: error instanceof Error ? error.message : "Error desconocido al actualizar precios",
         variant: "destructive"
       });
     } finally {
@@ -284,6 +290,11 @@ export function HomePage({ user }: HomePageProps) {
 
   // Balance = savings + investments + crypto
   const totalBalance = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0) + (metrics?.cryptoBalance ?? 0);
+
+  // Check if there are any DCA holdings to determine visibility
+  const hasDcaHoldings = useMemo(() => {
+    return assetTransactions.some(tx => tx.side === "buy");
+  }, [assetTransactions]);
 
   return (
     <MobileLayout>
@@ -346,7 +357,7 @@ export function HomePage({ user }: HomePageProps) {
                       ? "text-green-500 bg-green-500/10"
                       : "text-red-500 bg-red-500/10"
                   )}>
-                    {percentageChange >= 0 ? "+" : ""}{percentageChange.toFixed(1)}%
+                    {formatPercent(percentageChange)}
                   </span>
                 )}
               </div>
@@ -383,16 +394,19 @@ export function HomePage({ user }: HomePageProps) {
               onReorder={updateSortOrder}
             />
 
-            {/* DCA Entry */}
-            <div className="flex items-center justify-between p-2 -mx-2">
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">DCA (Total)</span>
+            {/* DCA Total - Show if has value OR has holdings */}
+            {(dcaTotalUsd > 0 || hasDcaHoldings) && (
+              <div className="flex items-center justify-between p-2 rounded-lg bg-chart-income/10 border border-chart-income/20">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-chart-income animate-pulse" />
+                  <span className="text-sm font-medium">DCA</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-sm font-bold block">{formatCurrency(dcaTotal, "EUR")}</span>
+                  <span className="text-xs text-muted-foreground">{formatCurrency(dcaTotalUsd, "USDT")}</span>
+                </div>
               </div>
-              <span className="font-medium text-sm text-primary">
-                {formatUsd(dcaTotalUsd)}
-              </span>
-            </div>
+            )}
           </div>
         </div>
       </div>

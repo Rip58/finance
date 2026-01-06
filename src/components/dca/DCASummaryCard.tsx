@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, Trash2 } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 
 interface DCASummaryCardProps {
@@ -135,7 +135,7 @@ export function DCASummaryCard({
               "text-xl font-bold",
               totals.pnlPercent >= 0 ? "text-chart-income" : "text-destructive"
             )}>
-              {totals.pnlPercent >= 0 ? "+" : ""}{totals.pnlPercent.toFixed(2)}%
+              {formatPercent(totals.pnlPercent)}
             </p>
           </div>
         </div>

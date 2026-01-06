@@ -321,25 +321,33 @@ function SavingsAccountDialog({
       const newBalance = parseFloat(balance) || 0;
       const diff = newBalance - currentBalance;
 
-      if (Math.abs(diff) > 0.01) { // Avoid tiny floating point diffs
-        await createTransaction({
-          amount: Math.abs(diff),
-          type: diff > 0 ? "income" : "expense",
-          description: "Ajuste manual de saldo",
-          date: new Date().toISOString(),
-          bank_account_id: account.id,
-          currency: account.currency,
-          is_validated: true,
-          category_id: null,
-          value_date: null,
-        });
+      try {
+        if (Math.abs(diff) > 0.01) { // Avoid tiny floating point diffs
+          await createTransaction({
+            amount: Math.abs(diff),
+            type: diff > 0 ? "income" : "expense",
+            description: "Ajuste manual de saldo",
+            date: new Date().toISOString(),
+            bank_account_id: account.id,
+            currency: account.currency,
+            category_id: null,
+            value_date: null,
+          });
+        }
+      } catch (error) {
+        console.error("Error creating adjustment transaction:", error);
+        // Fallback or user notification could go here
       }
     } else {
       // Legacy logic: Update initial_balance directly
-      await update({
-        id: account.id,
-        initial_balance: parseFloat(balance) || 0,
-      });
+      try {
+        await update({
+          id: account.id,
+          initial_balance: parseFloat(balance) || 0,
+        });
+      } catch (error) {
+        console.error("Error updating initial balance:", error);
+      }
     }
 
     onOpenChange(false);
@@ -371,7 +379,16 @@ function SavingsAccountDialog({
               id="balance"
               type="number"
               value={balance}
-              onChange={(e) => setBalance(e.target.value)}
+              onChange={(e) => {
+                // Remove leading zero if user types a number (e.g. "05" -> "5")
+                // But allow "0." and "0"
+                let val = e.target.value;
+                if (val.length > 1 && val.startsWith("0") && val[1] !== ".") {
+                  val = val.substring(1);
+                }
+                setBalance(val);
+              }}
+              onFocus={(e) => e.target.select()}
               placeholder="0.00"
               step="0.01"
               className="text-lg"

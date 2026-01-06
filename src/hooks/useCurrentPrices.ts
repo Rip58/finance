@@ -31,18 +31,16 @@ export function useCurrentPrices(symbols: string[]) {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const refreshPrices = async () => {
-    if (uniqueSymbols.length === 0) return;
+  const refreshPrices = async (symbolsOverride?: string[]) => {
+    const symbolsToUse = symbolsOverride || uniqueSymbols;
+    if (symbolsToUse.length === 0) return;
 
     try {
       // Import dynamically to avoid circular dependencies
-      const { fetchCryptoPrices, savePricesToDatabase } = await import("@/lib/cryptoPrices");
+      const { updateCryptoPrices } = await import("@/lib/cryptoPrices");
 
-      // Fetch prices from CoinCap API
-      const prices = await fetchCryptoPrices(uniqueSymbols);
-
-      // Save to database
-      await savePricesToDatabase(prices);
+      // Update prices using Edge Function (which fetches from CMC and saves to DB)
+      await updateCryptoPrices(symbolsToUse);
 
       // Invalidate cache to refetch
       queryClient.invalidateQueries({ queryKey: ["current-prices"] });

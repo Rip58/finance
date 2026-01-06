@@ -46,8 +46,8 @@ export function TransfersTab({ userId }: TransfersTabProps) {
         setFormData(prev => ({ ...prev, fx_rate: rate }));
         const amountFrom = parseFloat(formData.amount_from);
         if (!isNaN(amountFrom)) {
-          const amountTo = fromAccount.currency === "EUR" 
-            ? amountFrom / rate 
+          const amountTo = fromAccount.currency === "EUR"
+            ? amountFrom / rate
             : amountFrom * rate;
           setFormData(prev => ({ ...prev, amount_to: amountTo.toFixed(2) }));
         }
@@ -59,7 +59,7 @@ export function TransfersTab({ userId }: TransfersTabProps) {
 
   const handleSubmit = async () => {
     if (!fromAccount || !toAccount) return;
-    
+
     const transferData = {
       from_account_id: formData.from_account_id,
       to_account_id: formData.to_account_id,
@@ -71,7 +71,6 @@ export function TransfersTab({ userId }: TransfersTabProps) {
       date: new Date(formData.date).toISOString(),
       value_date: formData.value_date ? new Date(formData.value_date).toISOString() : null,
       description: formData.description || null,
-      is_validated: false,
     };
 
     if (editingTransfer) {
@@ -162,7 +161,7 @@ export function TransfersTab({ userId }: TransfersTabProps) {
                   <p className="font-medium truncate">
                     {getAccountName(transfer.from_account_id)} → {getAccountName(transfer.to_account_id)}
                   </p>
-                  {!transfer.is_validated && (
+                  {transfer.is_validated === false && (
                     <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500">
                       Pendiente
                     </span>
@@ -183,18 +182,6 @@ export function TransfersTab({ userId }: TransfersTabProps) {
                 )}
               </div>
               <div className="flex items-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-8 w-8"
-                  onClick={() => update({ id: transfer.id, is_validated: !transfer.is_validated })}
-                >
-                  {transfer.is_validated ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(transfer)}>
                   <Pencil className="h-4 w-4" />
                 </Button>
@@ -288,7 +275,7 @@ export function TransfersTab({ userId }: TransfersTabProps) {
             </div>
             {needsConversion && formData.fx_rate && (
               <p className="text-sm text-muted-foreground">
-                1 USDT = {formData.fx_rate.toFixed(4)} EUR
+                1 USDT = {formData.fx_rate.toLocaleString("es-ES", { minimumFractionDigits: 4, maximumFractionDigits: 4 })} EUR
               </p>
             )}
             <div className="grid grid-cols-2 gap-3">
@@ -321,8 +308,8 @@ export function TransfersTab({ userId }: TransfersTabProps) {
             <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSubmit} 
+            <Button
+              onClick={handleSubmit}
               disabled={isCreating || isUpdating || !formData.from_account_id || !formData.to_account_id || !formData.amount_from}
             >
               {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
