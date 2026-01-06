@@ -4,9 +4,9 @@ import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
+import { useCryptoAssets } from "@/hooks/useCryptoAssets";
 import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
-import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -19,45 +19,53 @@ export function CryptoPage({ user }: CryptoPageProps) {
     const { toast } = useToast();
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    const { data: cryptoAssets = [] } = useCryptoAssets(user.id);
     const { data: holdings = [] } = useAccountHoldings(user.id);
-    const { data: bankAccounts = [] } = useBankAccounts(user.id);
 
-    // Get unique symbols from holdings
+    // Get symbols from crypto_assets
     const symbols = useMemo(() => {
-        return [...new Set(holdings.map(h => h.symbol.toUpperCase()))];
-    }, [holdings]);
+        return cryptoAssets.map(asset => asset.symbol.toUpperCase());
+    }, [cryptoAssets]);
 
     const { data: currentPrices = {}, refreshPrices } = useCurrentPrices(symbols);
 
-    // Aggregate holdings by symbol
-    const aggregatedHoldings = useMemo(() => {
-        const bySymbol: Record<string, { quantity: number; accountNames: string[] }> = {};
+    // Aggregate holdings by symbol and calculate totals
+    const aggregatedAssets = useMemo(() => {
+        return cryptoAssets.map(asset => {
+            const symbol = asset.symbol.toUpperCase();
 
-        for (const holding of holdings) {
-            const symbol = holding.symbol.toUpperCase();
-            if (!bySymbol[symbol]) {
-                bySymbol[symbol] = { quantity: 0, accountNames: [] };
-            }
-            bySymbol[symbol].quantity += holding.quantity;
+            // Sum all holdings for this symbol across all accounts
+            const totalQuantity = holdings
+                .filter(h => h.symbol.toUpperCase() === symbol)
+                .reduce((sum, h) => sum + h.quantity, 0);
 
-            const account = bankAccounts.find(a => a.id === holding.bank_account_id);
-            if (account && !bySymbol[symbol].accountNames.includes(account.name)) {
-                bySymbol[symbol].accountNames.push(account.name);
-            }
-        }
+            const currentPrice = currentPrices[symbol] || 0;
+            const totalValue = totalQuantity * currentPrice;
 
-        return Object.entries(bySymbol).map(([symbol, data]) => ({
-            symbol,
-            quantity: data.quantity,
-            accountNames: data.accountNames,
-            currentPrice: currentPrices[symbol] || 0,
-            totalValue: data.quantity * (currentPrices[symbol] || 0),
-            // Mock 24h change - in real app would fetch from API
-            change24h: Math.random() * 20 - 10, // Random between -10% and +10%
-        })).sort((a, b) => b.totalValue - a.totalValue);
-    }, [holdings, bankAccounts, currentPrices]);
+            // Mock 24h change - in production would fetch from CMC API
+            const change24h = Math.random() * 20 - 10;
+
+            return {
+                symbol: asset.symbol,
+                name: asset.name,
+                quantity: totalQuantity,
+                currentPrice,
+                totalValue,
+                change24h,
+            };
+        }).sort((a, b) => b.totalValue - a.totalValue);
+    }, [cryptoAssets, holdings, currentPrices]);
 
     const handleRefresh = async () => {
+        if (symbols.length === 0) {
+            toast({
+                title: "Sin activos",
+                description: "No hay criptomonedas configuradas",
+                variant: "destructive"
+            });
+            return;
+        }
+
         setIsRefreshing(true);
         try {
             await refreshPrices();
@@ -74,7 +82,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
         }
     };
 
-    const totalPortfolioValue = aggregatedHoldings.reduce((sum, holding) => sum + holding.totalValue, 0);
+    const totalPortfolioValue = aggregatedAssets.reduce((sum, asset) => sum + asset.totalValue, 0);
 
     return (
         <MobileLayout>
@@ -97,66 +105,99 @@ export function CryptoPage({ user }: CryptoPageProps) {
                 <div className="rounded-3xl glass-panel p-6">
                     <p className="text-sm text-muted-foreground">Valor Total Portfolio</p>
                     <p className="text-3xl font-bold">{formatCurrency(totalPortfolioValue, "USDT")}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                        {aggregatedAssets.length} activos
+                    </p>
                 </div>
             </div>
 
             {/* Crypto Grid */}
             <div className="px-4 pb-24">
-                {aggregatedHoldings.length === 0 ? (
+                {aggregatedAssets.length === 0 ? (
                     <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
-                        <p className="text-muted-foreground">No hay criptomonedas</p>
+                        <p className="text-muted-foreground">No hay criptomonedas configuradas</p>
                         <p className="text-sm text-muted-foreground mt-2">
-                            Añade activos desde la sección de cuentas
+                            Añade activos desde la sección de cuenta
                         </p>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {aggregatedHoldings.map((holding) => (
-                            <div
-                                key={holding.symbol}
-                                className="rounded-2xl bg-card border border-border/50 p-4 hover:border-primary/30 transition-colors"
-                            >
-                                <div className="flex items-center justify-between">
-                                    {/* Logo & Symbol */}
-                                    <div className="flex items-center gap-3">
-                                        <CryptoLogo symbol={holding.symbol} size={40} />
-                                        <div>
-                                            <p className="font-semibold">{holding.symbol}</p>
-                                            <p className="text-xs text-muted-foreground">
-                                                {holding.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
+                        {aggregatedAssets.map((asset) => {
+                            const hasHoldings = asset.quantity > 0;
+
+                            return (
+                                <div
+                                    key={asset.symbol}
+                                    className={cn(
+                                        "rounded-2xl bg-card border p-4 transition-colors",
+                                        hasHoldings
+                                            ? "border-primary/30 hover:border-primary/50"
+                                            : "border-border/30 opacity-50"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        {/* Logo & Symbol */}
+                                        <div className="flex items-center gap-3">
+                                            <CryptoLogo symbol={asset.symbol} size={40} />
+                                            <div>
+                                                <p className="font-semibold">{asset.symbol}</p>
+                                                <p className="text-xs text-muted-foreground">{asset.name}</p>
+                                            </div>
+                                        </div>
+
+                                        {/* Price & Change */}
+                                        <div className="text-right">
+                                            <p className="font-semibold">
+                                                {asset.currentPrice > 0
+                                                    ? formatCurrency(asset.currentPrice, "USD")
+                                                    : "—"
+                                                }
                                             </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Price & Change */}
-                                    <div className="text-right">
-                                        <p className="font-semibold">
-                                            {formatCurrency(holding.currentPrice, "USD")}
-                                        </p>
-                                        <div className={cn(
-                                            "flex items-center gap-1 text-xs font-medium",
-                                            holding.change24h >= 0 ? "text-green-500" : "text-red-500"
-                                        )}>
-                                            {holding.change24h >= 0 ? (
-                                                <TrendingUp className="h-3 w-3" />
-                                            ) : (
-                                                <TrendingDown className="h-3 w-3" />
+                                            {asset.currentPrice > 0 && (
+                                                <div className={cn(
+                                                    "flex items-center gap-1 text-xs font-medium justify-end",
+                                                    asset.change24h >= 0 ? "text-green-500" : "text-red-500"
+                                                )}>
+                                                    {asset.change24h >= 0 ? (
+                                                        <TrendingUp className="h-3 w-3" />
+                                                    ) : (
+                                                        <TrendingDown className="h-3 w-3" />
+                                                    )}
+                                                    <span>
+                                                        {asset.change24h >= 0 ? "+" : ""}
+                                                        {asset.change24h.toFixed(2)}%
+                                                    </span>
+                                                </div>
                                             )}
-                                            <span>
-                                                {holding.change24h >= 0 ? "+" : ""}
-                                                {holding.change24h.toFixed(2)}%
-                                            </span>
                                         </div>
                                     </div>
-                                </div>
 
-                                {/* Total Value */}
-                                <div className="mt-3 pt-3 border-t border-border/50 flex justify-between items-center">
-                                    <p className="text-sm text-muted-foreground">Valor Total</p>
-                                    <p className="font-semibold">{formatCurrency(holding.totalValue, "USDT")}</p>
+                                    {/* Holdings Info */}
+                                    {hasHoldings && (
+                                        <div className="mt-3 pt-3 border-t border-border/50">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <span className="text-muted-foreground">Cantidad</span>
+                                                <span className="font-medium">
+                                                    {asset.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between items-center text-sm mt-1">
+                                                <span className="text-muted-foreground">Valor Total</span>
+                                                <span className="font-semibold">
+                                                    {formatCurrency(asset.totalValue, "USDT")}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!hasHoldings && (
+                                        <div className="mt-2 text-xs text-muted-foreground text-center">
+                                            Sin holdings
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
