@@ -5,7 +5,7 @@ import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { useCryptoAssets } from "@/hooks/useCryptoAssets";
-import { useCurrentPrices } from "@/hooks/useCurrentPrices";
+import { useCryptoMarketData } from "@/hooks/useCryptoMarketData"; // New hook
 import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -16,7 +16,7 @@ interface CryptoPageProps {
 
 // Helper to format crypto prices with appropriate precision
 const formatCryptoPrice = (price: number): string => {
-    if (price === 0) return "—";
+    if (!price || price === 0) return "—";
 
     // For very small numbers (less than 1), show 4 significant digits
     if (price < 1) {
@@ -30,6 +30,15 @@ const formatCryptoPrice = (price: number): string => {
 
     // For regular numbers, standard 2 decimal places
     return formatCurrency(price, "USD");
+};
+
+// Helper to format volume compactly
+const formatVolume = (volume: number | null): string => {
+    if (!volume) return "Vol: —";
+    if (volume >= 1e9) return `Vol: ${(volume / 1e9).toFixed(1)}B`;
+    if (volume >= 1e6) return `Vol: ${(volume / 1e6).toFixed(1)}M`;
+    if (volume >= 1e3) return `Vol: ${(volume / 1e3).toFixed(1)}K`;
+    return `Vol: ${volume.toFixed(0)}`;
 };
 
 type Timeframe = "24h" | "7d" | "30d";
@@ -46,31 +55,29 @@ export function CryptoPage({ user }: CryptoPageProps) {
         return cryptoAssets.map(asset => asset.symbol.toUpperCase());
     }, [cryptoAssets]);
 
-    const { data: currentPrices = {}, refreshPrices } = useCurrentPrices(symbols);
+    // Use the new hook for rich market data
+    const { data: marketData = {}, refreshMarketData } = useCryptoMarketData(symbols);
 
-    // Aggregate assets with prices
+    // Aggregate assets with real market data
     const aggregatedAssets = useMemo(() => {
         return cryptoAssets.map(asset => {
             const symbol = asset.symbol.toUpperCase();
-            const currentPrice = currentPrices[symbol] || 0;
-
-            // Mock variations - in production would fetch from CMC API
-            // using symbol string to generate consistent pseudo-random numbers
-            const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-            const random = (offset: number) => (Math.sin(seed + offset) * 20); // -20 to +20 range
+            const data = marketData[symbol];
 
             return {
                 symbol: asset.symbol,
                 name: asset.name,
-                currentPrice,
+                currentPrice: data?.price || 0,
+                rank: data?.rank || 999999, // Default to end if no rank
+                volume24h: data?.volume24h || null,
                 variations: {
-                    "24h": random(1),
-                    "7d": random(2),
-                    "30d": random(3)
+                    "24h": data?.change24h || 0,
+                    "7d": data?.change7d || 0,
+                    "30d": data?.change30d || 0
                 }
             };
-        }).sort((a, b) => b.currentPrice - a.currentPrice);
-    }, [cryptoAssets, currentPrices]);
+        }).sort((a, b) => (a.rank || 0) - (b.rank || 0)); // Sort by Rank
+    }, [cryptoAssets, marketData]);
 
     const handleRefresh = async () => {
         if (symbols.length === 0) {
@@ -84,7 +91,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
 
         setIsRefreshing(true);
         try {
-            await refreshPrices();
+            await refreshMarketData();
             toast({ title: "Precios actualizados" });
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : "Error desconocido";
@@ -155,8 +162,11 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                     key={asset.symbol}
                                     className="group flex items-center justify-between py-3 px-2 rounded-xl transition-colors hover:bg-muted/30 border-b border-border/20 last:border-0"
                                 >
-                                    {/* Left: Logo + Symbol/Name */}
+                                    {/* Left: Rank + Logo + Symbol/Name */}
                                     <div className="flex items-center gap-3">
+                                        <span className="text-xs font-medium text-muted-foreground w-5 text-center">
+                                            {asset.rank < 999999 ? `#${asset.rank}` : "-"}
+                                        </span>
                                         <CryptoLogo symbol={asset.symbol} size={32} />
                                         <div className="flex flex-col">
                                             <div className="flex items-baseline gap-1.5">
@@ -166,23 +176,27 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                         </div>
                                     </div>
 
-                                    {/* Right: Price + Variation */}
-                                    <div className="flex items-center gap-4">
-                                        <div className="text-right">
+                                    {/* Right: Price + Variation + Volume */}
+                                    <div className="flex flex-col items-end gap-0.5">
+                                        <div className="flex items-center gap-2">
                                             <p className="font-semibold text-sm tabular-nums">
                                                 {formatCryptoPrice(asset.currentPrice)}
                                             </p>
-                                        </div>
 
-                                        <div className={cn(
-                                            "flex items-center justify-end w-16 px-1.5 py-0.5 rounded text-xs font-medium tabular-nums",
-                                            isPositive
-                                                ? "text-green-500 bg-green-500/10"
-                                                : "text-red-500 bg-red-500/10"
-                                        )}>
-                                            {isPositive ? "+" : ""}
-                                            {variation.toFixed(2)}%
+                                            <div className={cn(
+                                                "flex items-center justify-end w-14 px-1 py-0.5 rounded text-[10px] font-bold tabular-nums",
+                                                isPositive
+                                                    ? "text-green-500 bg-green-500/10"
+                                                    : "text-red-500 bg-red-500/10"
+                                            )}>
+                                                {isPositive ? "+" : ""}
+                                                {variation.toFixed(2)}%
+                                            </div>
                                         </div>
+                                        {/* Volume sub-row */}
+                                        <p className="text-[10px] text-muted-foreground/70 tabular-nums pr-1">
+                                            {formatVolume(asset.volume24h)}
+                                        </p>
                                     </div>
                                 </div>
                             );

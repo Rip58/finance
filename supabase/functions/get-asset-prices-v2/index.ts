@@ -99,7 +99,8 @@ Deno.serve(async (req) => {
         for (const symbol of sanitizedSymbols) {
             const coinData = cmcData.data?.[symbol];
             if (coinData?.quote?.USD?.price) {
-                const price = coinData.quote.USD.price;
+                const quote = coinData.quote.USD;
+                const price = quote.price;
                 prices[symbol] = price;
 
                 const { error } = await supabase
@@ -109,6 +110,13 @@ Deno.serve(async (req) => {
                             symbol: symbol,
                             close_price: price,
                             price_date: today,
+                            // New fields
+                            cmc_rank: coinData.cmc_rank,
+                            volume_24h: quote.volume_24h,
+                            percent_change_1h: quote.percent_change_1h,
+                            percent_change_24h: quote.percent_change_24h,
+                            percent_change_7d: quote.percent_change_7d,
+                            percent_change_30d: quote.percent_change_30d
                         },
                         { onConflict: "symbol,price_date" }
                     );
@@ -116,7 +124,7 @@ Deno.serve(async (req) => {
                 if (error) {
                     console.error(`Error upserting price for ${symbol}:`, error);
                 } else {
-                    console.log(`Saved price for ${symbol}: $${price.toFixed(2)}`);
+                    console.log(`Saved price for ${symbol}: $${price.toFixed(2)} (Rank: ${coinData.cmc_rank})`);
                 }
             } else {
                 console.warn(`No price data for ${symbol}`);
