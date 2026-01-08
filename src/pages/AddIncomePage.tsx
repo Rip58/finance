@@ -7,6 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { MobileLayout } from "@/components/mobile";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
@@ -27,8 +34,8 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
 
   const { data: allTransactions, create: createTransaction, update: updateTransaction, delete: deleteTransaction, isCreating } = useTransactions(user.id);
   const { create: createRecurring } = useRecurringTransactions(user.id);
-  const { data: categories } = useCategories(user.id, "general");
-  const { data: accounts } = useBankAccounts(user.id);
+  const { data: categories, create: createCategory, isCreating: isCreatingCategory } = useCategories(user.id, "general");
+  const { data: accounts, create: createAccount, isCreating: isCreatingAccount } = useBankAccounts(user.id);
 
   const [formData, setFormData] = useState({
     amount: "",
@@ -39,6 +46,49 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
     description: "",
   });
   const [isRecurring, setIsRecurring] = useState(false);
+
+  // Dialog States
+  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  const [isAccountDialogOpen, setIsAccountDialogOpen] = useState(false);
+  const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountCurrency, setNewAccountCurrency] = useState("EUR");
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    try {
+      const id = await createCategory({
+        scope: "general",
+        name: newCategoryName.trim(),
+        sort_order: categories ? categories.length : 0,
+        is_archived: false,
+      });
+      setFormData(prev => ({ ...prev, category_id: id }));
+      setIsCategoryDialogOpen(false);
+      setNewCategoryName("");
+    } catch (e) {
+      // Error handled in hook
+    }
+  };
+
+  const handleCreateAccount = async () => {
+    if (!newAccountName.trim()) return;
+    try {
+      const id = await createAccount({
+        name: newAccountName.trim(),
+        currency: newAccountCurrency,
+        initial_balance: 0,
+        category_id: null,
+        is_archived: false,
+      });
+      setFormData(prev => ({ ...prev, bank_account_id: id }));
+      setIsAccountDialogOpen(false);
+      setNewAccountName("");
+    } catch (e) {
+      // Error handled in hook
+    }
+  };
 
   useEffect(() => {
     if (searchParams.get("recurring") === "true") {
@@ -183,11 +233,23 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         {/* Category */}
         <div className="space-y-2">
           <Label>Categoría</Label>
-          <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
+          <Select
+            value={formData.category_id}
+            onValueChange={(v) => {
+              if (v === "new") {
+                setIsCategoryDialogOpen(true);
+              } else {
+                setFormData({ ...formData, category_id: v });
+              }
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Sin categoría" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="new" className="text-primary font-medium bg-primary/10 mb-1">
+                + Nueva categoría
+              </SelectItem>
               <SelectItem value="none">Sin categoría</SelectItem>
               {categories?.filter(c => !c.is_archived).map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
@@ -199,11 +261,23 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         {/* Account */}
         <div className="space-y-2">
           <Label>Cuenta</Label>
-          <Select value={formData.bank_account_id} onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}>
+          <Select
+            value={formData.bank_account_id}
+            onValueChange={(v) => {
+              if (v === "new") {
+                setIsAccountDialogOpen(true);
+              } else {
+                setFormData({ ...formData, bank_account_id: v });
+              }
+            }}
+          >
             <SelectTrigger>
               <SelectValue placeholder="Sin cuenta" />
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="new" className="text-primary font-medium bg-primary/10 mb-1">
+                + Nueva cuenta
+              </SelectItem>
               <SelectItem value="none">Sin cuenta</SelectItem>
               {accounts?.filter(a => !a.is_archived).map((acc) => (
                 <SelectItem key={acc.id} value={acc.id}>{acc.name} ({acc.currency})</SelectItem>
@@ -223,7 +297,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           />
         </div>
 
-        {/* Recurring Switch (only for new transactions) */}
+        {/* Recurring Switch */}
         {!editId && (
           <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
             <div>
@@ -234,7 +308,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           </div>
         )}
 
-        {/* Cadence (if recurring) */}
+        {/* Cadence */}
         {!editId && isRecurring && (
           <div className="space-y-2">
             <Label>Frecuencia</Label>
@@ -252,7 +326,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           </div>
         )}
 
-        {/* Submit */}
+        {/* Buttons */}
         <Button
           className="w-full"
           size="lg"
@@ -263,7 +337,6 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           {editId ? "Actualizar" : "Guardar"}
         </Button>
 
-        {/* Delete Button (only in edit mode) */}
         {editId && (
           <Button
             variant="destructive"
@@ -277,6 +350,70 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
           </Button>
         )}
       </div>
+
+      {/* Category Creation Dialog */}
+      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl top-[20%] translate-y-0">
+          <DialogHeader>
+            <DialogTitle>Nueva Categoría</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="catName" className="mb-2 block">Nombre</Label>
+            <Input
+              id="catName"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="Ej: Transporte, Ocio..."
+            />
+          </div>
+          <DialogFooter className="flex-row justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsCategoryDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateCategory} disabled={isCreatingCategory || !newCategoryName.trim()}>
+              {isCreatingCategory && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Crear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Account Creation Dialog */}
+      <Dialog open={isAccountDialogOpen} onOpenChange={setIsAccountDialogOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl top-[20%] translate-y-0">
+          <DialogHeader>
+            <DialogTitle>Nueva Cuenta</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div>
+              <Label htmlFor="accName" className="mb-2 block">Nombre</Label>
+              <Input
+                id="accName"
+                value={newAccountName}
+                onChange={(e) => setNewAccountName(e.target.value)}
+                placeholder="Ej: BBVA, Efectivo..."
+              />
+            </div>
+            <div>
+              <Label htmlFor="accCurrency" className="mb-2 block">Moneda</Label>
+              <Select value={newAccountCurrency} onValueChange={setNewAccountCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="USDT">USDT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter className="flex-row justify-end space-x-2">
+            <Button variant="outline" onClick={() => setIsAccountDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreateAccount} disabled={isCreatingAccount || !newAccountName.trim()}>
+              {isCreatingAccount && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Crear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MobileLayout>
   );
 }

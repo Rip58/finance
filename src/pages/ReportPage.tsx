@@ -6,6 +6,12 @@ import {
   MobilePageHeader,
 } from "@/components/mobile";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn, formatCurrency } from "@/lib/utils";
 import { useRecurringTransactions, type RecurringTransaction, type PendingRecurring } from "@/hooks/useRecurringTransactions";
 import { useCategories } from "@/hooks/useCategories";
@@ -112,9 +118,39 @@ export function ReportPage({ user }: ReportPageProps) {
 
   const currentMonthName = format(new Date(), "MMMM", { locale: es });
 
+  const CreateAction = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-9 w-9">
+          <Plus className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 bg-popover/95 backdrop-blur-md border-border mr-2">
+        <DropdownMenuItem
+          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
+          onClick={() => navigate("/add-income?recurring=true")}
+        >
+          Nuevo Ingreso
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
+          onClick={() => navigate("/add-expense?recurring=true")}
+        >
+          Nuevo Gasto
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
+          onClick={() => navigate("/add-expense?recurring=true&hint=loan")}
+        >
+          Nuevo Préstamo
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <MobileLayout>
-      <MobilePageHeader title="Informe visual" showBack />
+      <MobilePageHeader title="Informe visual" showBack rightAction={CreateAction} />
 
       <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Centered Tabs */}
@@ -231,20 +267,6 @@ export function ReportPage({ user }: ReportPageProps) {
               </div>
             )}
           </div>
-        </div>
-
-        {/* FAB for Adding */}
-        <div className="fixed bottom-6 right-6">
-          <Button
-            size="icon"
-            className="h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 text-primary-foreground"
-            onClick={() => {
-              if (activeTab === "income") navigate("/add-income?recurring=true");
-              else navigate("/add-expense?recurring=true");
-            }}
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
         </div>
       </div>
     </MobileLayout>
