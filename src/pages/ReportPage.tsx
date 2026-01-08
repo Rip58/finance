@@ -15,6 +15,7 @@ import {
 import { cn, formatCurrency } from "@/lib/utils";
 import { useRecurringTransactions, type RecurringTransaction, type PendingRecurring } from "@/hooks/useRecurringTransactions";
 import { useCategories } from "@/hooks/useCategories";
+import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { startOfMonth, endOfMonth, isSameMonth, parseISO, format } from "date-fns";
 import { es } from "date-fns/locale";
 import type { User } from "@supabase/supabase-js";
@@ -32,6 +33,7 @@ export function ReportPage({ user }: ReportPageProps) {
 
   const { recurring, confirmations, confirm, isConfirming } = useRecurringTransactions(user.id);
   const { data: categories = [] } = useCategories(user.id, undefined);
+  const { data: accounts = [] } = useBankAccounts(user.id);
 
   // Helper to identify if an item is a loan
   const isLoan = (item: RecurringTransaction) => {
@@ -79,14 +81,6 @@ export function ReportPage({ user }: ReportPageProps) {
       const isDue = nextDate <= currentMonthEnd;
       const isPaid = !!confirmation;
 
-      // Logic to decide if we show it:
-      // 1. If it's already paid this month -> Show (Active & Done)
-      // 2. If it's NOT paid but Due this month -> Show (Pending)
-      // 3. If it's monthly cadence -> Always Show (even if next date is next month? No, if next date is next month and NOT paid this month, it means we missed it? Or we already paid it?)
-      // If we already paid it, logic #1 covers it.
-      // If we haven't paid it, `nextDate` should be pending.
-      // 4. Overdue items? (nextDate < startOfMonth). Yes, show as pending.
-
       const relevant = isPaid || isDue;
 
       return {
@@ -115,6 +109,35 @@ export function ReportPage({ user }: ReportPageProps) {
     const pending = total - paid;
     return { total, paid, pending };
   }, [currentMonthItems]);
+
+  // Group items by Account
+  const groupedItems = useMemo(() => {
+    const groups: { accountId: string | null; accountName: string; items: typeof currentMonthItems }[] = [];
+
+    // Add known accounts
+    accounts.forEach(acc => {
+      groups.push({ accountId: acc.id, accountName: acc.name, items: [] });
+    });
+    // Add General
+    groups.push({ accountId: null, accountName: "General", items: [] });
+
+    currentMonthItems.forEach(item => {
+      let placed = false;
+      if (item.bank_account_id) {
+        const g = groups.find(g => g.accountId === item.bank_account_id);
+        if (g) {
+          g.items.push(item);
+          placed = true;
+        }
+      }
+      if (!placed) {
+        const g = groups.find(g => g.accountId === null);
+        if (g) g.items.push(item);
+      }
+    });
+
+    return groups.filter(g => g.items.length > 0);
+  }, [currentMonthItems, accounts]);
 
   const currentMonthName = format(new Date(), "MMMM", { locale: es });
 
@@ -210,55 +233,68 @@ export function ReportPage({ user }: ReportPageProps) {
           </div>
 
           {/* List Section */}
-          <div className="space-y-3 pb-20">
+          <div className="space-y-6 pb-20 overflow-y-auto">
             <div className="flex items-center justify-between px-2 mb-2">
               <h3 className="text-sm font-medium capitalize">{currentMonthName}</h3>
               <span className="text-xs text-muted-foreground">{currentMonthItems.length} elementos</span>
             </div>
 
-            {currentMonthItems.length > 0 ? (
-              currentMonthItems.map((item) => (
-                <div
-                  key={item.id}
-                  className={cn(
-                    "flex items-center justify-between p-4 rounded-3xl border transition-all duration-200",
-                    item.isPaid
-                      ? "bg-muted/30 border-transparent opacity-60"
-                      : "bg-card border-border shadow-sm"
-                  )}
-                >
-                  <div className="flex-1 min-w-0 mr-4">
-                    <p className={cn("font-medium truncate", item.isPaid && "line-through text-muted-foreground")}>
-                      {item.name}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span>{formatCurrency(item.amount)}</span>
-                      {item.cadence !== 'monthly' && (
-                        <Badge variant="outline" className="text-[10px] h-4 px-1 py-0">
-                          {item.cadence}
-                        </Badge>
-                      )}
-                    </div>
+            {groupedItems.length > 0 ? (
+              groupedItems.map((group) => (
+                <div key={group.accountId || 'general'} className="space-y-2">
+                  {/* Group Header */}
+                  <div className="px-2 sticky top-0 bg-background/95 backdrop-blur z-10 py-1">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      {group.accountName}
+                    </h4>
                   </div>
 
-                  <Button
-                    size="icon"
-                    variant={item.isPaid ? "ghost" : "default"}
-                    className={cn(
-                      "h-10 w-10 rounded-full shrink-0 transition-all",
-                      item.isPaid
-                        ? "text-muted-foreground bg-muted hover:bg-muted"
-                        : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
-                    )}
-                    onClick={() => handleCheck(item)}
-                    disabled={item.isPaid || isConfirming}
-                  >
-                    {item.isPaid ? (
-                      <Check className="h-5 w-5" />
-                    ) : (
-                      <div className="h-4 w-4 rounded-full border-2 border-current" />
-                    )}
-                  </Button>
+                  {/* Items */}
+                  {group.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-3xl border transition-all duration-200",
+                        item.isPaid
+                          ? "bg-muted/30 border-transparent opacity-60"
+                          : "bg-card border-border shadow-sm"
+                      )}
+                    >
+                      <div className="flex-1 min-w-0 mr-4">
+                        <p className={cn("font-medium truncate", item.isPaid && "line-through text-muted-foreground")}>
+                          {item.name}
+                          {item.notes && <span className="text-xs font-normal text-muted-foreground ml-2">({item.notes})</span>}
+                        </p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{formatCurrency(item.amount)}</span>
+                          {item.cadence !== 'monthly' && (
+                            <Badge variant="outline" className="text-[10px] h-4 px-1 py-0">
+                              {item.cadence}
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      <Button
+                        size="icon"
+                        variant={item.isPaid ? "ghost" : "default"}
+                        className={cn(
+                          "h-10 w-10 rounded-full shrink-0 transition-all",
+                          item.isPaid
+                            ? "text-muted-foreground bg-muted hover:bg-muted"
+                            : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
+                        )}
+                        onClick={() => handleCheck(item)}
+                        disabled={item.isPaid || isConfirming}
+                      >
+                        {item.isPaid ? (
+                          <Check className="h-5 w-5" />
+                        ) : (
+                          <div className="h-4 w-4 rounded-full border-2 border-current" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               ))
             ) : (
