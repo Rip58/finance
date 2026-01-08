@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { updateCryptoPrices } from "@/lib/cryptoPrices";
 
 export type AssetType = "crypto" | "commodity" | "other";
 export type AssetSide = "buy" | "sell";
@@ -29,13 +30,13 @@ export function useAssetTransactions(userId: string | undefined) {
     queryKey: ["asset-transactions", userId],
     queryFn: async (): Promise<AssetTransaction[]> => {
       if (!userId) return [];
-      
+
       const { data, error } = await supabase
         .from("asset_transactions")
         .select("*")
         .eq("user_id", userId)
         .order("transaction_date", { ascending: false });
-      
+
       if (error) throw error;
       return (data || []) as AssetTransaction[];
     },
@@ -45,17 +46,25 @@ export function useAssetTransactions(userId: string | undefined) {
   const createMutation = useMutation({
     mutationFn: async (transaction: Omit<AssetTransaction, "id" | "user_id" | "created_at">) => {
       if (!userId) throw new Error("No user");
-      
+
       const { error } = await supabase
         .from("asset_transactions")
         .insert({ ...transaction, user_id: userId });
-      
+
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: async (_, variables) => {
+      // Update price for the symbol to ensure chart and home are correct
+      try {
+        await updateCryptoPrices([variables.symbol]);
+      } catch (error) {
+        console.error("Error updating price:", error);
+      }
+
       queryClient.invalidateQueries({ queryKey: ["asset-transactions", userId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics", userId] });
       queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+      queryClient.invalidateQueries({ queryKey: ["current-prices"] });
       toast({ title: "Movimiento creado" });
     },
     onError: (error) => {
@@ -69,13 +78,14 @@ export function useAssetTransactions(userId: string | undefined) {
         .from("asset_transactions")
         .update(updates)
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-transactions", userId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics", userId] });
       queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+      queryClient.invalidateQueries({ queryKey: ["current-prices"] });
       toast({ title: "Movimiento actualizado" });
     },
     onError: (error) => {
@@ -89,13 +99,14 @@ export function useAssetTransactions(userId: string | undefined) {
         .from("asset_transactions")
         .delete()
         .eq("id", id);
-      
+
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["asset-transactions", userId] });
       queryClient.invalidateQueries({ queryKey: ["dashboard-metrics", userId] });
       queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+      queryClient.invalidateQueries({ queryKey: ["current-prices"] });
       toast({ title: "Movimiento eliminado" });
     },
     onError: (error) => {

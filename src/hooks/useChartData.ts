@@ -80,15 +80,29 @@ function calculateHoldingsAtDate(transactions: AssetTransaction[], targetDate: D
   return holdings;
 }
 
-// Get price for a symbol at date with carry-forward
+// Get price for a symbol at date (closest past price)
 function getPriceAtDate(prices: AssetPrice[], symbol: string, targetDate: Date): number {
   const symbolPrices = prices
     .filter(p => p.symbol === symbol)
     .sort((a, b) => new Date(b.price_date).getTime() - new Date(a.price_date).getTime());
 
-  for (const price of symbolPrices) {
-    if (new Date(price.price_date) <= targetDate) {
-      return Number(price.close_price);
+  // Find the first price that is on or before the target date
+  const price = symbolPrices.find(p => new Date(p.price_date) <= targetDate);
+
+  // If found, return it
+  if (price) return Number(price.close_price);
+
+  // If NOT found (target date is before first price), 
+  // we can either return 0 (technically correct if asset didn't exist) 
+  // or return the oldest known price to avoid weird drops at the start of the chart.
+  // For better UX, if no past price exists, we return 0. 
+  // But if we have NO data at all for "today", we might want to fallback to most recent.
+  // The sort is DESC, so symbolPrices[0] is the absolute latest.
+  // If targetDate is in the future relative to our latest price, we should use latest price.
+  if (symbolPrices.length > 0) {
+    const latestPrice = symbolPrices[0];
+    if (new Date(latestPrice.price_date) < targetDate) {
+      return Number(latestPrice.close_price);
     }
   }
 

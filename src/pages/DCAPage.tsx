@@ -25,6 +25,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface DCAPageProps {
   user: User;
@@ -183,12 +189,31 @@ export function DCAPage({ user }: DCAPageProps) {
   return (
     <>
       <MobileLayout>
+
         <MobilePageHeader
           title="DCA"
           rightAction={
-            <Button variant="ghost" size="icon" onClick={() => setShowPortfolioForm(true)}>
-              <Plus className="h-5 w-5" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon">
+                  <Plus className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setShowPortfolioForm(true)}>
+                  Nuevo DCA
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditingTx(null);
+                    setShowForm(true);
+                  }}
+                  disabled={!selectedPortfolioId}
+                >
+                  Nueva Entrada
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           }
         />
 
@@ -207,8 +232,6 @@ export function DCAPage({ user }: DCAPageProps) {
                 <span>{portfolio.symbol}</span>
               </Button>
             ))}
-
-
           </div>
         </div>
 
@@ -234,20 +257,9 @@ export function DCAPage({ user }: DCAPageProps) {
           )}
         </div>
 
-        {/* Floating action button */}
-        {selectedPortfolioId && (
-          <Button
-            className="fixed bottom-20 right-4 h-14 w-14 rounded-full shadow-lg"
-            onClick={() => {
-              setEditingTx(null);
-              setShowForm(true);
-            }}
-          >
-            <Plus className="h-6 w-6" />
-          </Button>
-        )}
-
+        {/* Floating action button removed */}
       </MobileLayout>
+
 
       {/* Transaction Form (Entry) */}
       <DCAFormDialog

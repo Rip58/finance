@@ -71,9 +71,9 @@ export function CryptoPage({ user }: CryptoPageProps) {
                 rank: data?.rank || 999999, // Default to end if no rank
                 volume24h: data?.volume24h || null,
                 variations: {
-                    "24h": data?.change24h || 0,
-                    "7d": data?.change7d || 0,
-                    "30d": data?.change30d || 0
+                    "24h": data?.change24h ?? null,
+                    "7d": data?.change7d ?? null,
+                    "30d": data?.change30d ?? null
                 }
             };
         }).sort((a, b) => (a.rank || 0) - (b.rank || 0)); // Sort by Rank
@@ -155,7 +155,8 @@ export function CryptoPage({ user }: CryptoPageProps) {
                     <div className="space-y-3">
                         {aggregatedAssets.map((asset) => {
                             const variation = asset.variations[timeframe];
-                            const isPositive = variation >= 0;
+                            const hasData = variation !== null;
+                            const isPositive = hasData && variation >= 0;
 
                             return (
                                 <div
@@ -190,12 +191,18 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                             </span>
                                             <div className={cn(
                                                 "flex items-center justify-center min-w-[50px] px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums",
-                                                isPositive
-                                                    ? "text-green-600 bg-green-500/15 dark:text-green-400 dark:bg-green-500/20"
-                                                    : "text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/20"
+                                                !hasData
+                                                    ? "text-muted-foreground bg-muted"
+                                                    : isPositive
+                                                        ? "text-green-600 bg-green-500/15 dark:text-green-400 dark:bg-green-500/20"
+                                                        : "text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/20"
                                             )}>
-                                                {isPositive ? "+" : ""}
-                                                {variation ? variation.toFixed(2) : "0.00"}%
+                                                {hasData ? (
+                                                    <>
+                                                        {isPositive ? "+" : ""}
+                                                        {variation.toFixed(2)}%
+                                                    </>
+                                                ) : "—"}
                                             </div>
                                         </div>
                                     </div>
