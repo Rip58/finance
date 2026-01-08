@@ -97,7 +97,7 @@ export function DCAFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle>
             {editingTx ? "Editar compra" : `Nueva compra ${symbol}`}

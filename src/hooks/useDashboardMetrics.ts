@@ -38,7 +38,7 @@ export function useDashboardMetrics(userId: string | undefined) {
       const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
 
       // Fetch transactions, asset data, fx rates, accounts, categories, and account holdings in parallel
-      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates, accounts, categories, allTransactions, transfers, accountHoldings] = await Promise.all([
+      const [currentMonthTx, lastMonthTx, assetTransactions, assetPrices, fxRates, accounts, categories, allTransactions, transfers, accountHoldingsResult, portfoliosResult] = await Promise.all([
         supabase
           .from("transactions")
           .select("type, amount, currency, date, value_date")
@@ -52,7 +52,7 @@ export function useDashboardMetrics(userId: string | undefined) {
           .lt("date", startOfMonth.toISOString()),
         supabase
           .from("asset_transactions")
-          .select("symbol, side, quantity")
+          .select("symbol, side, quantity, dca_portfolio_id")
           .eq("user_id", userId),
         supabase
           .from("asset_prices")
@@ -85,6 +85,10 @@ export function useDashboardMetrics(userId: string | undefined) {
           .from("account_holdings")
           .select("symbol, quantity, bank_account_id")
           .eq("user_id", userId),
+        supabase
+          .from("dca_portfolios")
+          .select("id")
+          .eq("user_id", userId),
       ]);
 
       // Get latest USDT/EUR rate (fallback to 1 if none)
@@ -114,12 +118,21 @@ export function useDashboardMetrics(userId: string | undefined) {
         else lastMonthExpense += amountEur;
       }
 
-      // Calculate current holdings
+      // Filter asset transactions to only those belonging to active/existing portfolios
+      const portfolios = portfoliosResult.data || [];
+      const validPortfolioIds = new Set(portfolios.map(p => p.id));
+
+      const validAssetTransactions = (assetTransactions.data || [])
+        .map(tx => tx as { symbol: string; side: string; quantity: number; dca_portfolio_id: string | null }) // explicit cast
+        .filter(tx => tx.dca_portfolio_id && validPortfolioIds.has(tx.dca_portfolio_id));
+
+      // Calculate current holdings from valid transactions
       const holdings: Record<string, number> = {};
-      for (const tx of (assetTransactions.data || []) as { symbol: string; side: string; quantity: number }[]) {
-        if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
-        if (tx.side === "buy") holdings[tx.symbol] += Number(tx.quantity);
-        else holdings[tx.symbol] -= Number(tx.quantity);
+      for (const tx of validAssetTransactions) {
+        const symbol = tx.symbol.toUpperCase();
+        if (!holdings[symbol]) holdings[symbol] = 0;
+        if (tx.side === "buy") holdings[symbol] += Number(tx.quantity);
+        else holdings[symbol] -= Number(tx.quantity);
       }
 
       // Get latest prices for each symbol
@@ -139,7 +152,7 @@ export function useDashboardMetrics(userId: string | undefined) {
 
       // Add account holdings value
       let accountHoldingsValue = 0;
-      for (const h of accountHoldings.data || []) {
+      for (const h of accountHoldingsResult.data || []) {
         const price = latestPrices[h.symbol.toUpperCase()] || latestPrices[h.symbol] || 0;
         accountHoldingsValue += Number(h.quantity) * price;
       }

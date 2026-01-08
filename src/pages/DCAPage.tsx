@@ -199,7 +199,7 @@ export function DCAPage({ user }: DCAPageProps) {
                   <Plus className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="rounded-xl">
                 <DropdownMenuItem onClick={() => setShowPortfolioForm(true)}>
                   Nuevo DCA
                 </DropdownMenuItem>

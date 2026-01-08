@@ -14,6 +14,7 @@ export const formatCurrency = (value: number, currency: string = "EUR"): string 
     return `${value.toLocaleString("es-ES", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
+      useGrouping: true,
     })} USDT`;
   }
 
@@ -22,6 +23,7 @@ export const formatCurrency = (value: number, currency: string = "EUR"): string 
     currency: currency === "USDT" ? "USD" : currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
+    useGrouping: true,
   }).format(value);
 };
 

@@ -146,7 +146,7 @@ export function DCAPortfolioDialog({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-md z-[200] pointer-events-auto">
+            <DialogContent className="max-w-md z-[200] pointer-events-auto rounded-3xl">
                 <DialogHeader>
                     <DialogTitle>
                         {editingPortfolio ? "Editar DCA" : "Nuevo DCA"}

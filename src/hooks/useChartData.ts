@@ -68,11 +68,12 @@ function calculateHoldingsAtDate(transactions: AssetTransaction[], targetDate: D
   for (const tx of transactions) {
     const txDate = new Date(tx.transaction_date);
     if (txDate <= targetDate) {
-      if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
+      const symbol = tx.symbol.toUpperCase();
+      if (!holdings[symbol]) holdings[symbol] = 0;
       if (tx.side === "buy") {
-        holdings[tx.symbol] += Number(tx.quantity);
+        holdings[symbol] += Number(tx.quantity);
       } else {
-        holdings[tx.symbol] -= Number(tx.quantity);
+        holdings[symbol] -= Number(tx.quantity);
       }
     }
   }
@@ -225,8 +226,8 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       }
 
       // Fetch all data in parallel
-      const [assetTxResult, txResult, pricesResult, fxRatesResult, accountsResult, categoriesResult, transfersResult, holdingsResult] = await Promise.all([
-        supabase.from("asset_transactions").select("symbol, side, quantity, transaction_date").eq("user_id", userId).order("transaction_date", { ascending: true }),
+      const [assetTxResult, txResult, pricesResult, fxRatesResult, accountsResult, categoriesResult, transfersResult, holdingsResult, portfoliosResult] = await Promise.all([
+        supabase.from("asset_transactions").select("symbol, side, quantity, transaction_date, dca_portfolio_id").eq("user_id", userId).order("transaction_date", { ascending: true }),
         supabase.from("transactions").select("type, amount, currency, date, bank_account_id").eq("user_id", userId),
         supabase.from("asset_prices").select("symbol, price_date, close_price").order("price_date", { ascending: true }),
         supabase.from("fx_rates").select("pair, rate, as_of").eq("pair", "USDT_EUR").order("as_of", { ascending: false }),
@@ -234,9 +235,10 @@ export function useChartData(interval: Interval, userId: string | undefined) {
         supabase.from("categories").select("id, name").eq("user_id", userId),
         supabase.from("transfers").select("from_account_id, to_account_id, amount_from, amount_to, currency_from, currency_to, date").eq("user_id", userId),
         supabase.from("account_holdings").select("symbol, quantity").eq("user_id", userId),
+        supabase.from("dca_portfolios").select("id").eq("user_id", userId),
       ]);
 
-      const assetTransactions = (assetTxResult.data || []) as AssetTransaction[];
+      const rawAssetTransactions = (assetTxResult.data || []) as (AssetTransaction & { dca_portfolio_id: string | null })[];
       const transactions = (txResult.data || []) as Transaction[];
       const prices = (pricesResult.data || []) as AssetPrice[];
       const fxRates = (fxRatesResult.data || []) as FxRate[];
@@ -244,6 +246,13 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       const categories = (categoriesResult.data || []) as Category[];
       const transfers = (transfersResult.data || []) as Transfer[];
       const accountHoldings = (holdingsResult.data || []) as { symbol: string; quantity: number }[];
+      const portfolios = (portfoliosResult.data || []) as { id: string }[];
+
+      // Filter asset transactions to only those belonging to active/existing portfolios
+      const validPortfolioIds = new Set(portfolios.map(p => p.id));
+      const assetTransactions = rawAssetTransactions.filter(tx =>
+        tx.dca_portfolio_id && validPortfolioIds.has(tx.dca_portfolio_id)
+      );
 
       // Calculate static holdings
       const staticHoldings: Record<string, number> = {};

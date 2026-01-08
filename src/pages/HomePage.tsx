@@ -1,9 +1,14 @@
 import { useState, useMemo, useEffect } from "react";
-import { LogOut, RefreshCw, TrendingUp } from "lucide-react";
+import { LogOut, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useToast } from "@/hooks/use-toast";
+import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import type { User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+
 import {
   MobileLayout,
   SafeAreaHeader,
@@ -13,20 +18,18 @@ import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
 import { SortableAccountList } from "@/components/mobile/SortableAccountList";
 import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
 import { EvolutionChart } from "@/components/EvolutionChart";
-import { useChartData } from "@/hooks/useChartData";
+
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
+import { useChartData } from "@/hooks/useChartData";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCategories } from "@/hooks/useCategories";
 import { useTransfers } from "@/hooks/useTransfers";
 import { useAssetTransactions } from "@/hooks/useAssetTransactions";
+import { useAccountHoldings } from "@/hooks/useAccountHoldings";
+import { useDCAPortfolios } from "@/hooks/useDCAPortfolios";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { useFxRates } from "@/hooks/useFxRates";
-import { useAccountHoldings } from "@/hooks/useAccountHoldings";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
-import { cn, formatCurrency, formatPercent } from "@/lib/utils";
-import type { User } from "@supabase/supabase-js";
 
 interface HomePageProps {
   user: User;
@@ -48,6 +51,7 @@ export function HomePage({ user }: HomePageProps) {
   const { data: transfers = [] } = useTransfers(user.id);
   const { data: assetTransactions = [] } = useAssetTransactions(user.id);
   const { data: allAccountHoldings = [] } = useAccountHoldings(user.id);
+  const { data: portfolios = [] } = useDCAPortfolios(user.id);
   const fxRates = useFxRates();
 
   // Ensure default categories exist
@@ -163,36 +167,35 @@ export function HomePage({ user }: HomePageProps) {
     );
   }, [bankAccounts, categories]);
 
-  // Calculate DCA total in USD (not converted to EUR)
+  // Calculate DCA total in USD (only for active portfolios)
   const dcaTotalUsd = useMemo(() => {
+    // Get valid portfolio IDs
+    const activePortfolioIds = new Set(portfolios.map(p => p.id));
+
+    // Filter transactions to only those belonging to active portfolios
+    const validTransactions = assetTransactions.filter(tx =>
+      tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)
+    );
+
     const holdings: Record<string, number> = {};
-    for (const tx of assetTransactions) {
-      if (!holdings[tx.symbol]) holdings[tx.symbol] = 0;
-      if (tx.side === "buy") holdings[tx.symbol] += Number(tx.quantity);
-      else holdings[tx.symbol] -= Number(tx.quantity);
+    for (const tx of validTransactions) {
+      const symbol = tx.symbol.toUpperCase();
+      if (!holdings[symbol]) holdings[symbol] = 0;
+      if (tx.side === "buy") holdings[symbol] += Number(tx.quantity);
+      else holdings[symbol] -= Number(tx.quantity);
     }
 
     let totalUsd = 0;
     for (const [symbol, qty] of Object.entries(holdings)) {
-      const price = currentPrices[symbol.toUpperCase()] || 0;
+      const price = currentPrices[symbol] || 0;
       totalUsd += qty * price;
     }
 
     return totalUsd;
-  }, [assetTransactions, currentPrices]);
+  }, [assetTransactions, currentPrices, portfolios]);
 
   // DCA total in EUR for patrimonio calculation
   const dcaTotal = dcaTotalUsd * usdtEurRate;
-
-  // Calculate account holdings total in EUR
-  const accountHoldingsTotal = useMemo(() => {
-    let totalUsd = 0;
-    for (const holding of allAccountHoldings) {
-      const price = currentPrices[holding.symbol.toUpperCase()] || 0;
-      totalUsd += Number(holding.quantity) * price;
-    }
-    return totalUsd * usdtEurRate;
-  }, [allAccountHoldings, currentPrices, usdtEurRate]);
 
   // Calculate total patrimonio in EUR
   const totalPatrimonio = useMemo(() => {
@@ -209,12 +212,7 @@ export function HomePage({ user }: HomePageProps) {
       }
     }
 
-    // DCA logic: If DCA assets are NOT in displayedAccounts (they aren't, they are separate transactions),
-    // we should add them. However, if 'Cryptocoin' category covers them, we might double count if we aren't careful.
-    // But DCA transactions are `asset_transactions`, separate from `bank_accounts`.
-    // So we add them. Except if the user intends DCA to be 'part of' a crypto account.
-    // Based on `useDashboardMetrics`, we treat `asset_transactions` (DCA) as purely crypto assets.
-    // So we add them here.
+    // Add DCA
     total += dcaTotal;
     return total;
   }, [displayedAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
@@ -238,9 +236,6 @@ export function HomePage({ user }: HomePageProps) {
   const formatAccountCurrency = (amount: number, currency: string) => {
     return formatCurrency(amount, currency);
   };
-
-  // Format USD with $ symbol
-  const formatUsd = (amount: number) => formatCurrency(amount, "USD");
 
   // Get display value for account (holdings value for crypto, balance for others)
   const getAccountDisplayValue = (acc: typeof bankAccounts[0]) => {
@@ -306,8 +301,8 @@ export function HomePage({ user }: HomePageProps) {
 
   // Check if there are any DCA holdings to determine visibility
   const hasDcaHoldings = useMemo(() => {
-    return assetTransactions.some(tx => tx.side === "buy");
-  }, [assetTransactions]);
+    return dcaTotalUsd > 0;
+  }, [dcaTotalUsd]);
 
   return (
     <MobileLayout>
@@ -324,7 +319,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v2.4</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v2.8</span>
               </div>
             </div>
           </div>
@@ -346,7 +341,6 @@ export function HomePage({ user }: HomePageProps) {
           cryptoTotal={metrics?.cryptoBalance ?? 0}
         />
       </div>
-
 
       {/* Chart Section */}
       <div className="px-4 py-4">
@@ -407,8 +401,8 @@ export function HomePage({ user }: HomePageProps) {
               onReorder={updateSortOrder}
             />
 
-            {/* DCA Total - Show if has value OR has holdings */}
-            {(dcaTotalUsd > 0 || hasDcaHoldings) && (
+            {/* DCA Total - Show if has value */}
+            {(dcaTotalUsd > 0) && (
               <div className="flex items-center justify-between p-2 rounded-lg bg-chart-income/10 border border-chart-income/20">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-chart-income animate-pulse" />
@@ -423,7 +417,6 @@ export function HomePage({ user }: HomePageProps) {
           </div>
         </div>
       </div>
-
 
       {/* Account Edit Dialog */}
       <AccountEditDialog
