@@ -136,11 +136,9 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         await updateTransaction({ id: editId, ...payload });
         toast({ title: "Ingreso actualizado" });
       } else {
-        await createTransaction(payload);
-
-        // If recurring, also create the recurring template
         if (isRecurring) {
-          createRecurring({
+          // Only create recurring template, NO transaction
+          await createRecurring({
             type: "income",
             name: formData.description || "Ingreso recurrente",
             amount: parseFloat(formData.amount),
@@ -153,6 +151,9 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
             is_active: true,
             notes: null,
           });
+        } else {
+          // Normal transaction
+          await createTransaction(payload);
         }
       }
 

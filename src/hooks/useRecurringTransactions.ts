@@ -214,10 +214,10 @@ export function useRecurringTransactions(userId: string) {
     confirmations: confirmationsQuery.data ?? [],
     pending: getPendingTransactions(),
     isLoading: recurringQuery.isLoading || confirmationsQuery.isLoading,
-    confirm: confirmMutation.mutate,
-    create: createMutation.mutate,
-    update: updateMutation.mutate,
-    delete: deleteMutation.mutate,
+    confirm: confirmMutation.mutateAsync,
+    create: createMutation.mutateAsync,
+    update: updateMutation.mutateAsync,
+    delete: deleteMutation.mutateAsync,
     isConfirming: confirmMutation.isPending,
   };
 }

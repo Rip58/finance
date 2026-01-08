@@ -146,11 +146,9 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         await updateTransaction({ id: editId, ...payload });
         toast({ title: "Gasto actualizado" });
       } else {
-        await createTransaction(payload);
-
-        // If recurring, also create the recurring template
         if (isRecurring) {
-          createRecurring({
+          // Only create recurring template, NO transaction
+          await createRecurring({
             type: "expense",
             name: formData.description || "Gasto recurrente",
             amount: parseFloat(formData.amount),
@@ -163,6 +161,9 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
             is_active: true,
             notes: null,
           });
+        } else {
+          // Normal transaction
+          await createTransaction(payload);
         }
       }
 
