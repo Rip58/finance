@@ -319,7 +319,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v2.8</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v2.9</span>
               </div>
             </div>
           </div>
@@ -403,7 +403,7 @@ export function HomePage({ user }: HomePageProps) {
 
             {/* DCA Total - Show if has value */}
             {(dcaTotalUsd > 0) && (
-              <div className="flex items-center justify-between p-2 rounded-lg bg-chart-income/10 border border-chart-income/20">
+              <div className="flex items-center justify-between p-2 rounded-2xl bg-chart-income/10 border border-chart-income/20">
                 <div className="flex items-center gap-2">
                   <div className="h-2 w-2 rounded-full bg-chart-income animate-pulse" />
                   <span className="text-sm font-medium">DCA</span>

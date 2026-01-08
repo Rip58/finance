@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Pencil, Check, X, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
@@ -75,14 +75,26 @@ function CryptoAccountDialog({
   userId,
 }: AccountEditDialogProps) {
   const queryClient = useQueryClient();
-  const { data: holdings = [], create, delete: deleteHolding, isCreating } = useAccountHoldings(userId, account?.id);
+  const {
+    data: holdings = [],
+    create,
+    update,
+    delete: deleteHolding,
+    isCreating,
+    isUpdating: isUpdatingHolding
+  } = useAccountHoldings(userId, account?.id);
   const { data: cryptoAssets = [], create: createAsset } = useCryptoAssets(userId);
+  const { delete: deleteAccount, isDeleting: isDeletingAccount } = useBankAccounts(userId);
 
   const [newSymbol, setNewSymbol] = useState("");
   const [newQuantity, setNewQuantity] = useState("");
   const [isCreatingAsset, setIsCreatingAsset] = useState(false);
   const [newAssetSymbol, setNewAssetSymbol] = useState("");
   const [newAssetName, setNewAssetName] = useState("");
+
+  // Edit state
+  const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
+  const [editQuantity, setEditQuantity] = useState("");
 
   const handleAddHolding = async () => {
     let finalSymbol = newSymbol;
@@ -91,12 +103,11 @@ function CryptoAccountDialog({
       if (!newAssetSymbol || !newAssetName) return;
       finalSymbol = newAssetSymbol.toUpperCase();
 
-      // Create asset first
       try {
         await createAsset({
           symbol: finalSymbol,
           name: newAssetName,
-          asset_type: "crypto", // Default to crypto for quick add
+          asset_type: "crypto",
           is_active: true,
         });
       } catch (e) {
@@ -107,46 +118,17 @@ function CryptoAccountDialog({
 
     if (!finalSymbol || (!newQuantity && !isCreatingAsset)) return;
 
-    // If creating asset, we might not have quantity input if UI hides it. 
-    // Wait, the UI I added shows Quantity input ONLY if !isCreatingAsset.
-    // So if creating asset, we just create the asset? Or do we create holding too?
-    // User request: "cuando editas una cuenta de crypto en home y sale añadir activo si no hay que salga para crear nuevos sin ir a account"
-    // Usually implies adding it to the account. But if I hide quantity, I can't add holding.
-    // I should SHOW quantity input even when creating asset, or make it a 2-step process.
-    // Better: Show quantity input continuously?
-    // In my previous edit (Step 368), I hid quantity input when isCreatingAsset is true: `{!isCreatingAsset && (<Input ... quantity />)}`.
-    // This implies we only create the ASSET, not the holding?
-    // No, the expectation is to Add the Asset TO THE ACCOUNT.
-    // So I need quantity.
-    // I will modify the previous edit to SHOW quantity input always.
-    // But for now, let's fix the logic here assuming I will fix UI next.
-    // Actually, I can't fix UI "next" easily without another replace.
-    // I'll assume current UI state and adapt logic:
-    // If isCreatingAsset, we Create Asset. Do we create holding?
-    // If quantity is hidden, we can't.
-    // I should fix the UI in `AccountEditDialog` to show quantity row or have it inline.
-    // Let's modify logic to:
-    // 1. Create Asset.
-    // 2. Then setIsCreatingAsset(false), setNewSymbol(finalSymbol).
-    // User can then add quantity.
-    // OR:
-    // Use `multi_replace` to fix UI and Logic at once? I am already in `replace_file_content`.
-    // I will write robust logic.
-
-    // Only create holding if quantity is provided.
     if (newQuantity) {
       await create({
-        bank_account_id: account.id,
+        bank_account_id: account!.id,
         symbol: finalSymbol,
         quantity: parseFloat(newQuantity),
       });
 
-      // Fetch price for the new symbol from CMC
       try {
         await supabase.functions.invoke("get-asset-prices", {
           body: { symbols: [finalSymbol] },
         });
-        // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ["current-prices"] });
         queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
         queryClient.invalidateQueries({ queryKey: ["chart-data"] });
@@ -162,11 +144,41 @@ function CryptoAccountDialog({
     setNewAssetName("");
   };
 
-  const handleDeleteHolding = async (id: string) => {
-    await deleteHolding(id);
+  const handleUpdateHolding = async (id: string) => {
+    if (!editQuantity) return;
+
+    await update({
+      id,
+      quantity: parseFloat(editQuantity),
+    });
+
+    queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+    queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+
+    setEditingHoldingId(null);
+    setEditQuantity("");
   };
 
-  // Get available assets not already in holdings
+  const handleDeleteHolding = async (id: string) => {
+    await deleteHolding(id);
+    queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+    queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+  };
+
+  const handleDeleteAccount = async () => {
+    if (holdings.length > 0) {
+      const confirmDelete = window.confirm(
+        "⚠️ ATENCIÓN: Esta cuenta tiene activos asociados.\n\nSi la eliminas, se perderán todos los datos de los activos y su historial asociado.\n\n¿Estás seguro de que quieres continuar?"
+      );
+      if (!confirmDelete) return;
+    } else {
+      if (!window.confirm("¿Estás seguro de que quieres eliminar esta cuenta?")) return;
+    }
+
+    await deleteAccount(account!.id);
+    onOpenChange(false);
+  };
+
   const availableAssets = cryptoAssets.filter(
     asset => !holdings.some(h => h.symbol === asset.symbol)
   );
@@ -189,20 +201,74 @@ function CryptoAccountDialog({
                     key={holding.id}
                     className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                   >
-                    <div>
+                    <div className="flex-1">
                       <span className="font-medium">{holding.symbol}</span>
-                      <span className="text-muted-foreground ml-2">
-                        {holding.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
-                      </span>
+                      {editingHoldingId === holding.id ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Input
+                            type="number"
+                            value={editQuantity}
+                            onChange={(e) => setEditQuantity(e.target.value)}
+                            className="h-7 w-32 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            autoFocus
+                            step="any"
+                          />
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground ml-2">
+                          {holding.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
+                        </span>
+                      )}
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-destructive hover:text-destructive"
-                      onClick={() => handleDeleteHolding(holding.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+
+                    <div className="flex items-center gap-1">
+                      {editingHoldingId === holding.id ? (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-green-500 hover:text-green-600 hover:bg-green-500/10"
+                            onClick={() => handleUpdateHolding(holding.id)}
+                            disabled={isUpdatingHolding}
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground"
+                            onClick={() => {
+                              setEditingHoldingId(null);
+                              setEditQuantity("");
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-primary"
+                            onClick={() => {
+                              setEditingHoldingId(holding.id);
+                              setEditQuantity(holding.quantity.toString());
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteHolding(holding.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -248,7 +314,7 @@ function CryptoAccountDialog({
               {isCreatingAsset && (
                 <div className="flex-1 flex gap-2">
                   <Input
-                    placeholder="Símbolo (BTC)"
+                    placeholder="Símbolo"
                     value={newAssetSymbol}
                     onChange={(e) => setNewAssetSymbol(e.target.value.toUpperCase())}
                     className="w-24"
@@ -267,7 +333,7 @@ function CryptoAccountDialog({
                 placeholder="Cantidad"
                 value={newQuantity}
                 onChange={(e) => setNewQuantity(e.target.value)}
-                className="w-28"
+                className="w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 step="any"
               />
 
@@ -282,7 +348,16 @@ function CryptoAccountDialog({
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDeleteAccount}
+            disabled={isDeletingAccount}
+          >
+            <Trash2 className="h-4 w-4 mr-2" />
+            Eliminar Cuenta
+          </Button>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
@@ -302,13 +377,12 @@ function SavingsAccountDialog({
   userId,
   currentBalance,
 }: AccountEditDialogProps) {
-  const { update, isUpdating } = useBankAccounts(userId);
+  const { update, delete: deleteAccount, isUpdating, isDeleting } = useBankAccounts(userId);
   const { create: createTransaction } = useTransactions(userId);
   const [balance, setBalance] = useState("");
 
   useEffect(() => {
     if (account) {
-      // Use currentBalance if available, otherwise fallback to initial_balance
       setBalance((currentBalance ?? account.initial_balance).toString());
     }
   }, [account, currentBalance]);
@@ -317,12 +391,11 @@ function SavingsAccountDialog({
     if (!account) return;
 
     if (currentBalance !== undefined) {
-      // Logic for transaction-based update (History)
       const newBalance = parseFloat(balance) || 0;
       const diff = newBalance - currentBalance;
 
       try {
-        if (Math.abs(diff) > 0.01) { // Avoid tiny floating point diffs
+        if (Math.abs(diff) > 0.01) {
           await createTransaction({
             amount: Math.abs(diff),
             type: diff > 0 ? "income" : "expense",
@@ -336,10 +409,8 @@ function SavingsAccountDialog({
         }
       } catch (error) {
         console.error("Error creating adjustment transaction:", error);
-        // Fallback or user notification could go here
       }
     } else {
-      // Legacy logic: Update initial_balance directly
       try {
         await update({
           id: account.id,
@@ -350,6 +421,14 @@ function SavingsAccountDialog({
       }
     }
 
+    onOpenChange(false);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("¿Estás seguro de que quieres eliminar esta cuenta y sus movimientos asociados?")) {
+      return;
+    }
+    await deleteAccount(account!.id);
     onOpenChange(false);
   };
 
@@ -380,8 +459,6 @@ function SavingsAccountDialog({
               type="number"
               value={balance}
               onChange={(e) => {
-                // Remove leading zero if user types a number (e.g. "05" -> "5")
-                // But allow "0." and "0"
                 let val = e.target.value;
                 if (val.length > 1 && val.startsWith("0") && val[1] !== ".") {
                   val = val.substring(1);
@@ -391,7 +468,7 @@ function SavingsAccountDialog({
               onFocus={(e) => e.target.select()}
               placeholder="0.00"
               step="0.01"
-              className="text-lg"
+              className="text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
             <p className="text-sm text-muted-foreground">
               {formatCurrency(balance)}
@@ -399,13 +476,24 @@ function SavingsAccountDialog({
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+        <DialogFooter className="flex items-center justify-between sm:justify-between w-full gap-2">
+          <Button
+            variant="destructive"
+            size="icon"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            title="Eliminar Cuenta"
+          >
+            <Trash2 className="h-4 w-4" />
           </Button>
-          <Button onClick={handleSave} disabled={isUpdating}>
-            Guardar
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={isUpdating}>
+              Guardar
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
