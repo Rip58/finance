@@ -61,7 +61,7 @@ function SortableAccountItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between w-full rounded-2xl p-2 -mx-2 transition-colors",
+        "flex items-center justify-between w-full rounded-2xl p-3 mb-2 transition-colors border border-border/40 bg-card/40",
         isDragging ? "bg-muted shadow-lg z-10" : "hover:bg-muted/50"
       )}
     >

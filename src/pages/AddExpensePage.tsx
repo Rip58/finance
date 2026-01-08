@@ -39,6 +39,13 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
     description: "",
   });
   const [isRecurring, setIsRecurring] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("recurring") === "true") {
+      setIsRecurring(true);
+    }
+  }, [searchParams]);
+
   const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
 

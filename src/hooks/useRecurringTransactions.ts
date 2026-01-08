@@ -94,7 +94,7 @@ export function useRecurringTransactions(userId: string) {
 
     for (const recurring of recurringQuery.data) {
       const nextDate = parseISO(recurring.next_occurrence_date);
-      
+
       // Check if this occurrence is due (today or past) and not confirmed
       if (!isAfter(nextDate, today)) {
         const isConfirmed = confirmationsQuery.data.some(
@@ -113,48 +113,28 @@ export function useRecurringTransactions(userId: string) {
     return pending;
   };
 
-  // Confirm a recurring transaction
+  // Confirm a recurring transaction (Check as paid)
+  // This update: DOES NOT create a real transaction anymore, just marks it as "checked"
   const confirmMutation = useMutation({
-    mutationFn: async ({ 
-      recurring, 
-      adjustedAmount 
-    }: { 
-      recurring: PendingRecurring; 
+    mutationFn: async ({
+      recurring,
+    }: {
+      recurring: PendingRecurring;
       adjustedAmount?: number;
     }) => {
-      const amount = adjustedAmount ?? recurring.amount;
-
-      // 1. Create the actual transaction
-      const { data: transaction, error: txError } = await supabase
-        .from("transactions")
-        .insert({
-          user_id: userId,
-          type: recurring.type,
-          description: recurring.name,
-          amount,
-          currency: recurring.currency,
-          category_id: recurring.category_id,
-          bank_account_id: recurring.bank_account_id,
-          date: recurring.occurrence_date,
-        })
-        .select()
-        .single();
-
-      if (txError) throw txError;
-
-      // 2. Create confirmation record
+      // 1. Create confirmation record (without transaction_id)
       const { error: confError } = await supabase
         .from("recurring_confirmations")
         .insert({
           recurring_id: recurring.id,
           user_id: userId,
           occurrence_date: recurring.occurrence_date,
-          transaction_id: transaction.id,
+          transaction_id: null, // No transaction created
         });
 
       if (confError) throw confError;
 
-      // 3. Update next_occurrence_date
+      // 2. Update next_occurrence_date
       const nextDate = getNextOccurrence(recurring.occurrence_date, recurring.cadence);
       const { error: updateError } = await supabase
         .from("recurring_transactions")
@@ -162,14 +142,11 @@ export function useRecurringTransactions(userId: string) {
         .eq("id", recurring.id);
 
       if (updateError) throw updateError;
-
-      return transaction;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recurring_transactions"] });
       queryClient.invalidateQueries({ queryKey: ["recurring_confirmations"] });
-      queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      toast({ title: "Transacción confirmada" });
+      toast({ title: "Marcado como pagado" });
     },
     onError: (error) => {
       toast({ title: "Error al confirmar", description: error.message, variant: "destructive" });

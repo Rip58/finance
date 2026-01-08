@@ -187,7 +187,19 @@ function CryptoAccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{account?.name} - Activos</DialogTitle>
+          <div className="flex items-center justify-between pr-8">
+            <DialogTitle>{account?.name} - Activos</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDeleteAccount}
+              disabled={isDeletingAccount}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              title="Eliminar Cuenta"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -348,16 +360,7 @@ function CryptoAccountDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between w-full">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDeleteAccount}
-            disabled={isDeletingAccount}
-          >
-            <Trash2 className="h-4 w-4 mr-2" />
-            Eliminar Cuenta
-          </Button>
+        <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cerrar
           </Button>
@@ -448,7 +451,19 @@ function SavingsAccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{account?.name}</DialogTitle>
+          <div className="flex items-center justify-between pr-8">
+            <DialogTitle>{account?.name}</DialogTitle>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              title="Eliminar Cuenta"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -476,24 +491,13 @@ function SavingsAccountDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex items-center justify-between sm:justify-between w-full gap-2">
-          <Button
-            variant="destructive"
-            size="icon"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            title="Eliminar Cuenta"
-          >
-            <Trash2 className="h-4 w-4" />
+        <DialogFooter className="flex gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancelar
           </Button>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isUpdating}>
-              Guardar
-            </Button>
-          </div>
+          <Button onClick={handleSave} disabled={isUpdating}>
+            Guardar
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -39,6 +39,13 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
     description: "",
   });
   const [isRecurring, setIsRecurring] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("recurring") === "true") {
+      setIsRecurring(true);
+    }
+  }, [searchParams]);
+
   const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
