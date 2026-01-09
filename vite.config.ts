@@ -71,4 +71,10 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  define: {
+    'import.meta.env.VITE_VERCEL_ENV': JSON.stringify(process.env.VERCEL_ENV || 'local'),
+    'import.meta.env.VITE_GIT_COMMIT_SHA': JSON.stringify(process.env.VERCEL_GIT_COMMIT_SHA || ''),
+    'import.meta.env.VITE_GIT_COMMIT_MESSAGE': JSON.stringify(process.env.VERCEL_GIT_COMMIT_MESSAGE || ''),
+    'import.meta.env.VITE_GIT_BRANCH': JSON.stringify(process.env.VERCEL_GIT_COMMIT_REF || 'main'),
+  },
 }));

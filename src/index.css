@@ -116,6 +116,92 @@
     --glass-bg: hsl(0 0% 100% / 0.85);
     --glass-border: hsl(240 6% 90% / 0.6);
   }
+
+  /* Theme Overrides (Applied via ThemeColorProvider) */
+  /* Violet (Default) */
+  .theme-violet {
+    --primary: 265 95% 68%;
+    --ring: 265 95% 68%;
+    --sidebar-primary: 265 95% 68%;
+    --gradient-primary: linear-gradient(135deg, hsl(265 89% 66%) 0%, hsl(265 80% 50%) 100%);
+    --shadow-glow-primary: 0 0 30px hsl(265 89% 66% / 0.2);
+  }
+
+  .light.theme-violet,
+  .light .theme-violet {
+    --primary: 265 89% 60%;
+    --ring: 265 89% 60%;
+    --sidebar-primary: 265 89% 60%;
+  }
+
+  /* Blue (Pastel Sky) */
+  .theme-blue {
+    --primary: 200 95% 65%;
+    --ring: 200 95% 65%;
+    --sidebar-primary: 200 95% 65%;
+    --gradient-primary: linear-gradient(135deg, hsl(200 95% 65%) 0%, hsl(200 90% 45%) 100%);
+    --shadow-glow-primary: 0 0 30px hsl(200 95% 65% / 0.2);
+  }
+
+  .light.theme-blue,
+  .light .theme-blue {
+    --primary: 200 90% 45%;
+    --ring: 200 90% 45%;
+    --sidebar-primary: 200 90% 45%;
+    --gradient-primary: linear-gradient(135deg, hsl(200 90% 55%) 0%, hsl(200 90% 40%) 100%);
+    /* Slightly darker gradient for light mode readability against white text? BalanceCard uses text-white */
+  }
+
+  /* Rose (Pastel Pink) */
+  .theme-rose {
+    --primary: 340 90% 75%;
+    --ring: 340 90% 75%;
+    --sidebar-primary: 340 90% 75%;
+    --gradient-primary: linear-gradient(135deg, hsl(340 90% 75%) 0%, hsl(340 80% 60%) 100%);
+    --shadow-glow-primary: 0 0 30px hsl(340 90% 75% / 0.2);
+  }
+
+  .light.theme-rose,
+  .light .theme-rose {
+    --primary: 340 80% 60%;
+    --ring: 340 80% 60%;
+    --sidebar-primary: 340 80% 60%;
+    --gradient-primary: linear-gradient(135deg, hsl(340 85% 65%) 0%, hsl(340 80% 50%) 100%);
+  }
+
+  /* Orange (Peach/Apricot) */
+  .theme-orange {
+    --primary: 30 100% 70%;
+    --ring: 30 100% 70%;
+    --sidebar-primary: 30 100% 70%;
+    --gradient-primary: linear-gradient(135deg, hsl(30 100% 70%) 0%, hsl(30 90% 55%) 100%);
+    --shadow-glow-primary: 0 0 30px hsl(30 100% 70% / 0.2);
+  }
+
+  .light.theme-orange,
+  .light .theme-orange {
+    --primary: 30 90% 55%;
+    --ring: 30 90% 55%;
+    --sidebar-primary: 30 90% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(30 95% 60%) 0%, hsl(30 90% 45%) 100%);
+  }
+
+  /* Green (Sage/Mint) */
+  .theme-green {
+    --primary: 160 70% 55%;
+    --ring: 160 70% 55%;
+    --sidebar-primary: 160 70% 55%;
+    --gradient-primary: linear-gradient(135deg, hsl(160 70% 55%) 0%, hsl(160 60% 40%) 100%);
+    --shadow-glow-primary: 0 0 30px hsl(160 70% 55% / 0.2);
+  }
+
+  .light.theme-green,
+  .light .theme-green {
+    --primary: 160 60% 45%;
+    --ring: 160 60% 45%;
+    --sidebar-primary: 160 60% 45%;
+    --gradient-primary: linear-gradient(135deg, hsl(160 65% 50%) 0%, hsl(160 60% 35%) 100%);
+  }
 }
 
 @layer base {

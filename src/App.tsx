@@ -19,6 +19,7 @@ import { DCAPage } from "@/pages/DCAPage";
 import { CryptoPage } from "@/pages/CryptoPage";
 import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
+import { ThemeColorProvider } from "@/components/providers/ThemeColorProvider";
 
 const queryClient = new QueryClient();
 
@@ -89,13 +90,15 @@ function AppContent() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AppContent />
-        </BrowserRouter>
-      </TooltipProvider>
+      <ThemeColorProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeColorProvider>
     </ThemeProvider>
   </QueryClientProvider>
 );
