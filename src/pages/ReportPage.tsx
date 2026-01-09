@@ -120,11 +120,33 @@ export function ReportPage({ user }: ReportPageProps) {
   };
 
   const totals = useMemo(() => {
+    // If showing Loans, we calculate the GLOBAL status of all active loans, not just this month's installments.
+    if (activeTab === 'loan') {
+      let loanTotal = 0; // Total Debt Value
+      let loanPaid = 0;  // Total Amount Paid So Far
+
+      // Calculate from ALL filtered loan items, not just current month (though usually they are the same items)
+      filteredItems.forEach(item => {
+        const totalAmount = item.loan_total_amount || (item.amount * (item.loan_total_payments || 1));
+        const paidAmount = (item.loan_payments_made || 0) * item.amount;
+
+        loanTotal += totalAmount;
+        loanPaid += paidAmount;
+      });
+
+      return {
+        total: loanTotal,
+        paid: loanPaid,
+        pending: loanTotal - loanPaid
+      };
+    }
+
+    // Default behavior for Income/Expense (Monthly View)
     const total = currentMonthItems.reduce((acc, item) => acc + item.amount, 0);
     const paid = currentMonthItems.filter(i => i.isPaid).reduce((acc, item) => acc + item.amount, 0);
     const pending = total - paid;
     return { total, paid, pending };
-  }, [currentMonthItems]);
+  }, [currentMonthItems, filteredItems, activeTab]);
 
   // Group items by Account
   const groupedItems = useMemo(() => {
@@ -298,17 +320,31 @@ export function ReportPage({ user }: ReportPageProps) {
                           <p className={cn("text-xs font-semibold truncate", item.isPaid && "line-through text-muted-foreground")}>
                             {item.name}
                           </p>
-                          {/* Loan Progress Bar */}
+                          {/* Loan Progress Bar (Segmented) */}
                           {(activeTab === 'loan' || (item.loan_total_payments && item.loan_total_payments > 0)) && (
-                            <div className="mt-1 w-full bg-secondary/50 h-1 rounded-full overflow-hidden mb-1">
-                              <div
-                                className="bg-primary h-full rounded-full transition-all"
-                                style={{ width: `${Math.min(((item.loan_payments_made || 0) / (item.loan_total_payments || 1)) * 100, 100)}%` }}
-                              />
+                            <div className="mt-1.5 flex gap-0.5 w-full opacity-90">
+                              {Array.from({ length: item.loan_total_payments || 1 }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={cn(
+                                    "h-1.5 rounded-full flex-1 transition-all",
+                                    i < (item.loan_payments_made || 0)
+                                      ? "bg-primary"
+                                      : "bg-secondary/40"
+                                  )}
+                                />
+                              ))}
                             </div>
                           )}
                           <div className="flex flex-col gap-0.5 mt-0.5">
-                            <span className="text-xs text-muted-foreground">{formatCurrency(item.amount)}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              {formatCurrency(item.amount)}
+                              {item.loan_total_payments && (
+                                <span className="text-[10px] opacity-70">
+                                  ({item.loan_payments_made}/{item.loan_total_payments})
+                                </span>
+                              )}
+                            </span>
                             {item.cadence !== 'monthly' && (
                               <Badge variant="outline" className="text-[9px] h-3.5 px-1 py-0 w-fit">
                                 {item.cadence === 'yearly' ? 'Anual' : item.cadence}
