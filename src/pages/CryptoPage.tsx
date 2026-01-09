@@ -161,7 +161,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                             return (
                                 <div
                                     key={asset.symbol}
-                                    className="group flex items-center justify-between py-3 px-4 rounded-2xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
+                                    className="group flex items-center justify-between py-2 px-4 rounded-2xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
                                 >
                                     {/* Left: Rank + Logo + Symbol/Name */}
                                     <div className="flex items-center gap-3">
@@ -169,7 +169,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                             {asset.rank < 999999 ? `${asset.rank}` : "-"}
                                         </span>
                                         <div className="relative">
-                                            <CryptoLogo symbol={asset.symbol} size={36} />
+                                            <CryptoLogo symbol={asset.symbol} size={32} />
                                         </div>
                                         <div className="flex flex-col">
                                             <div className="flex items-baseline gap-1.5">

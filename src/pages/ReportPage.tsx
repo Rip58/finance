@@ -37,6 +37,9 @@ export function ReportPage({ user }: ReportPageProps) {
 
   // Helper to identify if an item is a loan
   const isLoan = (item: RecurringTransaction) => {
+    // Check fields first (more reliable if they exist)
+    if (item.loan_total_payments && item.loan_total_payments > 0) return true;
+
     if (item.type !== "expense") return false;
     const cat = categories.find(c => c.id === item.category_id);
     if (!cat) return false;
@@ -295,6 +298,15 @@ export function ReportPage({ user }: ReportPageProps) {
                           <p className={cn("text-xs font-semibold truncate", item.isPaid && "line-through text-muted-foreground")}>
                             {item.name}
                           </p>
+                          {/* Loan Progress Bar */}
+                          {(activeTab === 'loan' || (item.loan_total_payments && item.loan_total_payments > 0)) && (
+                            <div className="mt-1 w-full bg-secondary/50 h-1 rounded-full overflow-hidden mb-1">
+                              <div
+                                className="bg-primary h-full rounded-full transition-all"
+                                style={{ width: `${Math.min(((item.loan_payments_made || 0) / (item.loan_total_payments || 1)) * 100, 100)}%` }}
+                              />
+                            </div>
+                          )}
                           <div className="flex flex-col gap-0.5 mt-0.5">
                             <span className="text-xs text-muted-foreground">{formatCurrency(item.amount)}</span>
                             {item.cadence !== 'monthly' && (
