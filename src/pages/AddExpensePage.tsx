@@ -57,7 +57,11 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
   });
 
   const selectedCategory = categories?.find(c => c.id === formData.category_id);
-  const isLoan = searchParams.get("hint") === "loan" || selectedCategory?.name.toLowerCase().includes("préstamo") || selectedCategory?.name.toLowerCase().includes("prestamo");
+  const isLoan = searchParams.get("hint") === "loan" ||
+    selectedCategory?.name.toLowerCase().includes("préstamo") ||
+    selectedCategory?.name.toLowerCase().includes("prestamo") ||
+    selectedCategory?.name.toLowerCase().includes("hipoteca") ||
+    (parseFloat(loanData.totalPayments) > 0);
 
   // Dialog States
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);

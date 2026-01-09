@@ -39,7 +39,7 @@ export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [interval, setInterval] = useState<Interval>("1M");
+  const [interval, setInterval] = useState<Interval>("7D");
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<typeof bankAccounts[0] | null>(null);
 

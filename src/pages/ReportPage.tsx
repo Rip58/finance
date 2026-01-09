@@ -31,7 +31,7 @@ export function ReportPage({ user }: ReportPageProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("expense");
 
-  const { recurring, confirmations, confirm, unconfirm, isConfirming } = useRecurringTransactions(user.id);
+  const { recurring, confirmations, confirm, unconfirm, update: updateRecurring, isConfirming } = useRecurringTransactions(user.id);
   const { data: categories = [] } = useCategories(user.id, undefined);
   const { data: accounts = [] } = useBankAccounts(user.id);
 
@@ -57,7 +57,7 @@ export function ReportPage({ user }: ReportPageProps) {
       } else if (activeTab === "loan") {
         return isLoan(item);
       } else { // expense
-        return item.type === "expense" && !isLoan(item);
+        return item.type === "expense"; // Show ALL expenses, including loans
       }
     });
   }, [recurring, activeTab, categories]);
@@ -102,6 +102,14 @@ export function ReportPage({ user }: ReportPageProps) {
           recurringId: item.id,
           occurrenceDate: item.confirmationDate
         });
+
+        // Decrement loan payments if applicable
+        if (isLoan(item)) {
+          await updateRecurring({
+            id: item.id,
+            loan_payments_made: Math.max(0, (item.loan_payments_made || 0) - 1)
+          });
+        }
       }
     } else {
       // Confirm (Pay)
@@ -111,6 +119,14 @@ export function ReportPage({ user }: ReportPageProps) {
           occurrence_date: item.next_occurrence_date
         } as PendingRecurring
       });
+
+      // Increment loan payments if applicable
+      if (isLoan(item)) {
+        await updateRecurring({
+          id: item.id,
+          loan_payments_made: (item.loan_payments_made || 0) + 1
+        });
+      }
     }
   };
 
@@ -330,7 +346,7 @@ export function ReportPage({ user }: ReportPageProps) {
                                     "h-1.5 rounded-full flex-1 transition-all",
                                     i < (item.loan_payments_made || 0)
                                       ? "bg-primary"
-                                      : "bg-secondary/40"
+                                      : "bg-muted-foreground/20"
                                   )}
                                 />
                               ))}
@@ -353,24 +369,26 @@ export function ReportPage({ user }: ReportPageProps) {
                           </div>
                         </div>
 
-                        <Button
-                          size="icon"
-                          variant={item.isPaid ? "ghost" : "default"}
-                          className={cn(
-                            "h-7 w-7 rounded-full shrink-0 transition-all",
-                            item.isPaid
-                              ? "text-muted-foreground bg-muted hover:bg-muted"
-                              : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
-                          )}
-                          onClick={(e) => handleCheck(item, e)}
-                          disabled={isConfirming}
-                        >
-                          {item.isPaid ? (
-                            <Check className="h-3.5 w-3.5" />
-                          ) : (
-                            <div className="h-3 w-3 rounded-full border-2 border-current" />
-                          )}
-                        </Button>
+                        {activeTab !== 'loan' && (
+                          <Button
+                            size="icon"
+                            variant={item.isPaid ? "ghost" : "default"}
+                            className={cn(
+                              "h-7 w-7 rounded-full shrink-0 transition-all",
+                              item.isPaid
+                                ? "text-muted-foreground bg-muted hover:bg-muted"
+                                : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
+                            )}
+                            onClick={(e) => handleCheck(item, e)}
+                            disabled={isConfirming}
+                          >
+                            {item.isPaid ? (
+                              <Check className="h-3.5 w-3.5" />
+                            ) : (
+                              <div className="h-3 w-3 rounded-full border-2 border-current" />
+                            )}
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
