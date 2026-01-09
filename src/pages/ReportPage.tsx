@@ -31,7 +31,7 @@ export function ReportPage({ user }: ReportPageProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("expense");
 
-  const { recurring, confirmations, confirm, isConfirming } = useRecurringTransactions(user.id);
+  const { recurring, confirmations, confirm, unconfirm, isConfirming } = useRecurringTransactions(user.id);
   const { data: categories = [] } = useCategories(user.id, undefined);
   const { data: accounts = [] } = useBankAccounts(user.id);
 
@@ -66,18 +66,12 @@ export function ReportPage({ user }: ReportPageProps) {
     const currentMonthEnd = endOfMonth(today);
 
     return filteredItems.map(item => {
-      // Check if it is confirmed for this month
-      // We look for a confirmation that has an occurrence_date strictly within the current month
-      // OR specifically matches the transaction date logic. 
-      // Simplified: Check if any confirmation exists for this item in the current month.
       const confirmation = confirmations.find(c =>
         c.recurring_id === item.id &&
         isSameMonth(parseISO(c.occurrence_date), today)
       );
 
-      // Check if it is due this month (or overdue)
       const nextDate = parseISO(item.next_occurrence_date);
-      // It is due if next date is on or before end of this month
       const isDue = nextDate <= currentMonthEnd;
       const isPaid = !!confirmation;
 
@@ -87,20 +81,39 @@ export function ReportPage({ user }: ReportPageProps) {
         ...item,
         isPaid,
         confirmationId: confirmation?.id,
+        confirmationDate: confirmation?.occurrence_date,
         isRelevant: relevant
       };
     }).filter(i => i.isRelevant);
   }, [filteredItems, confirmations]);
 
-  const handleCheck = async (item: typeof currentMonthItems[0]) => {
-    if (item.isPaid) return;
+  const handleCheck = async (item: typeof currentMonthItems[0], e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isConfirming) return;
 
-    await confirm({
-      recurring: {
-        ...item,
-        occurrence_date: item.next_occurrence_date
-      } as PendingRecurring
-    });
+    if (item.isPaid) {
+      // Unconfirm (Undo)
+      if (item.confirmationId && item.confirmationDate) {
+        await unconfirm({
+          confirmationId: item.confirmationId,
+          recurringId: item.id,
+          occurrenceDate: item.confirmationDate
+        });
+      }
+    } else {
+      // Confirm (Pay)
+      await confirm({
+        recurring: {
+          ...item,
+          occurrence_date: item.next_occurrence_date
+        } as PendingRecurring
+      });
+    }
+  };
+
+  const handleEdit = (item: typeof currentMonthItems[0]) => {
+    const path = item.type === 'income' ? '/add-income' : '/add-expense';
+    navigate(`${path}?edit=${item.id}&recurring=true`);
   };
 
   const totals = useMemo(() => {
@@ -253,8 +266,9 @@ export function ReportPage({ user }: ReportPageProps) {
                   {group.items.map((item) => (
                     <div
                       key={item.id}
+                      onClick={() => handleEdit(item)}
                       className={cn(
-                        "flex items-center justify-between p-4 rounded-3xl border transition-all duration-200",
+                        "flex items-center justify-between p-4 rounded-3xl border transition-all duration-200 hover:bg-accent/5 cursor-pointer", // ADDED cursor-pointer
                         item.isPaid
                           ? "bg-muted/30 border-transparent opacity-60"
                           : "bg-card border-border shadow-sm"
@@ -284,8 +298,8 @@ export function ReportPage({ user }: ReportPageProps) {
                             ? "text-muted-foreground bg-muted hover:bg-muted"
                             : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
                         )}
-                        onClick={() => handleCheck(item)}
-                        disabled={item.isPaid || isConfirming}
+                        onClick={(e) => handleCheck(item, e)}
+                        disabled={isConfirming} // Allow click even if Paid
                       >
                         {item.isPaid ? (
                           <Check className="h-5 w-5" />

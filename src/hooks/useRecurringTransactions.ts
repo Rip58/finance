@@ -209,6 +209,47 @@ export function useRecurringTransactions(userId: string) {
     },
   });
 
+  // Unconfirm a transaction (Uncheck)
+  const unconfirmMutation = useMutation({
+    mutationFn: async ({
+      confirmationId,
+      recurringId,
+      occurrenceDate
+    }: {
+      confirmationId: string;
+      recurringId: string;
+      occurrenceDate: string;
+    }) => {
+      // 1. Delete confirmation
+      const { error: delError } = await supabase
+        .from("recurring_confirmations")
+        .delete()
+        .eq("id", confirmationId);
+
+      if (delError) throw delError;
+
+      // 2. Rollback next_occurrence_date to this occurrence date
+      // We only do this if the occurrenceDate is BEFORE the current next_occurrence_date
+      // To be safe, we always set it back to this date, assuming the user unchecks the latest pending item.
+      // Or simply: Set it to the unconfirmed date.
+
+      const { error: updateError } = await supabase
+        .from("recurring_transactions")
+        .update({ next_occurrence_date: occurrenceDate })
+        .eq("id", recurringId);
+
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["recurring_transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["recurring_confirmations"] });
+      toast({ title: "Marcado como pendiente" });
+    },
+    onError: (error) => {
+      toast({ title: "Error al desmarcar", description: error.message, variant: "destructive" });
+    },
+  });
+
   return {
     recurring: recurringQuery.data ?? [],
     confirmations: confirmationsQuery.data ?? [],
@@ -218,6 +259,7 @@ export function useRecurringTransactions(userId: string) {
     create: createMutation.mutateAsync,
     update: updateMutation.mutateAsync,
     delete: deleteMutation.mutateAsync,
-    isConfirming: confirmMutation.isPending,
+    unconfirm: unconfirmMutation.mutateAsync,
+    isConfirming: confirmMutation.isPending || unconfirmMutation.isPending,
   };
 }

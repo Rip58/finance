@@ -33,7 +33,7 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
   const { toast } = useToast();
 
   const { data: allTransactions, create: createTransaction, update: updateTransaction, delete: deleteTransaction, isCreating } = useTransactions(user.id);
-  const { create: createRecurring } = useRecurringTransactions(user.id);
+  const { recurring: allRecurring, create: createRecurring, update: updateRecurring, delete: deleteRecurring } = useRecurringTransactions(user.id);
   const { data: categories, create: createCategory, isCreating: isCreatingCategory } = useCategories(user.id, "general");
   const { data: accounts, create: createAccount, isCreating: isCreatingAccount } = useBankAccounts(user.id);
 
@@ -46,6 +46,8 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
     description: "",
   });
   const [isRecurring, setIsRecurring] = useState(false);
+  const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Dialog States
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
@@ -106,12 +108,27 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
     }
   }, [searchParams, categories]);
 
-  const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
   // Load existing transaction if editing
   useEffect(() => {
-    if (editId && allTransactions) {
+    if (!editId) return;
+
+    const isRecurringEdit = searchParams.get("recurring") === "true";
+
+    if (isRecurringEdit && allRecurring) {
+      const existing = allRecurring.find(t => t.id === editId);
+      if (existing) {
+        setFormData({
+          amount: existing.amount.toString(),
+          currency: existing.currency,
+          date: existing.start_date ? existing.start_date : new Date().toISOString().split("T")[0],
+          category_id: existing.category_id || "none",
+          bank_account_id: existing.bank_account_id || "none",
+          description: existing.name || "",
+        });
+        setIsRecurring(true);
+        setCadence(existing.cadence as any);
+      }
+    } else if (allTransactions && !isRecurringEdit) {
       const existing = allTransactions.find(t => t.id === editId);
       if (existing) {
         setFormData({
@@ -124,13 +141,14 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         });
       }
     }
-  }, [editId, allTransactions]);
+  }, [editId, allTransactions, allRecurring, searchParams]);
 
   const handleSubmit = async () => {
     if (!formData.amount) return;
     setIsSubmitting(true);
 
     try {
+      // Payload for Transaction
       const payload = {
         type: "expense" as const,
         amount: parseFloat(formData.amount),
@@ -143,8 +161,24 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
       };
 
       if (editId) {
-        await updateTransaction({ id: editId, ...payload });
-        toast({ title: "Gasto actualizado" });
+        if (isRecurring) {
+          // Update Recurring Template
+          await updateRecurring({
+            id: editId,
+            name: formData.description || "Gasto recurrente",
+            amount: parseFloat(formData.amount),
+            currency: formData.currency,
+            category_id: formData.category_id === "none" ? null : formData.category_id,
+            bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
+            cadence,
+            start_date: formData.date,
+          });
+          toast({ title: "Plantilla actualizada" });
+        } else {
+          // Update Normal Transaction
+          await updateTransaction({ id: editId, ...payload });
+          toast({ title: "Gasto actualizado" });
+        }
       } else {
         if (isRecurring) {
           // Only create recurring template, NO transaction
@@ -179,8 +213,13 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
     if (!editId) return;
     setIsSubmitting(true);
     try {
-      await deleteTransaction(editId);
-      toast({ title: "Gasto eliminado" });
+      if (isRecurring) {
+        await deleteRecurring(editId);
+        toast({ title: "Plantilla eliminada" });
+      } else {
+        await deleteTransaction(editId);
+        toast({ title: "Gasto eliminado" });
+      }
       navigate(-1);
     } catch (error) {
       console.error(error);
@@ -312,18 +351,18 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         </div>
 
         {/* Recurring Switch */}
-        {!editId && (
+        {(!editId || isRecurring) && (
           <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
             <div>
               <p className="font-medium">Hacer recurrente</p>
               <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
             </div>
-            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
+            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} disabled={!!editId} />
           </div>
         )}
 
         {/* Cadence */}
-        {!editId && isRecurring && (
+        {isRecurring && (
           <div className="space-y-2">
             <Label>Frecuencia</Label>
             <Select value={cadence} onValueChange={(v) => setCadence(v as typeof cadence)}>
