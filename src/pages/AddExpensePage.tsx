@@ -49,6 +49,16 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
   const [cadence, setCadence] = useState<"weekly" | "monthly" | "quarterly" | "yearly">("monthly");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Loan Specific State
+  const [loanData, setLoanData] = useState({
+    totalAmount: "",
+    totalPayments: "",
+    paymentsMade: "0",
+  });
+
+  const selectedCategory = categories?.find(c => c.id === formData.category_id);
+  const isLoan = searchParams.get("hint") === "loan" || selectedCategory?.name.toLowerCase().includes("préstamo") || selectedCategory?.name.toLowerCase().includes("prestamo");
+
   // Dialog States
   const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
@@ -127,6 +137,9 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         });
         setIsRecurring(true);
         setCadence(existing.cadence as any);
+        if (existing.loan_total_amount) setLoanData(prev => ({ ...prev, totalAmount: existing.loan_total_amount!.toString() }));
+        if (existing.loan_total_payments) setLoanData(prev => ({ ...prev, totalPayments: existing.loan_total_payments!.toString() }));
+        if (existing.loan_payments_made) setLoanData(prev => ({ ...prev, paymentsMade: existing.loan_payments_made!.toString() }));
       }
     } else if (allTransactions && !isRecurringEdit) {
       const existing = allTransactions.find(t => t.id === editId);
@@ -162,8 +175,8 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
 
       if (editId) {
         if (isRecurring) {
-          // Update Recurring Template
-          await updateRecurring({
+          // Construct update payload dynamically
+          const updatePayload: any = {
             id: editId,
             name: formData.description || "Gasto recurrente",
             amount: parseFloat(formData.amount),
@@ -172,7 +185,15 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
             bank_account_id: formData.bank_account_id === "none" ? null : formData.bank_account_id,
             cadence,
             start_date: formData.date,
-          });
+          };
+
+          if (isLoan) {
+            updatePayload.loan_total_amount = parseFloat(loanData.totalAmount) || null;
+            updatePayload.loan_total_payments = parseInt(loanData.totalPayments) || null;
+            updatePayload.loan_payments_made = parseInt(loanData.paymentsMade) || null;
+          }
+
+          await updateRecurring(updatePayload);
           toast({ title: "Plantilla actualizada" });
         } else {
           // Update Normal Transaction
@@ -182,7 +203,7 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
       } else {
         if (isRecurring) {
           // Only create recurring template, NO transaction
-          await createRecurring({
+          const createPayload: any = {
             type: "expense",
             name: formData.description || "Gasto recurrente",
             amount: parseFloat(formData.amount),
@@ -194,7 +215,15 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
             next_occurrence_date: formData.date,
             is_active: true,
             notes: null,
-          });
+          };
+
+          if (isLoan) {
+            createPayload.loan_total_amount = parseFloat(loanData.totalAmount) || null;
+            createPayload.loan_total_payments = parseInt(loanData.totalPayments) || null;
+            createPayload.loan_payments_made = parseInt(loanData.paymentsMade) || null;
+          }
+
+          await createRecurring(createPayload);
         } else {
           // Normal transaction
           await createTransaction(payload);
@@ -349,6 +378,46 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
             rows={2}
           />
         </div>
+
+        {/* Loan Specific Fields */}
+        {isLoan && (
+          <div className="space-y-4 p-4 bg-muted/30 rounded-2xl border border-border/50">
+            <h3 className="text-sm font-medium text-primary">Detalles del Préstamo</h3>
+            <div className="space-y-2">
+              <Label>Importe Total del Préstamo</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                value={loanData.totalAmount}
+                onChange={(e) => setLoanData({ ...loanData, totalAmount: e.target.value })}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label>Pagos Totales</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  placeholder="Ej: 24"
+                  value={loanData.totalPayments}
+                  onChange={(e) => setLoanData({ ...loanData, totalPayments: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Pagos Efectuados</Label>
+                <Input
+                  type="number"
+                  min="0"
+                  placeholder="Ej: 0"
+                  value={loanData.paymentsMade}
+                  onChange={(e) => setLoanData({ ...loanData, paymentsMade: e.target.value })}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Recurring Switch */}
         {(!editId || isRecurring) && (

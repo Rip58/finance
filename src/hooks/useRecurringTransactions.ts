@@ -18,6 +18,9 @@ export interface RecurringTransaction {
   is_active: boolean;
   notes: string | null;
   created_at: string;
+  loan_total_amount?: number | null;
+  loan_total_payments?: number | null;
+  loan_payments_made?: number | null;
 }
 
 export interface RecurringConfirmation {

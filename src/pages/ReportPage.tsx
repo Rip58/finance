@@ -149,6 +149,22 @@ export function ReportPage({ user }: ReportPageProps) {
       }
     });
 
+    // Sort items within groups: Yearly first, then others
+    const cadenceOrder: Record<string, number> = {
+      yearly: 0,
+      quarterly: 1,
+      monthly: 2,
+      weekly: 3
+    };
+
+    groups.forEach(g => {
+      g.items.sort((a, b) => {
+        const orderA = cadenceOrder[a.cadence] ?? 99;
+        const orderB = cadenceOrder[b.cadence] ?? 99;
+        return orderA - orderB;
+      });
+    });
+
     return groups.filter(g => g.items.length > 0);
   }, [currentMonthItems, accounts]);
 
@@ -262,53 +278,54 @@ export function ReportPage({ user }: ReportPageProps) {
                     </h4>
                   </div>
 
-                  {/* Items */}
-                  {group.items.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleEdit(item)}
-                      className={cn(
-                        "flex items-center justify-between p-4 rounded-3xl border transition-all duration-200 hover:bg-accent/5 cursor-pointer", // ADDED cursor-pointer
-                        item.isPaid
-                          ? "bg-muted/30 border-transparent opacity-60"
-                          : "bg-card border-border shadow-sm"
-                      )}
-                    >
-                      <div className="flex-1 min-w-0 mr-4">
-                        <p className={cn("font-medium truncate", item.isPaid && "line-through text-muted-foreground")}>
-                          {item.name}
-                          {item.notes && <span className="text-xs font-normal text-muted-foreground ml-2">({item.notes})</span>}
-                        </p>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{formatCurrency(item.amount)}</span>
-                          {item.cadence !== 'monthly' && (
-                            <Badge variant="outline" className="text-[10px] h-4 px-1 py-0">
-                              {item.cadence}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      <Button
-                        size="icon"
-                        variant={item.isPaid ? "ghost" : "default"}
+                  {/* Items - Grid Layout (2 cols) */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {group.items.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleEdit(item)}
                         className={cn(
-                          "h-10 w-10 rounded-full shrink-0 transition-all",
+                          "flex items-center justify-between px-3 py-2 rounded-xl border transition-all duration-200 hover:bg-accent/5 cursor-pointer",
                           item.isPaid
-                            ? "text-muted-foreground bg-muted hover:bg-muted"
-                            : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
+                            ? "bg-muted/30 border-transparent opacity-60"
+                            : "bg-card border-border shadow-sm"
                         )}
-                        onClick={(e) => handleCheck(item, e)}
-                        disabled={isConfirming} // Allow click even if Paid
                       >
-                        {item.isPaid ? (
-                          <Check className="h-5 w-5" />
-                        ) : (
-                          <div className="h-4 w-4 rounded-full border-2 border-current" />
-                        )}
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex-1 min-w-0 mr-2">
+                          <p className={cn("text-xs font-semibold truncate", item.isPaid && "line-through text-muted-foreground")}>
+                            {item.name}
+                          </p>
+                          <div className="flex flex-col gap-0.5 mt-0.5">
+                            <span className="text-xs text-muted-foreground">{formatCurrency(item.amount)}</span>
+                            {item.cadence !== 'monthly' && (
+                              <Badge variant="outline" className="text-[9px] h-3.5 px-1 py-0 w-fit">
+                                {item.cadence === 'yearly' ? 'Anual' : item.cadence}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          size="icon"
+                          variant={item.isPaid ? "ghost" : "default"}
+                          className={cn(
+                            "h-7 w-7 rounded-full shrink-0 transition-all",
+                            item.isPaid
+                              ? "text-muted-foreground bg-muted hover:bg-muted"
+                              : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
+                          )}
+                          onClick={(e) => handleCheck(item, e)}
+                          disabled={isConfirming}
+                        >
+                          {item.isPaid ? (
+                            <Check className="h-3.5 w-3.5" />
+                          ) : (
+                            <div className="h-3 w-3 rounded-full border-2 border-current" />
+                          )}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               ))
             ) : (
