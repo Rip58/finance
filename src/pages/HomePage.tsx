@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { LogOut, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -218,20 +218,36 @@ export function HomePage({ user }: HomePageProps) {
   }, [displayedAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
   // Calculate percentage change and absolute variation using LIVE data vs Chart Start
+  // Ref to store last valid total to prevent flickering to 0 during refreshes
+  const lastValidTotalRef = useRef<number>(0);
+
+  // Calculate percentage change and absolute variation using LIVE data vs Chart Start
   const { percentageChange, absoluteChange } = useMemo(() => {
     if (!chartData || chartData.length === 0) return { percentageChange: null, absoluteChange: null };
 
     const firstValue = chartData[0].balanceTotal;
-    // Use LIVE totalPatrimonio as current value to reflect real-time price changes.
-    // Fallback hierarchy: 
-    // 1. Live totalPatrimonio (Best for real-time)
-    // 2. Metrics totalBalance (Stable fallback if live is loading)
-    // 3. Chart last value (Historical fallback)
+
+    // Determine the best available current value
     const metricsTotal = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0) + (metrics?.cryptoBalance ?? 0);
 
-    const currentValue = totalPatrimonio > 0
-      ? totalPatrimonio
-      : (metricsTotal > 0 ? metricsTotal : chartData[chartData.length - 1].balanceTotal);
+    let currentValue = 0;
+
+    // Priority 1: Live Data
+    if (totalPatrimonio > 0) {
+      currentValue = totalPatrimonio;
+      lastValidTotalRef.current = totalPatrimonio;
+    }
+    // Priority 2: Memory (Ref) - Holds last known live value to prevent flicker
+    else if (lastValidTotalRef.current > 0) {
+      currentValue = lastValidTotalRef.current;
+    }
+    // Priority 3: Stale Fallbacks (only if never had live data)
+    else if (metricsTotal > 0) {
+      currentValue = metricsTotal;
+    }
+    else if (chartData.length > 0) {
+      currentValue = chartData[chartData.length - 1].balanceTotal;
+    }
 
     const absChange = currentValue - firstValue;
 
