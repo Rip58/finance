@@ -222,9 +222,16 @@ export function HomePage({ user }: HomePageProps) {
     if (!chartData || chartData.length === 0) return { percentageChange: null, absoluteChange: null };
 
     const firstValue = chartData[0].balanceTotal;
-    // Use LIVE totalPatrimonio as current value to reflect real-time price changes, 
-    // fallback to chart last value if live is not ready.
-    const currentValue = totalPatrimonio > 0 ? totalPatrimonio : chartData[chartData.length - 1].balanceTotal;
+    // Use LIVE totalPatrimonio as current value to reflect real-time price changes.
+    // Fallback hierarchy: 
+    // 1. Live totalPatrimonio (Best for real-time)
+    // 2. Metrics totalBalance (Stable fallback if live is loading)
+    // 3. Chart last value (Historical fallback)
+    const metricsTotal = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0) + (metrics?.cryptoBalance ?? 0);
+
+    const currentValue = totalPatrimonio > 0
+      ? totalPatrimonio
+      : (metricsTotal > 0 ? metricsTotal : chartData[chartData.length - 1].balanceTotal);
 
     const absChange = currentValue - firstValue;
 
@@ -232,7 +239,7 @@ export function HomePage({ user }: HomePageProps) {
 
     const pctChange = ((currentValue - firstValue) / firstValue) * 100;
     return { percentageChange: pctChange, absoluteChange: absChange };
-  }, [chartData, totalPatrimonio]);
+  }, [chartData, totalPatrimonio, metrics]);
 
   // Format account currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
@@ -321,7 +328,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.1</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.2</span>
               </div>
             </div>
           </div>
@@ -373,7 +380,7 @@ export function HomePage({ user }: HomePageProps) {
             </div>
             <IntervalSelector value={interval} onChange={setInterval} />
           </div>
-          <div className="h-56 overflow-hidden">
+          <div className="h-64 overflow-hidden">
             <EvolutionChart interval={interval} userId={user.id} />
           </div>
         </div>

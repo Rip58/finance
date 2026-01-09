@@ -152,7 +152,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                         </p>
                     </div>
                 ) : (
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
                         {aggregatedAssets.map((asset) => {
                             const variation = asset.variations[timeframe];
                             const hasData = variation !== null;
@@ -161,49 +161,42 @@ export function CryptoPage({ user }: CryptoPageProps) {
                             return (
                                 <div
                                     key={asset.symbol}
-                                    className="group flex items-center justify-between py-2 px-4 rounded-2xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
+                                    className="group flex flex-col justify-between p-3 rounded-2xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
                                 >
-                                    {/* Left: Rank + Logo + Symbol/Name */}
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-bold text-muted-foreground/70 w-5 text-center bg-muted/30 rounded-sm py-0.5">
-                                            {asset.rank < 999999 ? `${asset.rank}` : "-"}
-                                        </span>
+                                    {/* Top: Rank + Logo + Symbol */}
+                                    <div className="flex items-center gap-2 mb-2">
                                         <div className="relative">
-                                            <CryptoLogo symbol={asset.symbol} size={32} />
+                                            <CryptoLogo symbol={asset.symbol} size={28} />
+                                            <span className="absolute -top-1 -right-1 text-[9px] font-bold text-muted-foreground/70 bg-muted/50 rounded-full w-4 h-4 flex items-center justify-center border border-background">
+                                                {asset.rank < 999 ? asset.rank : "•"}
+                                            </span>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <div className="flex items-baseline gap-1.5">
-                                                <span className="font-bold text-base tracking-tight">{asset.symbol}</span>
-                                            </div>
-                                            <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wide">{asset.name}</span>
+                                        <div className="flex flex-col min-w-0">
+                                            <span className="font-bold text-sm tracking-tight truncate">{asset.symbol}</span>
+                                            <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wide truncate max-w-[80px]">{asset.name}</span>
                                         </div>
                                     </div>
 
-                                    {/* Right: Price + Variation + Volume */}
-                                    <div className="flex flex-col items-end gap-1">
-                                        <p className="font-bold text-base tabular-nums tracking-tight">
+                                    {/* Bottom: Price + Variation */}
+                                    <div className="flex flex-col items-end gap-0.5">
+                                        <p className="font-bold text-sm tabular-nums tracking-tight">
                                             {formatCryptoPrice(asset.currentPrice)}
                                         </p>
 
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-[9px] font-medium text-muted-foreground/60 tabular-nums">
-                                                {formatVolume(asset.volume24h)}
-                                            </span>
-                                            <div className={cn(
-                                                "flex items-center justify-center min-w-[50px] px-1.5 py-0.5 rounded-full text-[10px] font-bold tabular-nums",
-                                                !hasData
-                                                    ? "text-muted-foreground bg-muted"
-                                                    : isPositive
-                                                        ? "text-green-600 bg-green-500/15 dark:text-green-400 dark:bg-green-500/20"
-                                                        : "text-red-600 bg-red-500/15 dark:text-red-400 dark:bg-red-500/20"
-                                            )}>
-                                                {hasData ? (
-                                                    <>
-                                                        {isPositive ? "+" : ""}
-                                                        {variation.toFixed(2)}%
-                                                    </>
-                                                ) : "—"}
-                                            </div>
+                                        <div className={cn(
+                                            "flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums w-full text-center",
+                                            !hasData
+                                                ? "text-muted-foreground bg-muted"
+                                                : isPositive
+                                                    ? "text-green-600 bg-green-500/10"
+                                                    : "text-red-600 bg-red-500/10"
+                                        )}>
+                                            {hasData ? (
+                                                <>
+                                                    {isPositive ? "+" : ""}
+                                                    {variation.toFixed(2)}%
+                                                </>
+                                            ) : "—"}
                                         </div>
                                     </div>
                                 </div>
