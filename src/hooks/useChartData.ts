@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Interval } from "@/components/IntervalSelector";
-import { subDays, subMonths, format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfMonth } from "date-fns";
+import { subDays, subMonths, subHours, format, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, eachHourOfInterval, endOfMonth } from "date-fns";
 import { es } from "date-fns/locale";
 
 interface ChartDataPoint {
@@ -201,6 +201,11 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       let formatLabel: (date: Date) => string;
 
       switch (interval) {
+        case "1D":
+          dates = eachHourOfInterval({ start: subHours(now, 24), end: now })
+            .filter((_, i) => i % 2 === 0); // Every 2 hours to keep simpler
+          formatLabel = (d) => format(d, "HH:mm");
+          break;
         case "7D":
           dates = eachDayOfInterval({ start: subDays(now, 6), end: now });
           formatLabel = (d) => format(d, "EEE", { locale: es });

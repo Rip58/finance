@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from "react";
+import { useCryptoMarketData } from "@/hooks/useCryptoMarketData";
 import { LogOut, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -217,6 +218,48 @@ export function HomePage({ user }: HomePageProps) {
     return total;
   }, [displayedAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
+  // --- CRYPTO LIVE DELTA LOGIC ---
+  const allCryptoHoldings = useMemo(() => {
+    const holdings: Record<string, number> = {};
+    if (allAccountHoldings) {
+      for (const h of allAccountHoldings) holdings[h.symbol.toUpperCase()] = (holdings[h.symbol.toUpperCase()] || 0) + Number(h.quantity);
+    }
+    // DCA Holdings
+    const activePortfolioIds = new Set(portfolios?.map(p => p.id) || []);
+    const validTransactions = assetTransactions?.filter(tx => tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)) || [];
+    for (const tx of validTransactions) {
+      const s = tx.symbol.toUpperCase();
+      holdings[s] = (holdings[s] || 0) + (tx.side === "buy" ? Number(tx.quantity) : -Number(tx.quantity));
+    }
+    return holdings;
+  }, [allAccountHoldings, assetTransactions, portfolios]);
+
+  const cryptoSymbols = useMemo(() => Object.keys(allCryptoHoldings), [allCryptoHoldings]);
+  const { data: marketData } = useCryptoMarketData(cryptoSymbols);
+
+  const cryptoDeltaEur = useMemo(() => {
+    if (!marketData) return null;
+    let deltaUsd = 0;
+
+    let key: 'change24h' | 'change7d' | 'change30d' | null = null;
+    if (interval === "1D") key = 'change24h';
+    else if (interval === "7D") key = 'change7d';
+    else if (interval === "1M") key = 'change30d';
+
+    if (!key) return null;
+
+    for (const [symbol, qty] of Object.entries(allCryptoHoldings)) {
+      const data = marketData[symbol];
+      if (data && data[key] !== null) {
+        const val = qty * data.price;
+        const pct = data[key] as number;
+        const startVal = val / (1 + pct / 100);
+        deltaUsd += (val - startVal);
+      }
+    }
+    return deltaUsd * usdtEurRate;
+  }, [allCryptoHoldings, marketData, interval, usdtEurRate]);
+
   // Calculate percentage change and absolute variation using LIVE data vs Chart Start
   // Ref to store last valid total to prevent flickering to 0 during refreshes
   const lastValidTotalRef = useRef<number>(0);
@@ -249,13 +292,26 @@ export function HomePage({ user }: HomePageProps) {
       currentValue = chartData[chartData.length - 1].balanceTotal;
     }
 
-    const absChange = currentValue - firstValue;
+    let absChange = currentValue - firstValue;
 
-    if (firstValue === 0) return { percentageChange: null, absoluteChange: absChange };
+    // Enhanced Variation: Use Live Market Data for Crypto if available (7D/1M)
+    // This ensures that price updates are reflected instantly even if chart history is stale.
+    if (cryptoDeltaEur !== null) {
+      const startSavings = chartData[0].ahorros + chartData[0].inversiones;
+      const endSavings = chartData[chartData.length - 1].ahorros + chartData[chartData.length - 1].inversiones;
+      const savingsDelta = endSavings - startSavings;
 
-    const pctChange = ((currentValue - firstValue) / firstValue) * 100;
+      absChange = cryptoDeltaEur + savingsDelta;
+    }
+
+    // Recalculate implied starting value to keep percentage consistent with absolute change
+    const impliedFirst = currentValue - absChange;
+
+    if (impliedFirst === 0) return { percentageChange: null, absoluteChange: absChange };
+
+    const pctChange = (absChange / impliedFirst) * 100;
     return { percentageChange: pctChange, absoluteChange: absChange };
-  }, [chartData, totalPatrimonio, metrics]);
+  }, [chartData, totalPatrimonio, metrics, cryptoDeltaEur]);
 
   // Format account currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
@@ -344,7 +400,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.2</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.3</span>
               </div>
             </div>
           </div>
