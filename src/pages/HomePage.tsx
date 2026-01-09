@@ -217,20 +217,22 @@ export function HomePage({ user }: HomePageProps) {
     return total;
   }, [displayedAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
-  // Calculate percentage change and absolute variation from chart data
+  // Calculate percentage change and absolute variation using LIVE data vs Chart Start
   const { percentageChange, absoluteChange } = useMemo(() => {
-    if (!chartData || chartData.length < 2) return { percentageChange: null, absoluteChange: null };
+    if (!chartData || chartData.length === 0) return { percentageChange: null, absoluteChange: null };
 
     const firstValue = chartData[0].balanceTotal;
-    const lastValue = chartData[chartData.length - 1].balanceTotal;
+    // Use LIVE totalPatrimonio as current value to reflect real-time price changes, 
+    // fallback to chart last value if live is not ready.
+    const currentValue = totalPatrimonio > 0 ? totalPatrimonio : chartData[chartData.length - 1].balanceTotal;
 
-    const absChange = lastValue - firstValue;
+    const absChange = currentValue - firstValue;
 
     if (firstValue === 0) return { percentageChange: null, absoluteChange: absChange };
 
-    const pctChange = ((lastValue - firstValue) / firstValue) * 100;
+    const pctChange = ((currentValue - firstValue) / firstValue) * 100;
     return { percentageChange: pctChange, absoluteChange: absChange };
-  }, [chartData]);
+  }, [chartData, totalPatrimonio]);
 
   // Format account currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
@@ -334,7 +336,7 @@ export function HomePage({ user }: HomePageProps) {
       {/* Balance Card */}
       <div className="px-4 py-4">
         <BalanceCard
-          balance={totalBalance}
+          balance={totalPatrimonio > 0 ? totalPatrimonio : totalBalance}
           subtitle="Total patrimonio"
           savingsTotal={metrics?.savingsBalance ?? 0}
           investmentsTotal={metrics?.investmentsBalance ?? 0}

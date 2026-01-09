@@ -137,14 +137,15 @@ export function EvolutionChart({ interval, userId }: EvolutionChartProps) {
             tick={{ fill: "hsl(215, 20%, 55%)", fontSize: 12 }}
             tickFormatter={(value) => formatCompact(value)}
             dx={-10}
+            domain={[0, (dataMax: number) => dataMax + 2000]}
           />
           <Tooltip content={<CustomTooltip />} />
           <Legend
-            verticalAlign="top"
+            verticalAlign="bottom"
             height={24}
             iconType="circle"
             iconSize={8}
-            wrapperStyle={{ paddingBottom: "8px" }}
+            wrapperStyle={{ paddingTop: "12px" }}
             formatter={(value) => (
               <span className="text-xs text-muted-foreground">{value}</span>
             )}
