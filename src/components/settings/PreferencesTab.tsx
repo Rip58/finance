@@ -122,6 +122,31 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
               <RefreshCw className="h-3 w-3" />
               Buscar Actualizaciones
             </Button>
+
+            <div className="pt-2 flex justify-center">
+              <button
+                onClick={() => {
+                  toast({
+                    title: "Forzando Recarga...",
+                    description: "Limpiando caché y reiniciando PWA.",
+                  });
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then((registrations) => {
+                      for (let registration of registrations) registration.unregister();
+                    });
+                  }
+                  if ('caches' in window) {
+                    caches.keys().then((names) => {
+                      names.forEach(name => caches.delete(name));
+                    });
+                  }
+                  window.location.href = '/';
+                }}
+                className="text-[10px] text-muted-foreground underline hover:text-primary transition-colors cursor-pointer bg-transparent border-none p-0"
+              >
+                ¿Problemas? Forzar recarga completa
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -175,6 +200,6 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
           </SelectContent>
         </Select>
       </div>
-    </div>
+    </div >
   );
 }
