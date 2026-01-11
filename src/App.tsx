@@ -20,6 +20,7 @@ import { CryptoPage } from "@/pages/CryptoPage";
 import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 import { ThemeColorProvider } from "@/components/providers/ThemeColorProvider";
+import { VersionChecker } from "@/components/VersionChecker";
 
 const queryClient = new QueryClient();
 
@@ -96,6 +97,7 @@ const App = () => (
           <Sonner position="bottom-center" />
           <BrowserRouter>
             <AppContent />
+            <VersionChecker />
           </BrowserRouter>
         </TooltipProvider>
       </ThemeColorProvider>

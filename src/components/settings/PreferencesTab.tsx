@@ -4,6 +4,7 @@ import { Sun, Moon, GitBranch, Palette, RefreshCw, Smartphone } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { useThemeColor, ColorTheme } from "@/components/providers/ThemeColorProvider";
 import { cn } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 
 interface PreferencesTabProps {
   userId: string;
@@ -39,7 +40,7 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Versión App</span>
-            <span className="font-mono font-medium bg-secondary/50 px-2 py-0.5 rounded text-xs">v3.6.0</span>
+            <span className="font-mono font-medium bg-secondary/50 px-2 py-0.5 rounded text-xs">v{APP_VERSION}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Entorno</span>
