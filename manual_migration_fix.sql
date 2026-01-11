@@ -60,6 +60,16 @@ ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS from_account_
 ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS to_account_id uuid NULL;
 ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS amount_to numeric NULL;
 ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS currency_to text NULL;
+ALTER TABLE public.recurring_transactions ADD COLUMN IF NOT EXISTS contributions JSONB DEFAULT '[]'::jsonb;
 
--- 4. Notify PostgREST to reload the schema cache
+-- 4. RELAX CONSTRAINTS FOR DEBT (MANUAL) SUPPORT
+-- Allow amount >= 0 (since manual debts have 0 recurring amount)
+ALTER TABLE public.recurring_transactions DROP CONSTRAINT IF EXISTS recurring_transactions_amount_check;
+ALTER TABLE public.recurring_transactions ADD CONSTRAINT recurring_transactions_amount_check CHECK (amount >= 0);
+
+-- Allow 'manual' cadence
+ALTER TABLE public.recurring_transactions DROP CONSTRAINT IF EXISTS recurring_transactions_cadence_check;
+ALTER TABLE public.recurring_transactions ADD CONSTRAINT recurring_transactions_cadence_check CHECK (cadence IN ('weekly', 'monthly', 'quarterly', 'yearly', 'manual'));
+
+-- 5. Notify PostgREST to reload the schema cache
 NOTIFY pgrst, 'reload schema';

@@ -86,23 +86,28 @@ export function DCAPage({ user }: DCAPageProps) {
 
   const handleRefreshPrices = async () => {
     if (symbols.length === 0) {
-      toast({ title: "No hay activos", description: "Selecciona un DCA primero" });
+      // Don't toast on initial auto-refresh if empty, just return
       return;
     }
     setIsRefreshing(true);
     try {
       await refreshPrices();
-      toast({ title: "Precios actualizados" });
+      // Only toast if manually triggered? Or maybe suppress toast on auto-refresh?
+      // For now, let's keep it simple.
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "No se pudieron actualizar los precios",
-        variant: "destructive"
-      });
+      console.error("Failed to refresh prices", error);
     } finally {
       setIsRefreshing(false);
     }
   };
+
+  // Auto-refresh on symbol change (portfolio selection)
+  useEffect(() => {
+    if (symbols.length > 0) {
+      handleRefreshPrices();
+    }
+  }, [symbols.join(',')]); // Use minimal dependency
+
 
   const handleSubmit = async (data: {
     quantity: number;

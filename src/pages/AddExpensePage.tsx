@@ -20,6 +20,7 @@ import { useRecurringTransactions } from "@/hooks/useRecurringTransactions";
 import { useCategories } from "@/hooks/useCategories";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
 interface AddExpensePageProps {
@@ -54,13 +55,27 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
     totalAmount: "",
     totalPayments: "",
     paymentsMade: "0",
+    personName: "",
+    amountPaid: "0",
   });
+  const [debtType, setDebtType] = useState<"manual" | "loan">("manual");
+  const [forceDebt, setForceDebt] = useState(false);
+
+  const [contribution, setContribution] = useState({
+    amount: "",
+    date: new Date().toISOString().split('T')[0]
+  });
+  const [contributionsList, setContributionsList] = useState<any[]>([]);
+  const [editingContribIndex, setEditingContribIndex] = useState<number | null>(null);
 
   const selectedCategory = categories?.find(c => c.id === formData.category_id);
-  const isLoan = searchParams.get("hint") === "loan" ||
+  const hint = searchParams.get("hint");
+  const isBankLoan = hint === "bank_loan";
+  const isPersonalDebt = hint === "personal_debt";
+  const isLoan = isPersonalDebt || forceDebt || hint === "loan" ||
     selectedCategory?.name.toLowerCase().includes("préstamo") ||
     selectedCategory?.name.toLowerCase().includes("prestamo") ||
-    selectedCategory?.name.toLowerCase().includes("hipoteca") ||
+    selectedCategory?.name.toLowerCase().includes("deuda") ||
     (parseFloat(loanData.totalPayments) > 0);
 
   // Dialog States
@@ -143,7 +158,31 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         setCadence(existing.cadence as any);
         if (existing.loan_total_amount) setLoanData(prev => ({ ...prev, totalAmount: existing.loan_total_amount!.toString() }));
         if (existing.loan_total_payments) setLoanData(prev => ({ ...prev, totalPayments: existing.loan_total_payments!.toString() }));
-        if (existing.loan_payments_made) setLoanData(prev => ({ ...prev, paymentsMade: existing.loan_payments_made!.toString() }));
+        // Contributions load
+        if (existing.contributions && Array.isArray(existing.contributions)) {
+          setContributionsList(existing.contributions);
+          // Calculate derived
+          const paid = existing.contributions.reduce((sum: number, c: any) => sum + (parseFloat(c.amount) || 0), 0);
+          setLoanData(prev => ({
+            ...prev,
+            amountPaid: paid.toFixed(2),
+            paymentsMade: existing.contributions.length.toString()
+          }));
+        } else {
+          // Fallback for old data
+          if (existing.loan_payments_made) setLoanData(prev => ({ ...prev, paymentsMade: existing.loan_payments_made!.toString() }));
+          if (existing.loan_amount_paid) setLoanData(prev => ({ ...prev, amountPaid: existing.loan_amount_paid!.toString() }));
+        }
+        if (existing.person) setLoanData(prev => ({ ...prev, personName: existing.person! }));
+
+        // Initialize Debt Type and Force Debt Mode
+        if (existing.cadence === 'manual') {
+          setDebtType('manual');
+          setForceDebt(true);
+        } else if (existing.loan_total_payments && existing.loan_total_payments > 0) {
+          setDebtType('loan');
+          setForceDebt(true);
+        }
       }
     } else if (allTransactions && !isRecurringEdit) {
       const existing = allTransactions.find(t => t.id === editId);
@@ -159,6 +198,53 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
       }
     }
   }, [editId, allTransactions, allRecurring, searchParams]);
+
+  const handleAddContribution = () => {
+    const amt = parseFloat(contribution.amount);
+    if (!amt) return;
+
+    let newList = [...contributionsList];
+    if (editingContribIndex !== null) {
+      newList[editingContribIndex] = { ...contribution, amount: contribution.amount }; // Ensure storing string or number consistently
+      setEditingContribIndex(null);
+    } else {
+      newList.push({ ...contribution });
+    }
+
+    // Sort by date? Optional. User didn't ask, but good practice.
+    newList.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+    setContributionsList(newList);
+
+    // Update derived stats
+    const currentPaid = newList.reduce((acc, c) => acc + (parseFloat(c.amount) || 0), 0);
+    setLoanData(prev => ({
+      ...prev,
+      amountPaid: currentPaid.toFixed(2),
+      paymentsMade: newList.length.toString()
+    }));
+
+    setContribution({ amount: "", date: new Date().toISOString().split('T')[0] });
+    toast({ title: editingContribIndex !== null ? "Aportación actualizada" : "Aportación añadida" });
+  };
+
+  const handleEditContribution = (index: number) => {
+    const item = contributionsList[index];
+    setContribution({ amount: item.amount.toString(), date: item.date });
+    setEditingContribIndex(index);
+  };
+
+  const handleDeleteContribution = (index: number) => {
+    const newList = contributionsList.filter((_, i) => i !== index);
+    setContributionsList(newList);
+
+    const currentPaid = newList.reduce((acc, c) => acc + (parseFloat(c.amount) || 0), 0);
+    setLoanData(prev => ({
+      ...prev,
+      amountPaid: currentPaid.toFixed(2),
+      paymentsMade: newList.length.toString()
+    }));
+  };
 
   const handleSubmit = async () => {
     if (!formData.amount) return;
@@ -192,13 +278,19 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
           };
 
           if (isLoan) {
+            // Assuming installmentAmount, totalDebt, paidSoFar, editedId are defined elsewhere
+            // This block replaces the original `if (isLoan)` block for recurring updates
+            updatePayload.amount = parseFloat(formData.amount); // Use formData.amount for installment
             updatePayload.loan_total_amount = parseFloat(loanData.totalAmount) || null;
-            updatePayload.loan_total_payments = parseInt(loanData.totalPayments) || null;
-            updatePayload.loan_payments_made = parseInt(loanData.paymentsMade) || null;
+            updatePayload.loan_total_payments = parseInt(loanData.totalPayments) || null; // manual
+            updatePayload.loan_payments_made = contributionsList.length;
+            updatePayload.loan_amount_paid = parseFloat(loanData.amountPaid) || null;
+            updatePayload.contributions = contributionsList; // Save list
+            updatePayload.person = loanData.personName || null; // Keep person name
           }
 
-          await updateRecurring(updatePayload);
-          toast({ title: "Plantilla actualizada" });
+          await updateRecurring(updatePayload); // Assuming updateRecurring takes updatePayload directly
+          toast({ title: "Recurrencia y deuda actualizadas" });
         } else {
           // Update Normal Transaction
           await updateTransaction({ id: editId, ...payload });
@@ -225,6 +317,9 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
             createPayload.loan_total_amount = parseFloat(loanData.totalAmount) || null;
             createPayload.loan_total_payments = parseInt(loanData.totalPayments) || null;
             createPayload.loan_payments_made = parseInt(loanData.paymentsMade) || null;
+            createPayload.loan_amount_paid = parseFloat(loanData.amountPaid) || null;
+            createPayload.person = loanData.personName || null;
+            createPayload.contributions = contributionsList; // Save list for new recurring loan
           }
 
           await createRecurring(createPayload);
@@ -274,7 +369,7 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
           <h1 className="text-lg font-semibold">
             {editId
               ? "Editar Gasto"
-              : searchParams.get("hint") === "loan" ? "Nuevo Préstamo" : "Nuevo Gasto"}
+              : isBankLoan ? "Nuevo Préstamo" : isPersonalDebt ? "Nueva Deuda" : "Nuevo Gasto"}
           </h1>
         </div>
       </header>
@@ -386,56 +481,182 @@ export function AddExpensePage({ user }: AddExpensePageProps) {
         {/* Loan Specific Fields */}
         {isLoan && (
           <div className="space-y-4 p-4 bg-muted/30 rounded-2xl border border-border/50">
-            <h3 className="text-sm font-medium text-primary">Detalles del Préstamo</h3>
-            <div className="space-y-2">
-              <Label>Importe Total del Préstamo</Label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                placeholder="0.00"
-                value={loanData.totalAmount}
-                onChange={(e) => setLoanData({ ...loanData, totalAmount: e.target.value })}
-              />
+            <h3 className="text-sm font-medium text-primary">
+              {isPersonalDebt ? "Detalles de Deuda" : "Detalles del Préstamo"}
+            </h3>
+
+            {/* Person Name - Only for Personal Debt */}
+            {(isPersonalDebt || (!isBankLoan && loanData.personName)) && (
+              <div className="space-y-2">
+                <Label>Persona / Entidad (Opcional)</Label>
+                <Input
+                  placeholder="Ej: Juan..."
+                  value={loanData.personName}
+                  onChange={(e) => setLoanData({ ...loanData, personName: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="space-y-4">
+              {/* Debt Type Selector */}
+              <div className="bg-background/50 p-1 rounded-lg flex text-sm mb-2">
+                <button
+                  type="button"
+                  onClick={() => setDebtType("manual")}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md transition-all font-medium",
+                    debtType === "manual" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Deuda Manual
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDebtType("loan")}
+                  className={cn(
+                    "flex-1 py-1.5 rounded-md transition-all font-medium",
+                    debtType === "loan" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Préstamo (Cuotas)
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Importe Total del Préstamo</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  placeholder="0.00"
+                  value={loanData.totalAmount}
+                  onChange={(e) => setLoanData({ ...loanData, totalAmount: e.target.value })}
+                />
+              </div>
+
+              {/* Fields for Loan Type (Fixed Quotas) */}
+              {debtType === "loan" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Pagos Totales</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      placeholder="Ej: 24"
+                      value={loanData.totalPayments}
+                      onChange={(e) => setLoanData({ ...loanData, totalPayments: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Pagos Efectuados</Label>
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Ej: 0"
+                      value={loanData.paymentsMade}
+                      onChange={(e) => setLoanData({ ...loanData, paymentsMade: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
+            {/* Hidden Fields for Debts as per request (Only Manual Debts now) */}
+            {/* 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Pagos Totales</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  placeholder="Ej: 24"
-                  value={loanData.totalPayments}
-                  onChange={(e) => setLoanData({ ...loanData, totalPayments: e.target.value })}
-                />
+                <Input type="number" value={loanData.totalPayments} onChange={(e) => setLoanData({ ...loanData, totalPayments: e.target.value })} />
               </div>
               <div className="space-y-2">
                 <Label>Pagos Efectuados</Label>
+                <Input type="number" value={loanData.paymentsMade} onChange={(e) => setLoanData({ ...loanData, paymentsMade: e.target.value })} />
+              </div>
+            </div> 
+            */}
+            {/* Contribution Section */}
+            <div className="mt-4 pt-4 border-t border-border/50">
+              <Label className="text-xs font-semibold uppercase text-muted-foreground mb-2 block">Registrar Pago</Label>
+
+              {/* List of Contributions */}
+              {contributionsList.length > 0 && (
+                <div className="flex flex-col gap-2 mb-3">
+                  {contributionsList.map((c, i) => (
+                    <div key={i} className="flex justify-between items-center text-xs p-2 bg-background/80 rounded-lg border border-border/50">
+                      <span>{new Intl.DateTimeFormat('es-ES').format(new Date(c.date))}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(parseFloat(c.amount))}</span>
+                        <div className="flex gap-1">
+                          <button
+                            type="button"
+                            onClick={() => handleEditContribution(i)}
+                            className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteContribution(i)}
+                            className="p-1 hover:bg-red-100 rounded text-red-500 hover:text-red-700 transition-colors"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2 mb-2">
                 <Input
                   type="number"
-                  min="0"
-                  placeholder="Ej: 0"
-                  value={loanData.paymentsMade}
-                  onChange={(e) => setLoanData({ ...loanData, paymentsMade: e.target.value })}
+                  placeholder="Importe"
+                  value={contribution.amount}
+                  onChange={(e) => setContribution({ ...contribution, amount: e.target.value })}
                 />
+                <Input
+                  type="date"
+                  value={contribution.date}
+                  onChange={(e) => setContribution({ ...contribution, date: e.target.value })}
+                />
+              </div>
+              <Button onClick={handleAddContribution} type="button" variant="secondary" className="w-full h-8 text-xs" disabled={!contribution.amount}>
+                + Registrar Pago
+              </Button>
+              <div className="mt-2 flex justify-between items-center text-sm bg-background/50 p-2 rounded-lg">
+                <span className="text-muted-foreground">Total Pagado:</span>
+                <span className="font-bold text-red-600">{new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(parseFloat(loanData.amountPaid) || 0)}</span>
               </div>
             </div>
           </div>
         )}
 
-        {/* Recurring Switch */}
-        {(!editId || isRecurring) && (
+        {/* Recurring Switch - Hidden for Manual Debt (Auto-recurring manual), Shown for Loan */}
+        {(!editId || isRecurring) && !isLoan && (
           <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
             <div>
               <p className="font-medium">Hacer recurrente</p>
               <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
             </div>
-            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} disabled={!!editId} />
+            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
+          </div>
+        )}
+
+        {/* Recurrence Options for LOAN type (Restored) */}
+        {isLoan && debtType === "loan" && (
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-card border border-border/50">
+            <div>
+              <p className="font-medium">Hacer recurrente</p>
+              <p className="text-sm text-muted-foreground">Repetir automáticamente</p>
+            </div>
+            <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
           </div>
         )}
 
         {/* Cadence */}
-        {isRecurring && (
+        {/* Cadence - Hidden for Loan */}
+        {/* Cadence - Hidden for Manual Loan, Shown if Loan Type + Recurring */}
+        {isRecurring && (!isLoan || (isLoan && debtType === "loan")) && (
           <div className="space-y-2">
             <Label>Frecuencia</Label>
             <Select value={cadence} onValueChange={(v) => setCadence(v as typeof cadence)}>

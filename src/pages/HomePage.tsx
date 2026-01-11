@@ -40,8 +40,9 @@ export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [interval, setInterval] = useState<Interval>("7D");
+  const [interval, setInterval] = useState<Interval>("1D");
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showNumbers, setShowNumbers] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<typeof bankAccounts[0] | null>(null);
 
   const { data: metrics } = useDashboardMetrics(user.id);
@@ -93,6 +94,11 @@ export function HomePage({ user }: HomePageProps) {
 
   // Get USDT/EUR rate
   const usdtEurRate = fxRates.getLatestRate("USDT_EUR") || 1;
+
+  // Auto-refresh prices on mount
+  useEffect(() => {
+    handleRefreshPrices();
+  }, []);
 
   // Calculate account balances in their original currency
   const accountBalances = useMemo(() => {
@@ -333,11 +339,7 @@ export function HomePage({ user }: HomePageProps) {
     console.log("[HomePage] 🔍 Checking symbols list:", allSymbols);
 
     if (allSymbols.length === 0) {
-      toast({
-        title: "Sin activos crypto",
-        description: "No hay criptomonedas configuradas para actualizar",
-        variant: "destructive"
-      });
+      console.log("[HomePage] ⚠️ No symbols to refresh, skipping.");
       return;
     }
 
@@ -400,7 +402,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.3</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.5</span>
               </div>
             </div>
           </div>

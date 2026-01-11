@@ -21,6 +21,9 @@ export interface RecurringTransaction {
   loan_total_amount?: number | null;
   loan_total_payments?: number | null;
   loan_payments_made?: number | null;
+  loan_amount_paid?: number | null;
+  person?: string | null;
+  contributions?: { amount: string | number; date: string }[] | null; // JSONB
 }
 
 export interface RecurringConfirmation {

@@ -93,7 +93,7 @@ const App = () => (
       <ThemeColorProvider>
         <TooltipProvider>
           <Toaster />
-          <Sonner />
+          <Sonner position="bottom-center" />
           <BrowserRouter>
             <AppContent />
           </BrowserRouter>
