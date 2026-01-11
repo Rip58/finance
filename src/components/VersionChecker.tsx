@@ -11,12 +11,14 @@ export function VersionChecker() {
                 if (!response.ok) return;
 
                 const data = await response.json();
-                const remoteVersion = data.version;
+                const remoteSha = data.gitSha;
+                const localSha = import.meta.env.VITE_GIT_COMMIT_SHA;
 
-                if (remoteVersion && remoteVersion !== APP_VERSION) {
-                    console.log(`Version mismatch: Local ${APP_VERSION} vs Remote ${remoteVersion}`);
+                // Check mismatch only if both SHAs are valid and not in local dev mode
+                if (remoteSha && localSha && localSha !== remoteSha && localSha !== 'local-dev') {
+                    console.log(`Version mismatch: Local SHA ${localSha} vs Remote SHA ${remoteSha}`);
                     toast("Nueva actualización disponible", {
-                        description: `Versión ${remoteVersion} lista para instalar.`,
+                        description: `Nueva versión disponible (${remoteSha.substring(0, 7)}).`,
                         duration: Infinity,
                         action: {
                             label: "Actualizar",

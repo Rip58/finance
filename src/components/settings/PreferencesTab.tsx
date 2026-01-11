@@ -42,7 +42,7 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Versión App</span>
-            <span className="font-mono font-medium bg-secondary/50 px-2 py-0.5 rounded text-xs">v{APP_VERSION}</span>
+            <span className="font-mono font-medium bg-secondary/50 px-2 py-0.5 rounded text-xs">v{APP_VERSION} ({import.meta.env.VITE_GIT_COMMIT_SHA?.substring(0, 7) || 'dev'})</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Entorno</span>
@@ -74,11 +74,15 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
                     const response = await fetch("/version.json?t=" + new Date().getTime());
                     if (response.ok) {
                       const data = await response.json();
-                      if (data.version === APP_VERSION) {
+                      const remoteSha = data.gitSha;
+                      const localSha = import.meta.env.VITE_GIT_COMMIT_SHA;
+
+                      // Check using Commit SHA instead of Version string
+                      if (localSha && remoteSha && localSha === remoteSha) {
                         // Already up to date
                         toast({
                           title: "Sistema Actualizado",
-                          description: `Ya tienes la última versión (${APP_VERSION}).`,
+                          description: `Ya tienes la última versión (${localSha.substring(0, 7)}).`,
                           duration: 3000,
                         });
                         return;
