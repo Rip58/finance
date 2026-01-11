@@ -1,6 +1,7 @@
 import { useTheme } from "next-themes";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sun, Moon, GitBranch, Palette } from "lucide-react";
+import { Sun, Moon, GitBranch, Palette, RefreshCw, Smartphone } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useThemeColor, ColorTheme } from "@/components/providers/ThemeColorProvider";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,7 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
         <div className="space-y-2 text-sm">
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Versión App</span>
-            <span className="font-mono font-medium bg-secondary/50 px-2 py-0.5 rounded text-xs">v3.3</span>
+            <span className="font-mono font-medium bg-secondary/50 px-2 py-0.5 rounded text-xs">v3.6.0</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-muted-foreground">Entorno</span>
@@ -56,6 +57,37 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
             <span className="font-mono text-[10px] text-right text-muted-foreground/50">
               {import.meta.env.VITE_GIT_COMMIT_SHA?.substring(0, 7) || '---'}
             </span>
+          </div>
+
+          <div className="mt-3 pt-3 border-t border-border/40">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs h-7 gap-2"
+              onClick={() => {
+                // Clear Service Worker
+                if ('serviceWorker' in navigator) {
+                  navigator.serviceWorker.getRegistrations().then((registrations) => {
+                    for (let registration of registrations) {
+                      registration.unregister();
+                    }
+                  });
+                }
+                // Clear Cache Storage
+                if ('caches' in window) {
+                  caches.keys().then((names) => {
+                    names.forEach(name => {
+                      caches.delete(name);
+                    });
+                  });
+                }
+                // Force Reload
+                window.location.reload();
+              }}
+            >
+              <RefreshCw className="h-3 w-3" />
+              Buscar Actualizaciones
+            </Button>
           </div>
         </div>
       </div>
