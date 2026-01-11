@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useThemeColor, ColorTheme } from "@/components/providers/ThemeColorProvider";
 import { cn } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
+import { useToast } from "@/hooks/use-toast";
 
 interface PreferencesTabProps {
   userId: string;
@@ -13,6 +14,7 @@ interface PreferencesTabProps {
 export function PreferencesTab({ userId }: PreferencesTabProps) {
   const { theme, setTheme } = useTheme();
   const { colorTheme, setColorTheme } = useThemeColor();
+  const { toast } = useToast();
 
   const colors: { id: ColorTheme; bg: string }[] = [
     { id: "violet", bg: "bg-violet-500" },
@@ -66,24 +68,51 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
               size="sm"
               className="w-full text-xs h-7 gap-2"
               onClick={() => {
-                // Clear Service Worker
-                if ('serviceWorker' in navigator) {
-                  navigator.serviceWorker.getRegistrations().then((registrations) => {
-                    for (let registration of registrations) {
-                      registration.unregister();
+                // Intelligent Update Check
+                const checkAndUpdate = async () => {
+                  try {
+                    const response = await fetch("/version.json?t=" + new Date().getTime());
+                    if (response.ok) {
+                      const data = await response.json();
+                      if (data.version === APP_VERSION) {
+                        // Already up to date
+                        toast({
+                          title: "Sistema Actualizado",
+                          description: `Ya tienes la última versión (${APP_VERSION}).`,
+                          duration: 3000,
+                        });
+                        return;
+                      }
                     }
+                  } catch (e) {
+                    console.error("Error checking version", e);
+                  }
+
+                  // Proceed with Force Update (Clear Cache & Reload)
+                  toast({
+                    title: "Actualizando...",
+                    description: "Limpiando caché y recargando.",
                   });
-                }
-                // Clear Cache Storage
-                if ('caches' in window) {
-                  caches.keys().then((names) => {
-                    names.forEach(name => {
-                      caches.delete(name);
+
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then((registrations) => {
+                      for (let registration of registrations) {
+                        registration.unregister();
+                      }
                     });
-                  });
-                }
-                // Force Reload
-                window.location.reload();
+                  }
+                  if ('caches' in window) {
+                    caches.keys().then((names) => {
+                      names.forEach(name => {
+                        caches.delete(name);
+                      });
+                    });
+                  }
+                  // Redirect to root to avoid 404s on sub-routes after cache clear
+                  window.location.href = '/';
+                };
+
+                checkAndUpdate();
               }}
             >
               <RefreshCw className="h-3 w-3" />
