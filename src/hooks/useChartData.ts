@@ -230,8 +230,18 @@ export function useChartData(interval: Interval, userId: string | undefined) {
           break;
       }
 
-      // Fetch all data in parallel
-      const [assetTxResult, txResult, pricesResult, fxRatesResult, accountsResult, categoriesResult, transfersResult, holdingsResult, portfoliosResult] = await Promise.all([
+      const [
+        assetTxResult,
+        txResult,
+        pricesResult,
+        fxRatesResult,
+        accountsResult,
+        categoriesResult,
+        transfersResult,
+        holdingsResult,
+        portfoliosResult,
+        historyResult
+      ] = await Promise.all([
         supabase.from("asset_transactions").select("symbol, side, quantity, transaction_date, dca_portfolio_id").eq("user_id", userId).order("transaction_date", { ascending: true }),
         supabase.from("transactions").select("type, amount, currency, date, bank_account_id").eq("user_id", userId),
         supabase.from("asset_prices").select("symbol, price_date, close_price").order("price_date", { ascending: true }),
@@ -241,6 +251,11 @@ export function useChartData(interval: Interval, userId: string | undefined) {
         supabase.from("transfers").select("from_account_id, to_account_id, amount_from, amount_to, currency_from, currency_to, date").eq("user_id", userId),
         supabase.from("account_holdings").select("symbol, quantity").eq("user_id", userId),
         supabase.from("dca_portfolios").select("id").eq("user_id", userId),
+        (supabase as any).from("balance_history")
+          .select("date, total_balance, savings_balance, investments_balance, crypto_balance")
+          .eq("user_id", userId)
+          .gte("date", dates[0]?.toISOString() || new Date().toISOString())
+          .order("date", { ascending: true })
       ]);
 
       const rawAssetTransactions = (assetTxResult.data || []) as (AssetTransaction & { dca_portfolio_id: string | null })[];
@@ -252,6 +267,13 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       const transfers = (transfersResult.data || []) as Transfer[];
       const accountHoldings = (holdingsResult.data || []) as { symbol: string; quantity: number }[];
       const portfolios = (portfoliosResult.data || []) as { id: string }[];
+      const historyData = ((historyResult as any).data || []) as {
+        date: string;
+        total_balance: number;
+        savings_balance: number;
+        investments_balance: number;
+        crypto_balance: number;
+      }[];
 
       // Filter asset transactions to only those belonging to active/existing portfolios
       const validPortfolioIds = new Set(portfolios.map(p => p.id));
@@ -278,6 +300,29 @@ export function useChartData(interval: Interval, userId: string | undefined) {
 
       // Generate chart data points
       const chartData: ChartDataPoint[] = dates.map((date) => {
+        // Try to find a snapshot close to this date (within 1 hour tolerance, or just same day depending on interval?)
+        // Let's look for the *closest* snapshot that is <= date, but only if it's "close enough".
+        // Actually, if we have history, we prefer it.
+        // For simplicity: if we find a snapshot on the same day/hour, use it.
+        const snapshot = historyData.find(h => {
+          const hDate = new Date(h.date);
+          // Tolerance check: 
+          // For 1D: match hour
+          // For >1D: match day
+          if (interval === "1D") return Math.abs(hDate.getTime() - date.getTime()) < 60 * 60 * 1000;
+          return hDate.getDate() === date.getDate() && hDate.getMonth() === date.getMonth() && hDate.getFullYear() === date.getFullYear();
+        });
+
+        if (snapshot) {
+          return {
+            label: formatLabel(date),
+            inversiones: Number(snapshot.investments_balance),
+            ahorros: Number(snapshot.savings_balance),
+            crypto: Number(snapshot.crypto_balance),
+            balanceTotal: Number(snapshot.total_balance)
+          };
+        }
+
         const actualEnd = date > now ? now : endOfMonth(date) > now ? now : endOfMonth(date);
 
         // 1. Crypto from DCA & Holdings

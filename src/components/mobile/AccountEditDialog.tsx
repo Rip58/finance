@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Trash2, Plus, Pencil, Check, X, AlertTriangle } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +21,7 @@ import {
 import { useAccountHoldings } from "@/hooks/useAccountHoldings";
 import { useCryptoAssets } from "@/hooks/useCryptoAssets";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { supabase } from "@/integrations/supabase/client";
 
 interface BankAccount {
@@ -86,6 +87,9 @@ function CryptoAccountDialog({
   const { data: cryptoAssets = [], create: createAsset } = useCryptoAssets(userId);
   const { delete: deleteAccount, isDeleting: isDeletingAccount } = useBankAccounts(userId);
 
+  const holdingSymbols = useMemo(() => holdings.map(h => h.symbol), [holdings]);
+  const { data: prices = {} } = useCurrentPrices(holdingSymbols);
+
   const [newSymbol, setNewSymbol] = useState("");
   const [newQuantity, setNewQuantity] = useState("");
   const [isCreatingAsset, setIsCreatingAsset] = useState(false);
@@ -142,6 +146,11 @@ function CryptoAccountDialog({
     setIsCreatingAsset(false);
     setNewAssetSymbol("");
     setNewAssetName("");
+
+    // Trigger snapshot update
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
   };
 
   const handleUpdateHolding = async (id: string) => {
@@ -157,12 +166,22 @@ function CryptoAccountDialog({
 
     setEditingHoldingId(null);
     setEditQuantity("");
+
+    // Trigger snapshot update
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
   };
 
   const handleDeleteHolding = async (id: string) => {
     await deleteHolding(id);
     queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
     queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+
+    // Trigger snapshot update
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
   };
 
   const handleDeleteAccount = async () => {
@@ -177,6 +196,11 @@ function CryptoAccountDialog({
 
     await deleteAccount(account!.id);
     onOpenChange(false);
+
+    // Trigger snapshot update
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
   };
 
   const availableAssets = cryptoAssets.filter(
@@ -227,9 +251,16 @@ function CryptoAccountDialog({
                           />
                         </div>
                       ) : (
-                        <span className="text-muted-foreground ml-2">
-                          {holding.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
-                        </span>
+                        <>
+                          <span className="text-muted-foreground ml-2">
+                            {holding.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
+                          </span>
+                          {(prices[holding.symbol] || 0) > 0 && (
+                            <span className="text-[10px] text-muted-foreground/70 ml-2">
+                              ≈ {((prices[holding.symbol] || 0) * holding.quantity).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                            </span>
+                          )}
+                        </>
                       )}
                     </div>
 
@@ -425,6 +456,11 @@ function SavingsAccountDialog({
     }
 
     onOpenChange(false);
+
+    // Trigger snapshot update
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
   };
 
   const handleDelete = async () => {
@@ -433,6 +469,11 @@ function SavingsAccountDialog({
     }
     await deleteAccount(account!.id);
     onOpenChange(false);
+
+    // Trigger snapshot update
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
   };
 
   const formatCurrency = (value: string) => {
