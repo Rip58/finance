@@ -193,10 +193,13 @@ Deno.serve(async (req) => {
 
       userAccounts.forEach(acc => {
         const bal = balances[acc.id] || 0;
-        if (savingsCatIds.includes(acc.category_id)) {
-          savingsEur += toEur(bal, acc.currency);
-        } else if (investCatIds.includes(acc.category_id)) {
+        // Prioritize explicit investment categories
+        if (investCatIds.includes(acc.category_id)) {
           investmentsEur += toEur(bal, acc.currency);
+        } else {
+          // Default everything else to Savings to ensures Total Balance is correct
+          // This covers "Ahorros" and any unclassified or custom named category accounts
+          savingsEur += toEur(bal, acc.currency);
         }
       });
 

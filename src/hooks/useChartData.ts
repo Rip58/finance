@@ -361,6 +361,8 @@ export function useChartData(interval: Interval, userId: string | undefined) {
       return chartData;
     },
     enabled: !!userId,
-    staleTime: 60000,
+    // Poll every 2 seconds to keep chart "live" as requested
+    refetchInterval: 2000,
+    staleTime: 1000,
   });
 }
