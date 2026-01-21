@@ -230,21 +230,41 @@ Deno.serve(async (req) => {
 
       // 6. Insert Snapshot
       const totalBalance = savingsEur + investmentsEur + cryptoEur;
+      const snapshotTime = new Date();
 
-      const { error: insertError } = await supabase.from("balance_history").insert({
+      const { data: insertedSnapshot, error: insertError } = await supabase.from("balance_history").insert({
         user_id: userId,
+        date: snapshotTime.toISOString(),
         total_balance: totalBalance,
         savings_balance: savingsEur,
         investments_balance: investmentsEur,
         crypto_balance: cryptoEur,
         currency: "EUR"
-      });
+      }).select().single();
 
       if (insertError) {
         console.error(`Error saving snapshot for user ${userId}:`, insertError);
       } else {
-        results.push({ userId, totalBalance });
+        results.push({
+          userId,
+          totalBalance,
+          savingsBalance: savingsEur,
+          investmentsBalance: investmentsEur,
+          cryptoBalance: cryptoEur,
+          timestamp: snapshotTime.toISOString()
+        });
       }
+    }
+
+    // If single user mode, return detailed snapshot for immediate use
+    if (user_id && results.length === 1) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          snapshot: results[0]
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(

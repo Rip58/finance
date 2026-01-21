@@ -1,0 +1,32 @@
+#!/bin/bash
+# Script para ejecutar la limpieza de movimientos en Supabase
+# Este script requiere que tengas acceso a la consola de Supabase
+
+echo "================================================"
+echo "Script de Limpieza de Movimientos - Finance App"
+echo "================================================"
+echo ""
+echo "IMPORTANTE: Este script eliminará todas las transacciones existentes."
+echo "Los balances de las cuentas se mantendrán según su 'initial_balance'."
+echo ""
+echo "Proyecto Supabase: larujqxlhtwbyalmzmbo"
+echo "URL: https://larujqxlhtwbyalmzmbo.supabase.co"
+echo ""
+echo "------------------------------------------------"
+echo "INSTRUCCIONES:"
+echo "------------------------------------------------"
+echo "1. Abre https://supabase.com/dashboard/project/larujqxlhtwbyalmzmbo/sql/new"
+echo "2. Copia y pega el siguiente SQL:"
+echo ""
+cat clear_movements_history.sql
+echo ""
+echo "3. Haz clic en 'Run' para ejecutar"
+echo "4. Verifica que las tablas se hayan limpiado correctamente"
+echo ""
+echo "------------------------------------------------"
+echo "ALTERNATIVA: Ejecutar desde terminal"
+echo "------------------------------------------------"
+echo "Si tienes la Supabase CLI configurada, puedes ejecutar:"
+echo "  supabase db execute --file clear_movements_history.sql"
+echo ""
+echo "================================================"

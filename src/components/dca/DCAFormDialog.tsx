@@ -37,6 +37,7 @@ interface DCAFormDialogProps {
     notes: string | null;
     bank_account_id: string | null;
   }) => Promise<void>;
+  onDelete?: () => Promise<void>;
   isSubmitting?: boolean;
 }
 
@@ -47,6 +48,7 @@ export function DCAFormDialog({
   editingTx,
   bankAccounts = [],
   onSubmit,
+  onDelete,
   isSubmitting,
 }: DCAFormDialogProps) {
   const [formData, setFormData] = useState({
@@ -193,6 +195,21 @@ export function DCAFormDialog({
           </div>
 
           <div className="flex gap-2 justify-end">
+            {editingTx && onDelete && (
+              <Button
+                type="button"
+                variant="destructive"
+                className="mr-auto"
+                onClick={() => {
+                  if (confirm("¿Eliminar esta transacción?")) {
+                    onDelete();
+                    onOpenChange(false);
+                  }
+                }}
+              >
+                Eliminar
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"

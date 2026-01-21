@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-export type Interval = "1D" | "7D" | "15D" | "1M" | "3M" | "1Y";
+export type Interval = "1D" | "7D" | "30D" | "90D" | "1Y" | "ALL";
 
 interface IntervalSelectorProps {
   value: Interval;
@@ -14,12 +14,12 @@ interface IntervalSelectorProps {
 }
 
 const intervals: { value: Interval; label: string }[] = [
-  { value: "1D", label: "24 horas" },
-  { value: "7D", label: "7 días" },
-  { value: "15D", label: "15 días" },
-  { value: "1M", label: "1 mes" },
-  { value: "3M", label: "3 meses" },
-  { value: "1Y", label: "1 año" },
+  { value: "1D", label: "24h" },
+  { value: "7D", label: "7D" },
+  { value: "30D", label: "30D" },
+  { value: "90D", label: "90D" },
+  { value: "1Y", label: "1A" },
+  { value: "ALL", label: "Todo" },
 ];
 
 export function IntervalSelector({ value, onChange }: IntervalSelectorProps) {

@@ -24,7 +24,7 @@ export function TransactionEditDialog({ transaction, userId, onClose }: Transact
   const { update, delete: deleteTransaction, isUpdating, isDeleting } = useTransactions(userId, transaction.type);
   const { data: categories = [] } = useCategories(userId, transaction.type);
   const { data: accounts = [] } = useBankAccounts(userId);
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
@@ -82,23 +82,7 @@ export function TransactionEditDialog({ transaction, userId, onClose }: Transact
             </DialogTitle>
           </DialogHeader>
 
-          {/* Validation Toggle - Always visible outside edit mode */}
-          <div className="flex items-center justify-between py-3 border-b border-border">
-            <div className="flex items-center gap-2">
-              {transaction.is_validated ? (
-                <Check className="h-4 w-4 text-green-500" />
-              ) : (
-                <Circle className="h-4 w-4 text-amber-500" />
-              )}
-              <span className="text-sm">
-                {transaction.is_validated ? "Validada" : "Pendiente de validar"}
-              </span>
-            </div>
-            <Switch
-              checked={transaction.is_validated}
-              onCheckedChange={toggleValidation}
-            />
-          </div>
+
 
           {isEditing ? (
             <>
@@ -142,29 +126,8 @@ export function TransactionEditDialog({ transaction, userId, onClose }: Transact
                       onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Fecha valor</Label>
-                    <Input
-                      type="date"
-                      value={formData.value_date}
-                      onChange={(e) => setFormData({ ...formData, value_date: e.target.value })}
-                    />
-                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Categoría</Label>
-                  <Select value={formData.category_id} onValueChange={(v) => setFormData({ ...formData, category_id: v })}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sin categoría</SelectItem>
-                      {categories.filter(c => !c.is_archived).map((cat) => (
-                        <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+
                 <div className="space-y-2">
                   <Label>Cuenta</Label>
                   <Select value={formData.bank_account_id} onValueChange={(v) => setFormData({ ...formData, bank_account_id: v })}>

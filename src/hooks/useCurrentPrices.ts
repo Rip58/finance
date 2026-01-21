@@ -11,48 +11,81 @@ export function useCurrentPrices(symbols: string[]) {
     queryFn: async (): Promise<Record<string, number>> => {
       if (uniqueSymbols.length === 0) return {};
 
-      const { data, error } = await supabase
-        .from("asset_prices")
-        .select("symbol, close_price, price_date")
-        .in("symbol", uniqueSymbols)
-        .order("price_date", { ascending: false });
+      // Prepare symbols for Binance (BTC -> BTCUSDT)
+      const binanceSymbols = uniqueSymbols.map(s => `"${s}USDT"`).join(",");
+      // Binance API expects: ["BTCUSDT","ETHUSDT"]
+      // If only one symbol, the format is different (?symbol=BTCUSDT), but we handle batch.
 
-      if (error) throw error;
+      try {
+        // If 0 symbols, return empty
+        if (!binanceSymbols) return {};
 
-      // Group by symbol, keep most recent
-      const latestPrices: Record<string, number> = {};
-      for (const p of data || []) {
-        if (!latestPrices[p.symbol]) {
-          latestPrices[p.symbol] = p.close_price;
+        const url = `https://api.binance.com/api/v3/ticker/price?symbols=[${binanceSymbols}]`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+          // Fallback to DB if Binance fails (e.g. strict firewall or rate limit)
+          console.warn("Binance API failed, falling back to DB", response.status);
+          throw new Error("Binance fetch failed");
         }
+
+        const data = await response.json();
+        // Data format: [{ symbol: "BTCUSDT", price: "65000.00" }, ...]
+
+        const prices: Record<string, number> = {};
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            const symbol = item.symbol.replace("USDT", ""); // Remove USDT suffix
+            if (uniqueSymbols.includes(symbol)) {
+              prices[symbol] = parseFloat(item.price);
+            }
+          }
+        }
+
+        // If we missed any symbols (maybe not USDT pair?), try DB fallback for those?
+        // For now, let's just return what we found.
+        return prices;
+
+      } catch (e) {
+        console.error("Error fetching live prices:", e);
+        // Fallback to Supabase DB on error
+        const { data, error } = await supabase
+          .from("asset_prices")
+          .select("symbol, close_price, price_date")
+          .in("symbol", uniqueSymbols)
+          .order("price_date", { ascending: false });
+
+        if (error) throw error;
+
+        const latestPrices: Record<string, number> = {};
+        for (const p of data || []) {
+          if (!latestPrices[p.symbol]) {
+            latestPrices[p.symbol] = p.close_price;
+          }
+        }
+        return latestPrices;
       }
-      return latestPrices;
     },
     enabled: uniqueSymbols.length > 0,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 2000,
+    refetchInterval: 5000, // Update every 5 seconds
+    refetchIntervalInBackground: false,
   });
 
   const refreshPrices = async (symbolsOverride?: string[]) => {
     const symbolsToUse = symbolsOverride || uniqueSymbols;
-    console.log("[useCurrentPrices] 🔄 refreshPrices called with symbols:", symbolsToUse);
 
-    if (symbolsToUse.length === 0) {
-      console.warn("[useCurrentPrices] ⚠️ No symbols to refresh, returning early");
-      return;
-    }
+    // Also invalidate to leverage the live fetch immediately
+    queryClient.invalidateQueries({ queryKey: ["current-prices"] });
 
-    try {
-      console.log("[useCurrentPrices] ⏳ Calling updateCryptoPrices...");
-      // Update prices using Edge Function (which fetches from CMC and saves to DB)
-      await updateCryptoPrices(symbolsToUse);
-
-      console.log("[useCurrentPrices] 🔄 Invalidating queries...");
-      // Invalidate cache to refetch
-      queryClient.invalidateQueries({ queryKey: ["current-prices"] });
-      console.log("[useCurrentPrices] ✅ Refresh complete");
-    } catch (err) {
-      console.error("[useCurrentPrices] ❌ Error refreshing prices:", err);
-      throw err;
+    // Optional: We still trigger the Edge Function to PERSIST the data to DB
+    // This supports the "Refresh" button's intention to save/update history
+    if (symbolsToUse.length > 0) {
+      try {
+        await updateCryptoPrices(symbolsToUse);
+      } catch (e) {
+        console.error("Background update failed", e);
+      }
     }
   };
 

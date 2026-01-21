@@ -1,0 +1,75 @@
+{
+    "meta": {
+        "brand_name": "Finance App",
+        "description": "Core design tokens extracted from the current codebase (Finance2)."
+    },
+    "colors": {
+        "primary": {
+            "DEFAULT": "hsl(270 90% 65%)",
+            "foreground": "hsl(0 0% 100%)",
+            "variants": {
+                "blue": "hsl(200 95% 65%)",
+                "rose": "hsl(340 90% 75%)",
+                "orange": "hsl(30 100% 70%)",
+                "green": "hsl(160 70% 55%)"
+            }
+        },
+        "background": {
+            "DEFAULT": "hsl(265 40% 10%)",
+            "body_gradient": "linear-gradient(135deg, hsl(265 40% 12%) 0%, hsl(240 40% 8%) 100%)"
+        },
+        "card": {
+            "DEFAULT": "hsl(260 30% 16%)",
+            "foreground": "hsl(210 40% 98%)",
+            "gradient": "linear-gradient(145deg, hsl(240 10% 7%) 0%, hsl(240 10% 4%) 100%)"
+        },
+        "semantic": {
+            "success": "hsl(150 100% 45%)",
+            "warning": "hsl(35 100% 60%)",
+            "destructive": "hsl(0 84% 60%)",
+            "muted": "hsl(260 25% 22%)",
+            "border": "hsl(260 30% 25%)"
+        },
+        "chart": {
+            "income": "hsl(150 100% 45%)",
+            "expense": "hsl(0 84% 60%)",
+            "assets": "hsl(270 90% 65%)"
+        }
+    },
+    "typography": {
+        "font_family_headings": [
+            "Inter",
+            "system-ui",
+            "sans-serif"
+        ],
+        "font_family_body": [
+            "Inter",
+            "system-ui",
+            "sans-serif"
+        ],
+        "font_family_mono": [
+            "JetBrains Mono",
+            "monospace"
+        ],
+        "weights": {
+            "light": 300,
+            "normal": 400,
+            "medium": 500,
+            "semibold": 600,
+            "bold": 700
+        }
+    },
+    "ui": {
+        "border_radius": {
+            "DEFAULT": "1.25rem",
+            "lg": "var(--radius)",
+            "md": "calc(var(--radius) - 2px)",
+            "sm": "calc(var(--radius) - 4px)"
+        },
+        "effects": {
+            "glass_bg": "hsl(260 30% 10% / 0.6)",
+            "glass_border": "hsl(270 50% 60% / 0.15)",
+            "glow_primary": "0 0 30px hsl(265 89% 66% / 0.2)"
+        }
+    }
+}

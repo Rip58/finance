@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 import { ThemeColorProvider } from "@/components/providers/ThemeColorProvider";
 import { VersionChecker } from "@/components/VersionChecker";
+import { DebugHistory } from "@/components/DebugHistory";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ function AppContent() {
       <Route path="/add-expense" element={<AddExpensePage user={user} />} />
       <Route path="/add-transfer" element={<AddTransferPage user={user} />} />
       <Route path="/pending-payments" element={<PendingPaymentsPage user={user} />} />
+      <Route path="/debug" element={<DebugHistory />} />
       {/* Legacy route redirect */}
       <Route path="/settings" element={<Navigate to="/account" replace />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
