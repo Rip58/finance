@@ -1,4 +1,6 @@
 import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { useBankAccounts } from './useBankAccounts';
 import { useTransactions } from './useTransactions';
 import { useAssetTransactions } from './useAssetTransactions';
@@ -8,6 +10,7 @@ import { useAccountHoldings } from './useAccountHoldings';
 import { useFxRates } from './useFxRates';
 import { useDCAPortfolios } from './useDCAPortfolios';
 import { useCategories } from './useCategories';
+import { useCryptoMarketData } from './useCryptoMarketData';
 import { isWithinInterval, subHours, subDays, subMonths, subYears, parseISO } from 'date-fns';
 
 export type TimeRange = '24h' | '7d' | '1m' | '3m' | '6m' | '1y' | 'ALL';
@@ -77,8 +80,67 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         return Array.from(s);
     }, [assetTransactions, accountHoldings]);
 
+    const dcaSymbols = useMemo(() => {
+        const activeIds = new Set(portfolios?.map(p => p.id) || []);
+        const symbols = new Set<string>();
+        assetTransactions.forEach(tx => {
+            if (tx.dca_portfolio_id && activeIds.has(tx.dca_portfolio_id)) {
+                symbols.add(tx.symbol.toUpperCase());
+            }
+        });
+        return Array.from(symbols);
+    }, [assetTransactions, portfolios]);
+
+    const holdingsSymbols = useMemo(
+        () => Array.from(new Set(accountHoldings.map(h => h.symbol.toUpperCase()))),
+        [accountHoldings]
+    );
+
+    const periodSymbols = useMemo(
+        () => Array.from(new Set([...holdingsSymbols, ...dcaSymbols])),
+        [holdingsSymbols, dcaSymbols]
+    );
+
     const { data: currentPrices = {} } = useCurrentPrices(allSymbols);
     const usdtEurRate = fxRates.getLatestRate("USDT_EUR") || 1;
+    const { data: marketData = {} } = useCryptoMarketData(periodSymbols);
+
+    const cutoffDate = useMemo(() => {
+        if (timeRange === "ALL") return null;
+        const now = new Date();
+        if (timeRange === "24h") return subHours(now, 24);
+        if (timeRange === "7d") return subDays(now, 7);
+        if (timeRange === "1m") return subMonths(now, 1);
+        if (timeRange === "3m") return subMonths(now, 3);
+        if (timeRange === "6m") return subMonths(now, 6);
+        return subYears(now, 1);
+    }, [timeRange]);
+
+    const { data: periodPrices = {} } = useQuery({
+        queryKey: ["capital-flow-period-prices", periodSymbols, cutoffDate?.toISOString()],
+        queryFn: async (): Promise<Record<string, number>> => {
+            if (!cutoffDate || periodSymbols.length === 0) return {};
+            const { data, error } = await supabase
+                .from("asset_prices")
+                .select("symbol, close_price, price_date")
+                .in("symbol", periodSymbols)
+                .lte("price_date", cutoffDate.toISOString())
+                .order("price_date", { ascending: false });
+
+            if (error) throw error;
+
+            const prices: Record<string, number> = {};
+            (data || []).forEach((row) => {
+                const symbol = row.symbol.toUpperCase();
+                if (!prices[symbol]) {
+                    prices[symbol] = row.close_price;
+                }
+            });
+            return prices;
+        },
+        enabled: !!cutoffDate && periodSymbols.length > 0,
+        staleTime: 60 * 1000,
+    });
 
     // 3. Calculate "Total Invested" (Net Inflow) per Category
     // Methodology:
@@ -112,16 +174,14 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         };
 
         const shouldInclude = (dateValue: string) => {
-            if (timeRange === "ALL") return true;
-            const now = new Date();
-            let cutoff = now;
-            if (timeRange === "24h") cutoff = subHours(now, 24);
-            if (timeRange === "7d") cutoff = subDays(now, 7);
-            if (timeRange === "1m") cutoff = subMonths(now, 1);
-            if (timeRange === "3m") cutoff = subMonths(now, 3);
-            if (timeRange === "6m") cutoff = subMonths(now, 6);
-            if (timeRange === "1y") cutoff = subYears(now, 1);
-            return new Date(dateValue) >= cutoff;
+            if (!cutoffDate) return true;
+            return new Date(dateValue) >= cutoffDate;
+        };
+
+        const toEur = (amount: number, currency: string) => {
+            if (currency === "EUR") return amount;
+            if (currency === "USD" || currency === "USDT") return amount * usdtEurRate;
+            return amount;
         };
 
         // A. DCA: Calculate Invested & Current Value (DCA portfolios only)
@@ -156,12 +216,18 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
             res.dca.totalInvested += dcaInvestedPerSymbol[sym];
         });
 
+        const cryptoPeriodQtyDelta: Record<string, number> = {};
+        const dcaPeriodQtyDelta: Record<string, number> = {};
+
         assetTransactions.forEach(tx => {
             if (!shouldInclude(tx.transaction_date)) return;
-            const delta = tx.quantity * tx.price_eur * (tx.side === "buy" ? 1 : -1);
-            const categoryKey = tx.dca_portfolio_id ? "dca" : "crypto";
-            periodDelta[categoryKey] += delta;
-            periodDelta.total += delta;
+            const sym = tx.symbol.toUpperCase();
+            const qtyDelta = tx.side === "buy" ? tx.quantity : -tx.quantity;
+            if (tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)) {
+                dcaPeriodQtyDelta[sym] = (dcaPeriodQtyDelta[sym] || 0) + qtyDelta;
+            } else {
+                cryptoPeriodQtyDelta[sym] = (cryptoPeriodQtyDelta[sym] || 0) + qtyDelta;
+            }
         });
 
         // B. Crypto Current Value (Holdings only)
@@ -183,6 +249,42 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         });
 
         res.dca.currentValue = dcaHoldingsValue;
+
+        const getStartPrice = (sym: string) => {
+            if (periodPrices[sym] !== undefined) return periodPrices[sym];
+
+            const currentPrice = currentPrices[sym] ?? 0;
+            const change = (() => {
+                if (timeRange === "24h") return marketData[sym]?.change24h;
+                if (timeRange === "7d") return marketData[sym]?.change7d;
+                if (timeRange === "1m") return marketData[sym]?.change30d;
+                return null;
+            })();
+
+            if (change === null || change === undefined || !currentPrice) return currentPrice;
+            const ratio = 1 + (change / 100);
+            if (ratio <= 0) return currentPrice;
+            return currentPrice / ratio;
+        };
+        const cryptoHoldingsQty: Record<string, number> = {};
+        accountHoldings.forEach(h => {
+            const sym = h.symbol.toUpperCase();
+            cryptoHoldingsQty[sym] = (cryptoHoldingsQty[sym] || 0) + h.quantity;
+        });
+
+        let cryptoStartValue = 0;
+        Object.entries(cryptoHoldingsQty).forEach(([sym, qty]) => {
+            const startQty = qty - (cryptoPeriodQtyDelta[sym] || 0);
+            const price = getStartPrice(sym);
+            cryptoStartValue += (startQty * price * usdtEurRate);
+        });
+
+        let dcaStartValue = 0;
+        Object.entries(dcaQuantityPerSymbol).forEach(([sym, qty]) => {
+            const startQty = qty - (dcaPeriodQtyDelta[sym] || 0);
+            const price = getStartPrice(sym);
+            dcaStartValue += (startQty * price * usdtEurRate);
+        });
 
 
         // B. Savings & Investments (Bank Accounts)
@@ -221,8 +323,9 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
                 if (!shouldInclude(tx.date)) return;
                 if (tx.currency !== acc.currency) return;
                 const amount = Number(tx.amount) * (tx.type === "income" ? 1 : -1);
-                periodDelta[cat] += amount;
-                periodDelta.total += amount;
+                const amountEur = toEur(amount, tx.currency);
+                periodDelta[cat] += amountEur;
+                periodDelta.total += amountEur;
             });
 
             // Transfers
@@ -232,6 +335,20 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
                 }
                 if (tr.to_account_id === acc.id && tr.currency_to === acc.currency) {
                     balance += Number(tr.amount_to);
+                }
+            });
+
+            transfers.forEach(tr => {
+                if (!shouldInclude(tr.date)) return;
+                if (tr.from_account_id === acc.id && tr.currency_from === acc.currency) {
+                    const amountEur = toEur(-Number(tr.amount_from), tr.currency_from);
+                    periodDelta[cat] += amountEur;
+                    periodDelta.total += amountEur;
+                }
+                if (tr.to_account_id === acc.id && tr.currency_to === acc.currency) {
+                    const amountEur = toEur(Number(tr.amount_to), tr.currency_to);
+                    periodDelta[cat] += amountEur;
+                    periodDelta.total += amountEur;
                 }
             });
 
@@ -291,23 +408,31 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         calcPnL(res.total);
 
         if (timeRange !== "ALL") {
-            const applyPeriodDelta = (key: keyof typeof periodDelta, metric: { totalInvested: number; currentValue: number; pnl: number; pnlPercent: number }) => {
-                const delta = periodDelta[key];
-                const startValue = metric.currentValue - delta;
-                metric.pnl = delta;
-                metric.pnlPercent = startValue !== 0 ? (delta / startValue) * 100 : 0;
+            const savingsStart = res.savings.currentValue - periodDelta.savings;
+            const investmentStart = res.investment.currentValue - periodDelta.investment;
+            const generalStart = res.general.currentValue - periodDelta.general;
+            const cryptoStart = cryptoStartValue;
+            const dcaStart = dcaStartValue;
+            const totalStart = savingsStart + investmentStart + generalStart + cryptoStart + dcaStart;
+
+            const applyStartValue = (
+                metric: { totalInvested: number; currentValue: number; pnl: number; pnlPercent: number },
+                startValue: number
+            ) => {
+                metric.pnl = metric.currentValue - startValue;
+                metric.pnlPercent = startValue !== 0 ? (metric.pnl / startValue) * 100 : 0;
             };
 
-            applyPeriodDelta("savings", res.savings);
-            applyPeriodDelta("investment", res.investment);
-            applyPeriodDelta("crypto", res.crypto);
-            applyPeriodDelta("dca", res.dca);
-            applyPeriodDelta("general", res.general);
-            applyPeriodDelta("total", res.total);
+            applyStartValue(res.savings, savingsStart);
+            applyStartValue(res.investment, investmentStart);
+            applyStartValue(res.crypto, cryptoStart);
+            applyStartValue(res.dca, dcaStart);
+            applyStartValue(res.general, generalStart);
+            applyStartValue(res.total, totalStart);
         }
 
         return res;
-    }, [accounts, transactions, assetTransactions, transfers, currentPrices, usdtEurRate, categoryMap, portfolios, cryptoAccountIds, timeRange]);
+    }, [accounts, transactions, assetTransactions, transfers, currentPrices, usdtEurRate, categoryMap, portfolios, cryptoAccountIds, timeRange, periodPrices, cutoffDate, marketData]);
 
 
 

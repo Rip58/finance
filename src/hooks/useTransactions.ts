@@ -22,11 +22,14 @@ export interface Transaction {
 export function useTransactions(userId: string | undefined, type?: TransactionType) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isMissingColumn = (error: unknown, column: string) => {
+  const isMissingColumn = (error: unknown, column?: string) => {
     if (!error || typeof error !== "object") return false;
     const err = error as { code?: string; message?: string };
     if (err.code === "42703") return true;
-    if (typeof err.message === "string" && err.message.includes(`"${column}"`)) return true;
+    if (typeof err.message === "string" && err.message.includes("column")) {
+      if (!column) return true;
+      return err.message.includes(`"${column}"`);
+    }
     return false;
   };
 
@@ -55,10 +58,24 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
       const { data, error } = await buildQuery(fieldsWithValidation);
       if (error && isMissingColumn(error, "is_validated")) {
         const { data: fallbackData, error: fallbackError } = await buildQuery(baseFields);
-        if (fallbackError) throw fallbackError;
-        return (fallbackData || []) as unknown as Transaction[];
+        if (!fallbackError) {
+          return (fallbackData || []) as unknown as Transaction[];
+        }
+        if (isMissingColumn(fallbackError, "")) {
+          const { data: wildcardData, error: wildcardError } = await buildQuery("*");
+          if (wildcardError) throw wildcardError;
+          return (wildcardData || []) as unknown as Transaction[];
+        }
+        throw fallbackError;
       }
-      if (error) throw error;
+      if (error) {
+        if (isMissingColumn(error, "")) {
+          const { data: wildcardData, error: wildcardError } = await buildQuery("*");
+          if (wildcardError) throw wildcardError;
+          return (wildcardData || []) as unknown as Transaction[];
+        }
+        throw error;
+      }
       return (data || []) as unknown as Transaction[];
     },
     enabled: !!userId,

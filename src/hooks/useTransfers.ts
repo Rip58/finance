@@ -22,11 +22,14 @@ export interface Transfer {
 export function useTransfers(userId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const isMissingColumn = (error: unknown, column: string) => {
+  const isMissingColumn = (error: unknown, column?: string) => {
     if (!error || typeof error !== "object") return false;
     const err = error as { code?: string; message?: string };
     if (err.code === "42703") return true;
-    if (typeof err.message === "string" && err.message.includes(`"${column}"`)) return true;
+    if (typeof err.message === "string" && err.message.includes("column")) {
+      if (!column) return true;
+      return err.message.includes(`"${column}"`);
+    }
     return false;
   };
 
@@ -49,11 +52,25 @@ export function useTransfers(userId: string | undefined) {
       const { data, error } = await buildQuery(fieldsWithValidation);
       if (error && isMissingColumn(error, "is_validated")) {
         const { data: fallbackData, error: fallbackError } = await buildQuery(baseFields);
-        if (fallbackError) throw fallbackError;
-        return (fallbackData || []) as unknown as Transfer[];
+        if (!fallbackError) {
+          return (fallbackData || []) as unknown as Transfer[];
+        }
+        if (isMissingColumn(fallbackError, "")) {
+          const { data: wildcardData, error: wildcardError } = await buildQuery("*");
+          if (wildcardError) throw wildcardError;
+          return (wildcardData || []) as unknown as Transfer[];
+        }
+        throw fallbackError;
       }
 
-      if (error) throw error;
+      if (error) {
+        if (isMissingColumn(error, "")) {
+          const { data: wildcardData, error: wildcardError } = await buildQuery("*");
+          if (wildcardError) throw wildcardError;
+          return (wildcardData || []) as unknown as Transfer[];
+        }
+        throw error;
+      }
       return (data || []) as unknown as Transfer[];
     },
     enabled: !!userId,
