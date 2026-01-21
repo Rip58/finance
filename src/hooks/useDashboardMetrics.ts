@@ -66,7 +66,7 @@ export function useDashboardMetrics(userId: string | undefined) {
           .limit(1),
         supabase
           .from("bank_accounts")
-          .select("id, name, currency, category_id, is_archived, initial_balance")
+          .select("id, name, currency, category_id, is_archived, initial_balance, importe_inicial")
           .eq("user_id", userId)
           .eq("is_archived", false),
         supabase
@@ -93,6 +93,18 @@ export function useDashboardMetrics(userId: string | undefined) {
 
       // Get latest USDT/EUR rate (fallback to 1 if none)
       const usdtRate = fxRates.data?.[0]?.rate ? Number(fxRates.data[0].rate) : 1;
+      const accountsData = (accounts.data || []) as unknown as Array<{
+        id: string;
+        name: string;
+        currency: string;
+        category_id: string | null;
+        is_archived: boolean;
+        initial_balance: number;
+        importe_inicial?: boolean;
+      }>;
+      const cryptoAccountIds = new Set(
+        (accountHoldingsResult.data || []).map((holding) => holding.bank_account_id)
+      );
 
       // Helper to convert amount to EUR
       const toEur = (amount: number, currency: string) => {
@@ -150,7 +162,7 @@ export function useDashboardMetrics(userId: string | undefined) {
         totalAssets += quantity * price;
       }
 
-      // Add account holdings value
+      // Add account holdings value (non-DCA crypto accounts)
       let accountHoldingsValue = 0;
       for (const h of accountHoldingsResult.data || []) {
         const price = latestPrices[h.symbol.toUpperCase()] || latestPrices[h.symbol] || 0;
@@ -160,13 +172,16 @@ export function useDashboardMetrics(userId: string | undefined) {
 
       // Calculate account balances
       const accountBalances: Record<string, number> = {};
-      for (const acc of accounts.data || []) {
-        accountBalances[acc.id] = Number(acc.initial_balance) || 0;
+      for (const acc of accountsData) {
+        accountBalances[acc.id] = acc.importe_inicial ? (Number(acc.initial_balance) || 0) : 0;
       }
+      const accountCurrencyMap = new Map(accountsData.map((acc) => [acc.id, acc.currency]));
 
       // Add income, subtract expenses
       for (const tx of allTransactions.data || []) {
         if (tx.bank_account_id && accountBalances[tx.bank_account_id] !== undefined) {
+          const accountCurrency = accountCurrencyMap.get(tx.bank_account_id);
+          if (!accountCurrency || accountCurrency !== tx.currency) continue;
           const amount = toEur(Number(tx.amount), tx.currency);
           if (tx.type === "income") {
             accountBalances[tx.bank_account_id] += amount;
@@ -179,10 +194,16 @@ export function useDashboardMetrics(userId: string | undefined) {
       // Apply transfers
       for (const transfer of transfers.data || []) {
         if (transfer.from_account_id && accountBalances[transfer.from_account_id] !== undefined) {
-          accountBalances[transfer.from_account_id] -= toEur(Number(transfer.amount_from), transfer.currency_from);
+          const accountCurrency = accountCurrencyMap.get(transfer.from_account_id);
+          if (accountCurrency === transfer.currency_from) {
+            accountBalances[transfer.from_account_id] -= toEur(Number(transfer.amount_from), transfer.currency_from);
+          }
         }
         if (transfer.to_account_id && accountBalances[transfer.to_account_id] !== undefined) {
-          accountBalances[transfer.to_account_id] += toEur(Number(transfer.amount_to), transfer.currency_to);
+          const accountCurrency = accountCurrencyMap.get(transfer.to_account_id);
+          if (accountCurrency === transfer.currency_to) {
+            accountBalances[transfer.to_account_id] += toEur(Number(transfer.amount_to), transfer.currency_to);
+          }
         }
       }
 
@@ -204,7 +225,7 @@ export function useDashboardMetrics(userId: string | undefined) {
       let investmentsBalance = 0;
       let cryptoBalance = 0;
 
-      for (const acc of accounts.data || []) {
+      for (const acc of accountsData) {
         // Accounts with "crypto" currency or category are typically crypto-related
         // If it's a holding account (USDT/USD) we might want to check its holdings value instead of initial_balance logic if calculated above differently, 
         // but existing logic uses 'accountBalances' for typical accounts.
@@ -213,21 +234,27 @@ export function useDashboardMetrics(userId: string | undefined) {
 
         const balance = accountBalances[acc.id] || 0;
 
+        const isCryptoAccount = cryptoAccountIds.has(acc.id)
+          || acc.currency === "USD"
+          || acc.currency === "USDT"
+          || (acc.category_id ? cryptoCategoryIds.includes(acc.category_id) : false);
+
+        if (isCryptoAccount) {
+          // Crypto balance is derived from holdings only
+          continue;
+        }
+
         if (acc.category_id) {
           if (savingsCategoryIds.includes(acc.category_id)) {
             savingsBalance += balance;
-          } else if (cryptoCategoryIds.includes(acc.category_id)) {
-            // If it's a crypto bucket account
-            cryptoBalance += balance;
           } else if (investmentsCategoryIds.includes(acc.category_id)) {
             investmentsBalance += balance;
           }
         }
       }
 
-      // Add Crypto Assets (Holdings + DCA) to Crypto Balance
-      // (Converted from USD to EUR)
-      cryptoBalance += totalAssets * usdtRate;
+      // Add Crypto Holdings (excluding DCA) to Crypto Balance
+      cryptoBalance += accountHoldingsValue * usdtRate;
 
       const netBalance = monthlyIncome - monthlyExpense;
       const incomeChange = lastMonthIncome > 0

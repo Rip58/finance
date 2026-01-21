@@ -91,6 +91,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
       category_id: formData.category_id,
       is_archived: formData.is_archived,
       initial_balance: 0,
+      importe_inicial: true,
     };
     if (editingAccount) {
       await update({ id: editingAccount.id, ...dataToSave });

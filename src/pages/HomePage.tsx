@@ -1,12 +1,15 @@
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useCryptoMarketData } from "@/hooks/useCryptoMarketData";
+import { PatrimonyEvolution } from "@/components/home/PatrimonyEvolution";
+
 import { LogOut, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
-import { cn, formatCurrency, formatPercent } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
+import { APP_VERSION } from "@/lib/version";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,11 +20,9 @@ import {
 } from "@/components/mobile";
 import { AccountEditDialog } from "@/components/mobile/AccountEditDialog";
 import { SortableAccountList } from "@/components/mobile/SortableAccountList";
-import { IntervalSelector, type Interval } from "@/components/IntervalSelector";
-import { EvolutionChart } from "@/components/EvolutionChart";
+
 
 import { useDashboardMetrics } from "@/hooks/useDashboardMetrics";
-import { useChartData } from "@/hooks/useChartData";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCategories } from "@/hooks/useCategories";
@@ -40,13 +41,13 @@ export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [interval, setInterval] = useState<Interval>("1D");
+
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showNumbers, setShowNumbers] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<typeof bankAccounts[0] | null>(null);
 
   const { data: metrics } = useDashboardMetrics(user.id);
-  const { data: chartData } = useChartData(interval, user.id);
+
   const { data: transactions = [] } = useTransactions(user.id);
   const { data: bankAccounts = [], updateSortOrder } = useBankAccounts(user.id);
   const { data: categories = [], create: createCategory } = useCategories(user.id, undefined);
@@ -55,6 +56,14 @@ export function HomePage({ user }: HomePageProps) {
   const { data: allAccountHoldings = [] } = useAccountHoldings(user.id);
   const { data: portfolios = [] } = useDCAPortfolios(user.id);
   const fxRates = useFxRates();
+
+  useEffect(() => {
+    if (!selectedAccount) return;
+    const updatedAccount = bankAccounts.find(acc => acc.id === selectedAccount.id);
+    if (updatedAccount && updatedAccount !== selectedAccount) {
+      setSelectedAccount(updatedAccount);
+    }
+  }, [bankAccounts, selectedAccount]);
 
   // Ensure default categories exist
   useEffect(() => {
@@ -104,9 +113,9 @@ export function HomePage({ user }: HomePageProps) {
   const accountBalances = useMemo(() => {
     const balances: Record<string, number> = {};
 
-    // Initialize with initial_balance
+    // Initialize with initial_balance when enabled
     for (const acc of bankAccounts) {
-      balances[acc.id] = Number(acc.initial_balance) || 0;
+      balances[acc.id] = acc.importe_inicial ? (Number(acc.initial_balance) || 0) : 0;
     }
 
     // Add income, subtract expenses (matching currency)
@@ -139,22 +148,7 @@ export function HomePage({ user }: HomePageProps) {
     return balances;
   }, [bankAccounts, transactions, transfers]);
 
-  // Calculate crypto account values from account_holdings
-  const cryptoAccountValues = useMemo(() => {
-    const values: Record<string, number> = {};
 
-    for (const holding of allAccountHoldings) {
-      const price = currentPrices[holding.symbol.toUpperCase()] || 0;
-      const value = Number(holding.quantity) * price;
-
-      if (!values[holding.bank_account_id]) {
-        values[holding.bank_account_id] = 0;
-      }
-      values[holding.bank_account_id] += value;
-    }
-
-    return values;
-  }, [allAccountHoldings, currentPrices]);
 
   // Filter accounts (Savings, Investment, Crypto)
   const displayedAccounts = useMemo(() => {
@@ -174,26 +168,46 @@ export function HomePage({ user }: HomePageProps) {
     );
   }, [bankAccounts, categories]);
 
-  // Calculate DCA total in USD (only for active portfolios)
-  const dcaTotalUsd = useMemo(() => {
-    // Get valid portfolio IDs
-    const activePortfolioIds = new Set(portfolios.map(p => p.id));
-
-    // Filter transactions to only those belonging to active portfolios
-    const validTransactions = assetTransactions.filter(tx =>
-      tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)
-    );
-
+  // --- CRYPTO LIVE DELTA LOGIC & HOLDINGS FOR HOOK - MOVED UP ---
+  const allCryptoHoldings = useMemo(() => {
     const holdings: Record<string, number> = {};
+    if (allAccountHoldings) {
+      for (const h of allAccountHoldings) holdings[h.symbol.toUpperCase()] = (holdings[h.symbol.toUpperCase()] || 0) + Number(h.quantity);
+    }
+    // DCA Holdings (Calculated from transactions for robustness)
+    const activePortfolioIds = new Set(portfolios?.map(p => p.id) || []);
+    const validTransactions = assetTransactions?.filter(tx => tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)) || [];
     for (const tx of validTransactions) {
-      const symbol = tx.symbol.toUpperCase();
-      if (!holdings[symbol]) holdings[symbol] = 0;
-      if (tx.side === "buy") holdings[symbol] += Number(tx.quantity);
-      else holdings[symbol] -= Number(tx.quantity);
+      const s = tx.symbol.toUpperCase();
+      holdings[s] = (holdings[s] || 0) + (tx.side === "buy" ? Number(tx.quantity) : -Number(tx.quantity));
+    }
+    return holdings;
+  }, [allAccountHoldings, assetTransactions, portfolios]);
+
+
+
+
+
+
+
+
+  // Calculate DCA Total in USD (Enhanced with Live Prices)
+  const dcaTotalUsd = useMemo(() => {
+    if (assetTransactions.length === 0 && portfolios.length === 0) return 0;
+
+    // Calculate holdings from transactions again (or reuse logic if complex, but re-calc is safe here)
+    let holdings: Record<string, number> = {};
+    const activePortfolioIds = new Set(portfolios?.map(p => p.id) || []);
+    const validTransactions = assetTransactions?.filter(tx => tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)) || [];
+
+    for (const tx of validTransactions) {
+      const s = tx.symbol.toUpperCase();
+      holdings[s] = (holdings[s] || 0) + (tx.side === "buy" ? Number(tx.quantity) : -Number(tx.quantity));
     }
 
     let totalUsd = 0;
     for (const [symbol, qty] of Object.entries(holdings)) {
+      // Priority: Current Price from DB > 0 (Live Price removed for stability)
       const price = currentPrices[symbol] || 0;
       totalUsd += qty * price;
     }
@@ -203,6 +217,26 @@ export function HomePage({ user }: HomePageProps) {
 
   // DCA total in EUR for patrimonio calculation
   const dcaTotal = dcaTotalUsd * usdtEurRate;
+
+
+  // Calculate crypto account values from account_holdings (Enhanced with Live Prices) - MOVED UP
+  const cryptoAccountValues = useMemo(() => {
+    const values: Record<string, number> = {};
+
+    for (const holding of allAccountHoldings) {
+      const symbol = holding.symbol.toUpperCase();
+      // Priority: Current Price from DB > 0
+      const price = currentPrices[symbol] || 0;
+      const value = Number(holding.quantity) * price;
+
+      if (!values[holding.bank_account_id]) {
+        values[holding.bank_account_id] = 0;
+      }
+      values[holding.bank_account_id] += value;
+    }
+
+    return values;
+  }, [allAccountHoldings, currentPrices]);
 
   // Calculate total patrimonio in EUR
   const totalPatrimonio = useMemo(() => {
@@ -224,100 +258,22 @@ export function HomePage({ user }: HomePageProps) {
     return total;
   }, [displayedAccounts, accountBalances, cryptoAccountValues, dcaTotal, usdtEurRate]);
 
-  // --- CRYPTO LIVE DELTA LOGIC ---
-  const allCryptoHoldings = useMemo(() => {
-    const holdings: Record<string, number> = {};
-    if (allAccountHoldings) {
-      for (const h of allAccountHoldings) holdings[h.symbol.toUpperCase()] = (holdings[h.symbol.toUpperCase()] || 0) + Number(h.quantity);
-    }
-    // DCA Holdings
-    const activePortfolioIds = new Set(portfolios?.map(p => p.id) || []);
-    const validTransactions = assetTransactions?.filter(tx => tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)) || [];
-    for (const tx of validTransactions) {
-      const s = tx.symbol.toUpperCase();
-      holdings[s] = (holdings[s] || 0) + (tx.side === "buy" ? Number(tx.quantity) : -Number(tx.quantity));
-    }
-    return holdings;
-  }, [allAccountHoldings, assetTransactions, portfolios]);
+
+
+
 
   const cryptoSymbols = useMemo(() => Object.keys(allCryptoHoldings), [allCryptoHoldings]);
   const { data: marketData } = useCryptoMarketData(cryptoSymbols);
 
-  const cryptoDeltaEur = useMemo(() => {
-    if (!marketData) return null;
-    let deltaUsd = 0;
 
-    let key: 'change24h' | 'change7d' | 'change30d' | null = null;
-    if (interval === "1D") key = 'change24h';
-    else if (interval === "7D") key = 'change7d';
-    else if (interval === "1M") key = 'change30d';
 
-    if (!key) return null;
 
-    for (const [symbol, qty] of Object.entries(allCryptoHoldings)) {
-      const data = marketData[symbol];
-      if (data && data[key] !== null) {
-        const val = qty * data.price;
-        const pct = data[key] as number;
-        const startVal = val / (1 + pct / 100);
-        deltaUsd += (val - startVal);
-      }
-    }
-    return deltaUsd * usdtEurRate;
-  }, [allCryptoHoldings, marketData, interval, usdtEurRate]);
 
-  // Calculate percentage change and absolute variation using LIVE data vs Chart Start
-  // Ref to store last valid total to prevent flickering to 0 during refreshes
-  const lastValidTotalRef = useRef<number>(0);
 
-  // Calculate percentage change and absolute variation using LIVE data vs Chart Start
-  const { percentageChange, absoluteChange } = useMemo(() => {
-    if (!chartData || chartData.length === 0) return { percentageChange: null, absoluteChange: null };
 
-    const firstValue = chartData[0].balanceTotal;
 
-    // Determine the best available current value
-    const metricsTotal = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0) + (metrics?.cryptoBalance ?? 0);
 
-    let currentValue = 0;
 
-    // Priority 1: Live Data
-    if (totalPatrimonio > 0) {
-      currentValue = totalPatrimonio;
-      lastValidTotalRef.current = totalPatrimonio;
-    }
-    // Priority 2: Memory (Ref) - Holds last known live value to prevent flicker
-    else if (lastValidTotalRef.current > 0) {
-      currentValue = lastValidTotalRef.current;
-    }
-    // Priority 3: Stale Fallbacks (only if never had live data)
-    else if (metricsTotal > 0) {
-      currentValue = metricsTotal;
-    }
-    else if (chartData.length > 0) {
-      currentValue = chartData[chartData.length - 1].balanceTotal;
-    }
-
-    let absChange = currentValue - firstValue;
-
-    // Enhanced Variation: Use Live Market Data for Crypto if available (7D/1M)
-    // This ensures that price updates are reflected instantly even if chart history is stale.
-    if (cryptoDeltaEur !== null) {
-      const startSavings = chartData[0].ahorros + chartData[0].inversiones;
-      const endSavings = chartData[chartData.length - 1].ahorros + chartData[chartData.length - 1].inversiones;
-      const savingsDelta = endSavings - startSavings;
-
-      absChange = cryptoDeltaEur + savingsDelta;
-    }
-
-    // Recalculate implied starting value to keep percentage consistent with absolute change
-    const impliedFirst = currentValue - absChange;
-
-    if (impliedFirst === 0) return { percentageChange: null, absoluteChange: absChange };
-
-    const pctChange = (absChange / impliedFirst) * 100;
-    return { percentageChange: pctChange, absoluteChange: absChange };
-  }, [chartData, totalPatrimonio, metrics, cryptoDeltaEur]);
 
   // Format account currency based on account's currency
   const formatAccountCurrency = (amount: number, currency: string) => {
@@ -382,10 +338,9 @@ export function HomePage({ user }: HomePageProps) {
   // Balance = savings + investments + crypto
   const totalBalance = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0) + (metrics?.cryptoBalance ?? 0);
 
-  // Check if there are any DCA holdings to determine visibility
-  const hasDcaHoldings = useMemo(() => {
-    return dcaTotalUsd > 0;
-  }, [dcaTotalUsd]);
+  // Temporary simple calculation for balance card
+  const liveTotalBalance = totalPatrimonio > 0 ? totalPatrimonio : totalBalance;
+  const liveCryptoBalance = (metrics?.cryptoBalance ?? 0);
 
   return (
     <MobileLayout>
@@ -402,7 +357,7 @@ export function HomePage({ user }: HomePageProps) {
               <p className="text-xs text-muted-foreground">{greeting}</p>
               <div className="flex items-center gap-2">
                 <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v3.6</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v{APP_VERSION}</span>
               </div>
             </div>
           </div>
@@ -417,46 +372,18 @@ export function HomePage({ user }: HomePageProps) {
       {/* Balance Card */}
       <div className="px-4 py-4">
         <BalanceCard
-          balance={totalPatrimonio > 0 ? totalPatrimonio : totalBalance}
+          balance={liveTotalBalance}
           subtitle="Total patrimonio"
           savingsTotal={metrics?.savingsBalance ?? 0}
           investmentsTotal={metrics?.investmentsBalance ?? 0}
-          cryptoTotal={metrics?.cryptoBalance ?? 0}
+          cryptoTotal={liveCryptoBalance}
         />
       </div>
 
-      {/* Chart Section */}
-      <div className="px-4 py-4">
+      {/* Patrimony Evolution Section */}
+      <div className="px-4 pb-4">
         <div className="rounded-3xl glass-panel p-5">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Evolución Balance</p>
-              <div className="flex items-center gap-2 flex-wrap">
-                {absoluteChange !== null && (
-                  <p className={cn(
-                    "text-xl font-bold",
-                    absoluteChange >= 0 ? "text-green-500" : "text-red-500"
-                  )}>
-                    {absoluteChange >= 0 ? "+" : ""}{formatEur(absoluteChange)}
-                  </p>
-                )}
-                {percentageChange !== null && (
-                  <span className={cn(
-                    "text-xs font-medium px-1.5 py-0.5 rounded",
-                    percentageChange >= 0
-                      ? "text-green-500 bg-green-500/10"
-                      : "text-red-500 bg-red-500/10"
-                  )}>
-                    {formatPercent(percentageChange)}
-                  </span>
-                )}
-              </div>
-            </div>
-            <IntervalSelector value={interval} onChange={setInterval} />
-          </div>
-          <div className="h-64 overflow-hidden">
-            <EvolutionChart interval={interval} userId={user.id} />
-          </div>
+          <PatrimonyEvolution userId={user.id} />
         </div>
       </div>
 
@@ -501,7 +428,6 @@ export function HomePage({ user }: HomePageProps) {
         </div>
       </div>
 
-      {/* Account Edit Dialog */}
       <AccountEditDialog
         open={!!selectedAccount}
         onOpenChange={(open) => !open && setSelectedAccount(null)}
@@ -509,7 +435,7 @@ export function HomePage({ user }: HomePageProps) {
         userId={user.id}
         currentBalance={selectedAccount ? accountBalances[selectedAccount.id] : undefined}
       />
-    </MobileLayout>
+    </MobileLayout >
   );
 }
 

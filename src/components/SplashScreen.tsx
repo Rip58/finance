@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Lottie from "lottie-react";
-import financeAnimation from "@/assets/Finance.json";
+import revenueAnimation from "@/assets/Revenue.json";
 
 interface SplashScreenProps {
   onComplete: () => void;
@@ -28,7 +28,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     >
       <div className="w-64 h-64">
         <Lottie 
-          animationData={financeAnimation} 
+          animationData={revenueAnimation} 
           loop={true}
           autoplay={true}
         />

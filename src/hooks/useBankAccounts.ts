@@ -11,6 +11,7 @@ export interface BankAccount {
   is_archived: boolean;
   created_at: string;
   initial_balance: number;
+  importe_inicial: boolean;
   sort_order?: number;
 }
 
@@ -31,14 +32,16 @@ export function useBankAccounts(userId: string | undefined) {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as BankAccount[];
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
-    mutationFn: async (account: Omit<BankAccount, "id" | "user_id" | "created_at">): Promise<string> => {
+    mutationFn: async (
+      account: Omit<BankAccount, "id" | "user_id" | "created_at"> & { importe_inicial?: boolean }
+    ): Promise<string> => {
       if (!userId) throw new Error("No user");
 
       const { data, error } = await supabase

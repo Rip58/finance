@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -29,6 +30,7 @@ interface BankAccount {
   name: string;
   currency: string;
   initial_balance: number;
+  importe_inicial: boolean;
 }
 
 interface AccountEditDialogProps {
@@ -85,7 +87,12 @@ function CryptoAccountDialog({
     isUpdating: isUpdatingHolding
   } = useAccountHoldings(userId, account?.id);
   const { data: cryptoAssets = [], create: createAsset } = useCryptoAssets(userId);
-  const { delete: deleteAccount, isDeleting: isDeletingAccount } = useBankAccounts(userId);
+  const {
+    update: updateAccount,
+    delete: deleteAccount,
+    isUpdating: isUpdatingAccount,
+    isDeleting: isDeletingAccount,
+  } = useBankAccounts(userId);
 
   const holdingSymbols = useMemo(() => holdings.map(h => h.symbol), [holdings]);
   const { data: prices = {} } = useCurrentPrices(holdingSymbols);
@@ -95,10 +102,19 @@ function CryptoAccountDialog({
   const [isCreatingAsset, setIsCreatingAsset] = useState(false);
   const [newAssetSymbol, setNewAssetSymbol] = useState("");
   const [newAssetName, setNewAssetName] = useState("");
+  const [initialBalance, setInitialBalance] = useState("");
+  const [useInitialBalance, setUseInitialBalance] = useState(false);
 
   // Edit state
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState("");
+
+  useEffect(() => {
+    if (account) {
+      setInitialBalance((account.initial_balance ?? 0).toString());
+      setUseInitialBalance(!!account.importe_inicial);
+    }
+  }, [account]);
 
   const handleAddHolding = async () => {
     let finalSymbol = newSymbol;
@@ -203,30 +219,59 @@ function CryptoAccountDialog({
     });
   };
 
+  const handleToggleInitialBalance = async (checked: boolean) => {
+    if (!account) return;
+    setUseInitialBalance(checked);
+
+    await updateAccount({
+      id: account.id,
+      importe_inicial: checked,
+      ...(checked ? { initial_balance: parseFloat(initialBalance) || 0 } : {}),
+    });
+
+    queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+    queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
+  };
+
   const availableAssets = cryptoAssets.filter(
     asset => !holdings.some(h => h.symbol === asset.symbol)
   );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[92vw] max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <div className="flex items-center justify-between pr-8">
-            <DialogTitle>{account?.name} - Activos</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDeleteAccount}
-              disabled={isDeletingAccount}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              title="Eliminar Cuenta"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle>{account?.name} - Activos</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="initial-balance-crypto">Importe inicial (base PnL)</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                id="initial-balance-crypto"
+                type="number"
+                value={initialBalance}
+                onChange={(e) => setInitialBalance(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0.00"
+                step="0.01"
+                className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[10px] text-muted-foreground">Activar</span>
+                <Switch
+                  checked={useInitialBalance}
+                  onCheckedChange={handleToggleInitialBalance}
+                  disabled={isUpdatingAccount}
+                />
+              </div>
+            </div>
+          </div>
           {/* Current holdings */}
           {holdings.length > 0 ? (
             <div className="space-y-2">
@@ -325,7 +370,7 @@ function CryptoAccountDialog({
           {/* Add new holding */}
           <div className="border-t border-border pt-4">
             <Label className="text-sm text-muted-foreground mb-2 block">Añadir activo</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Select
                 value={isCreatingAsset ? "_new" : newSymbol}
                 onValueChange={(val) => {
@@ -338,7 +383,7 @@ function CryptoAccountDialog({
                   }
                 }}
               >
-                <SelectTrigger className="flex-1">
+                <SelectTrigger className="w-full sm:flex-1">
                   <SelectValue placeholder="Activo" />
                 </SelectTrigger>
                 <SelectContent>
@@ -355,18 +400,18 @@ function CryptoAccountDialog({
               </Select>
 
               {isCreatingAsset && (
-                <div className="flex-1 flex gap-2">
+                <div className="flex flex-col gap-2 sm:flex-1 sm:flex-row">
                   <Input
                     placeholder="Símbolo"
                     value={newAssetSymbol}
                     onChange={(e) => setNewAssetSymbol(e.target.value.toUpperCase())}
-                    className="w-24"
+                    className="w-full sm:w-24"
                   />
                   <Input
                     placeholder="Nombre"
                     value={newAssetName}
                     onChange={(e) => setNewAssetName(e.target.value)}
-                    className="flex-1"
+                    className="w-full sm:flex-1"
                   />
                 </div>
               )}
@@ -376,13 +421,14 @@ function CryptoAccountDialog({
                 placeholder="Cantidad"
                 value={newQuantity}
                 onChange={(e) => setNewQuantity(e.target.value)}
-                className="w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-full sm:w-28 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 step="any"
               />
 
               <Button
                 size="icon"
                 onClick={handleAddHolding}
+                className="h-9 w-full sm:w-9"
                 disabled={(isCreatingAsset && (!newAssetSymbol || !newAssetName || !newQuantity)) || (!isCreatingAsset && (!newSymbol || !newQuantity)) || isCreating}
               >
                 <Plus className="h-4 w-4" />
@@ -391,8 +437,18 @@ function CryptoAccountDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDeleteAccount}
+            disabled={isDeletingAccount}
+            className="gap-2 w-full sm:w-auto"
+          >
+            <Trash2 className="h-4 w-4" />
+            Eliminar Cuenta
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cerrar
           </Button>
         </DialogFooter>
@@ -411,13 +467,18 @@ function SavingsAccountDialog({
   userId,
   currentBalance,
 }: AccountEditDialogProps) {
+  const queryClient = useQueryClient();
   const { update, delete: deleteAccount, isUpdating, isDeleting } = useBankAccounts(userId);
   const { create: createTransaction } = useTransactions(userId);
   const [balance, setBalance] = useState("");
+  const [initialBalance, setInitialBalance] = useState("");
+  const [useInitialBalance, setUseInitialBalance] = useState(false);
 
   useEffect(() => {
     if (account) {
       setBalance((currentBalance ?? account.initial_balance).toString());
+      setInitialBalance((account.initial_balance ?? 0).toString());
+      setUseInitialBalance(!!account.importe_inicial);
     }
   }, [account, currentBalance]);
 
@@ -476,6 +537,23 @@ function SavingsAccountDialog({
     });
   };
 
+  const handleToggleInitialBalance = async (checked: boolean) => {
+    if (!account) return;
+    setUseInitialBalance(checked);
+
+    await update({
+      id: account.id,
+      importe_inicial: checked,
+      ...(checked ? { initial_balance: parseFloat(initialBalance) || 0 } : {}),
+    });
+    queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
+    queryClient.invalidateQueries({ queryKey: ["chart-data"] });
+
+    supabase.functions.invoke("take-balance-snapshot", {
+      body: { user_id: userId }
+    });
+  };
+
   const formatCurrency = (value: string) => {
     const num = parseFloat(value) || 0;
     try {
@@ -490,24 +568,35 @@ function SavingsAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className="w-[92vw] max-w-sm">
         <DialogHeader>
-          <div className="flex items-center justify-between pr-8">
-            <DialogTitle>{account?.name}</DialogTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-              title="Eliminar Cuenta"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
+          <DialogTitle>{account?.name}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="initial-balance">Importe inicial (base PnL)</Label>
+            <div className="flex items-center gap-3">
+              <Input
+                id="initial-balance"
+                type="number"
+                value={initialBalance}
+                onChange={(e) => setInitialBalance(e.target.value)}
+                onFocus={(e) => e.target.select()}
+                placeholder="0.00"
+                step="0.01"
+                className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+              <div className="flex flex-col items-center gap-1">
+                <span className="text-[10px] text-muted-foreground">Activar</span>
+                <Switch
+                  checked={useInitialBalance}
+                  onCheckedChange={handleToggleInitialBalance}
+                  disabled={isUpdating}
+                />
+              </div>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="balance">Saldo actual de la cuenta</Label>
             <Input
@@ -532,13 +621,25 @@ function SavingsAccountDialog({
           </div>
         </div>
 
-        <DialogFooter className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancelar
+        <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="gap-2 w-full sm:w-auto"
+          >
+            <Trash2 className="h-4 w-4" />
+            Eliminar Cuenta
           </Button>
-          <Button onClick={handleSave} disabled={isUpdating}>
-            Guardar
-          </Button>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 sm:flex-none">
+              Cancelar
+            </Button>
+            <Button size="sm" onClick={handleSave} disabled={isUpdating} className="flex-1 sm:flex-none">
+              Guardar
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
