@@ -86,6 +86,14 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
         { id: "crypto", label: "Crypto", icon: Bitcoin, show: hasCrypto },
     ].filter(tab => tab.show)), [hasSavings, hasInvestment, hasDca, hasCrypto]);
 
+    const tabColorClasses: Record<string, string> = {
+        total: "data-[state=active]:bg-slate-200/70 data-[state=active]:text-slate-900",
+        savings: "data-[state=active]:bg-emerald-200/70 data-[state=active]:text-emerald-900",
+        investment: "data-[state=active]:bg-sky-200/70 data-[state=active]:text-sky-900",
+        dca: "data-[state=active]:bg-orange-200/70 data-[state=active]:text-orange-900",
+        crypto: "data-[state=active]:bg-amber-200/70 data-[state=active]:text-amber-900",
+    };
+
     useEffect(() => {
         if (tabs.length === 0) return;
         if (!tabs.some(tab => tab.id === activeTab)) {
@@ -155,10 +163,13 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
                                 <TabsTrigger
                                     key={tab.id}
                                     value={tab.id}
-                                    className="flex flex-col items-center gap-1 py-2 text-xs flex-1"
+                                    className={cn(
+                                        "flex flex-col items-center gap-1 py-2 text-xs flex-1 text-muted-foreground",
+                                        tabColorClasses[tab.id]
+                                    )}
                                 >
                                     <Icon className="h-4 w-4" />
-                                    <span className="text-[10px] leading-none text-muted-foreground">{tab.label}</span>
+                                    <span className="text-[10px] leading-none">{tab.label}</span>
                                 </TabsTrigger>
                             );
                         })}
