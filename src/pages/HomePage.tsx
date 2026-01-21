@@ -1,6 +1,5 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, lazy, Suspense } from "react";
 import { useCryptoMarketData } from "@/hooks/useCryptoMarketData";
-import { PatrimonyEvolution } from "@/components/home/PatrimonyEvolution";
 
 import { LogOut, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
@@ -29,6 +28,10 @@ import { useCategories } from "@/hooks/useCategories";
 import { useTransfers } from "@/hooks/useTransfers";
 import { useAssetTransactions } from "@/hooks/useAssetTransactions";
 import { useAccountHoldings } from "@/hooks/useAccountHoldings";
+
+const PatrimonyEvolution = lazy(() =>
+  import("@/components/home/PatrimonyEvolution").then((m) => ({ default: m.PatrimonyEvolution }))
+);
 import { useDCAPortfolios } from "@/hooks/useDCAPortfolios";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { useFxRates } from "@/hooks/useFxRates";
@@ -383,7 +386,9 @@ export function HomePage({ user }: HomePageProps) {
       {/* Patrimony Evolution Section */}
       <div className="px-4 pb-4">
         <div className="rounded-3xl glass-panel p-5">
-          <PatrimonyEvolution userId={user.id} />
+          <Suspense fallback={<div className="h-72 rounded-2xl bg-muted/40 animate-pulse" />}>
+            <PatrimonyEvolution userId={user.id} />
+          </Suspense>
         </div>
       </div>
 

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCapitalFlows, type TimeRange, type CapitalEvent } from "@/hooks/useCapitalFlows";
 import { formatCurrency, formatPercent } from "@/lib/utils";
+import { useEffect, useMemo } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { ArrowUpRight, ArrowDownRight, RefreshCw, Wallet, PiggyBank, TrendingUp, Bitcoin, ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
@@ -14,6 +15,10 @@ import { TransactionEditDialog } from "@/components/settings/TransactionEditDial
 import { DCAFormDialog } from "@/components/dca/DCAFormDialog";
 import { useTransactions } from "@/hooks/useTransactions";
 import { useAssetTransactions } from "@/hooks/useAssetTransactions";
+import { useBankAccounts } from "@/hooks/useBankAccounts";
+import { useCategories } from "@/hooks/useCategories";
+import { useAccountHoldings } from "@/hooks/useAccountHoldings";
+import { useDCAPortfolios } from "@/hooks/useDCAPortfolios";
 
 interface PatrimonyEvolutionProps {
     userId: string | undefined;
@@ -27,6 +32,10 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
 
     const [activeTab, setActiveTab] = useState("total");
     const { metrics, history } = useCapitalFlows(userId, timeRange);
+    const { data: accounts = [] } = useBankAccounts(userId);
+    const { data: categories = [] } = useCategories(userId, undefined);
+    const { data: accountHoldings = [] } = useAccountHoldings(userId);
+    const { data: portfolios = [] } = useDCAPortfolios(userId);
 
     const filteredHistory = history.filter(item => {
         if (activeTab === "total") return true;
@@ -46,13 +55,43 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
         { value: "1y", label: "1 año" },
         { value: "ALL", label: "Todo" },
     ];
-    const tabs = [
-        { id: "total", label: "General", icon: Wallet },
-        { id: "savings", label: "Ahorro", icon: PiggyBank },
-        { id: "investment", label: "Inversión", icon: TrendingUp },
-        { id: "dca", label: "DCA", icon: RefreshCw },
-        { id: "crypto", label: "Crypto", icon: Bitcoin },
-    ];
+    const savingsCategoryIds = useMemo(
+        () => categories.filter(c => c.name.toLowerCase().includes("ahorro")).map(c => c.id),
+        [categories]
+    );
+    const investmentCategoryIds = useMemo(
+        () => categories.filter(c => c.name.toLowerCase().includes("inver")).map(c => c.id),
+        [categories]
+    );
+    const cryptoCategoryIds = useMemo(
+        () => categories.filter(c => c.name.toLowerCase().includes("crypto") || c.name.toLowerCase().includes("cripto")).map(c => c.id),
+        [categories]
+    );
+
+    const hasSavings = accounts.some(acc => acc.category_id && savingsCategoryIds.includes(acc.category_id));
+    const hasInvestment = accounts.some(acc => acc.category_id && investmentCategoryIds.includes(acc.category_id));
+    const hasCrypto = accountHoldings.length > 0
+        || accounts.some(acc =>
+            acc.currency === "USD"
+            || acc.currency === "USDT"
+            || (acc.category_id && cryptoCategoryIds.includes(acc.category_id))
+        );
+    const hasDca = portfolios.length > 0;
+
+    const tabs = useMemo(() => ([
+        { id: "total", label: "General", icon: Wallet, show: true },
+        { id: "savings", label: "Ahorro", icon: PiggyBank, show: hasSavings },
+        { id: "investment", label: "Inversión", icon: TrendingUp, show: hasInvestment },
+        { id: "dca", label: "DCA", icon: RefreshCw, show: hasDca },
+        { id: "crypto", label: "Crypto", icon: Bitcoin, show: hasCrypto },
+    ].filter(tab => tab.show)), [hasSavings, hasInvestment, hasDca, hasCrypto]);
+
+    useEffect(() => {
+        if (tabs.length === 0) return;
+        if (!tabs.some(tab => tab.id === activeTab)) {
+            setActiveTab(tabs[0].id);
+        }
+    }, [tabs, activeTab]);
 
     const handleEdit = (item: CapitalEvent) => {
         if (item.category === 'crypto') {
@@ -108,18 +147,18 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
                 </div>
 
                 {/* Tabs & Summary Cards */}
-                <Tabs defaultValue="total" className="w-full">
-                    <TabsList className="w-full h-auto p-1 bg-muted/50 grid grid-cols-5 mb-4">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="w-full h-auto p-1 bg-muted/50 flex gap-1 mb-4">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
                             return (
                                 <TabsTrigger
                                     key={tab.id}
                                     value={tab.id}
-                                    className="flex flex-col items-center gap-1 py-2 text-xs"
+                                    className="flex flex-col items-center gap-1 py-2 text-xs flex-1"
                                 >
                                     <Icon className="h-4 w-4" />
-                                    <span className="hidden sm:inline">{tab.label}</span>
+                                    <span className="text-[10px] leading-none text-muted-foreground">{tab.label}</span>
                                 </TabsTrigger>
                             );
                         })}

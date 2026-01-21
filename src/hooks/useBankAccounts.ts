@@ -26,13 +26,13 @@ export function useBankAccounts(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from("bank_accounts")
-        .select("*")
+        .select("id, user_id, name, category_id, currency, is_archived, created_at, initial_balance, importe_inicial, sort_order")
         .eq("user_id", userId)
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: true });
 
       if (error) throw error;
-      return (data || []) as BankAccount[];
+      return (data || []) as unknown as BankAccount[];
     },
     enabled: !!userId,
     staleTime: 5 * 60 * 1000,

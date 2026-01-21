@@ -30,7 +30,7 @@ export function useTransfers(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from("transfers")
-        .select("*")
+        .select("id, user_id, from_account_id, to_account_id, amount_from, currency_from, amount_to, currency_to, fx_rate, date, value_date, description, is_validated, created_at")
         .eq("user_id", userId)
         .order("date", { ascending: false });
 
@@ -38,6 +38,7 @@ export function useTransfers(userId: string | undefined) {
       return data || [];
     },
     enabled: !!userId,
+    staleTime: 30 * 1000,
   });
 
   const createMutation = useMutation({

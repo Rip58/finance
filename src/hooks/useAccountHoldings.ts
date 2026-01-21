@@ -22,7 +22,7 @@ export function useAccountHoldings(userId: string | undefined, bankAccountId?: s
       
       let q = supabase
         .from("account_holdings")
-        .select("*")
+        .select("id, bank_account_id, symbol, quantity, user_id, created_at")
         .eq("user_id", userId);
       
       if (bankAccountId) {
@@ -34,6 +34,7 @@ export function useAccountHoldings(userId: string | undefined, bankAccountId?: s
       return (data || []) as AccountHolding[];
     },
     enabled: !!userId,
+    staleTime: 30 * 1000,
   });
 
   const createMutation = useMutation({

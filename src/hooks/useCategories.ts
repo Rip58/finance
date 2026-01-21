@@ -25,7 +25,7 @@ export function useCategories(userId: string | undefined, scope?: CategoryScope)
 
       let q = supabase
         .from("categories")
-        .select("*")
+        .select("id, user_id, scope, name, sort_order, is_archived, created_at")
         .eq("user_id", userId)
         .order("sort_order", { ascending: true });
 

@@ -23,7 +23,7 @@ export function useCryptoAssets(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from("crypto_assets")
-        .select("*")
+        .select("id, user_id, symbol, name, asset_type, is_active, created_at")
         .eq("user_id", userId)
         .order("symbol", { ascending: true });
 
@@ -31,7 +31,7 @@ export function useCryptoAssets(userId: string | undefined) {
       return (data || []) as CryptoAsset[];
     },
     enabled: !!userId,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 10 * 60 * 1000,
   });
 
   const createMutation = useMutation({

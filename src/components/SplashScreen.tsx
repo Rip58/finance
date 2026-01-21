@@ -8,6 +8,7 @@ interface SplashScreenProps {
 
 export function SplashScreen({ onComplete }: SplashScreenProps) {
   const [fadeOut, setFadeOut] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
 
   useEffect(() => {
     // Show animation for 2.5 seconds, then fade out
@@ -20,6 +21,21 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
     return () => clearTimeout(timer);
   }, [onComplete]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const updatePreference = () => setPrefersReducedMotion(media.matches);
+    updatePreference();
+
+    if (media.addEventListener) {
+      media.addEventListener("change", updatePreference);
+      return () => media.removeEventListener("change", updatePreference);
+    }
+
+    media.addListener(updatePreference);
+    return () => media.removeListener(updatePreference);
+  }, []);
+
   return (
     <div 
       className={`fixed inset-0 bg-background flex items-center justify-center z-50 transition-opacity duration-500 ${
@@ -29,7 +45,7 @@ export function SplashScreen({ onComplete }: SplashScreenProps) {
       <div className="w-64 h-64">
         <Lottie 
           animationData={revenueAnimation} 
-          loop={true}
+          loop={!prefersReducedMotion}
           autoplay={true}
         />
       </div>

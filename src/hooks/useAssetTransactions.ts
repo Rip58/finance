@@ -33,7 +33,7 @@ export function useAssetTransactions(userId: string | undefined) {
 
       const { data, error } = await supabase
         .from("asset_transactions")
-        .select("*")
+        .select("id, user_id, asset_type, symbol, category_id, side, quantity, price_eur, transaction_date, value_date, notes, created_at, dca_portfolio_id")
         .eq("user_id", userId)
         .order("transaction_date", { ascending: false });
 
@@ -41,6 +41,7 @@ export function useAssetTransactions(userId: string | undefined) {
       return (data || []) as AssetTransaction[];
     },
     enabled: !!userId,
+    staleTime: 30 * 1000,
   });
 
   const createMutation = useMutation({

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { SpeedInsights } from "@vercel/speed-insights/react";
 import { Analytics } from "@vercel/analytics/react";
@@ -11,19 +11,20 @@ import { supabase } from "@/integrations/supabase/client";
 import { AuthForm } from "@/components/AuthForm";
 import { SplashScreen } from "@/components/SplashScreen";
 import { HomePage } from "@/pages/HomePage";
-import { ReportPage } from "@/pages/ReportPage";
-import { AccountPage } from "@/pages/AccountPage";
-import { AddIncomePage } from "@/pages/AddIncomePage";
-import { AddExpensePage } from "@/pages/AddExpensePage";
-import { AddTransferPage } from "@/pages/AddTransferPage";
-import { PendingPaymentsPage } from "@/pages/PendingPaymentsPage";
-import { DCAPage } from "@/pages/DCAPage";
-import { CryptoPage } from "@/pages/CryptoPage";
 import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 import { ThemeColorProvider } from "@/components/providers/ThemeColorProvider";
 import { VersionChecker } from "@/components/VersionChecker";
-import { DebugHistory } from "@/components/DebugHistory";
+
+const ReportPage = lazy(() => import("@/pages/ReportPage").then((m) => ({ default: m.ReportPage })));
+const AccountPage = lazy(() => import("@/pages/AccountPage").then((m) => ({ default: m.AccountPage })));
+const AddIncomePage = lazy(() => import("@/pages/AddIncomePage").then((m) => ({ default: m.AddIncomePage })));
+const AddExpensePage = lazy(() => import("@/pages/AddExpensePage").then((m) => ({ default: m.AddExpensePage })));
+const AddTransferPage = lazy(() => import("@/pages/AddTransferPage").then((m) => ({ default: m.AddTransferPage })));
+const PendingPaymentsPage = lazy(() => import("@/pages/PendingPaymentsPage").then((m) => ({ default: m.PendingPaymentsPage })));
+const DCAPage = lazy(() => import("@/pages/DCAPage").then((m) => ({ default: m.DCAPage })));
+const CryptoPage = lazy(() => import("@/pages/CryptoPage").then((m) => ({ default: m.CryptoPage })));
+const DebugHistory = lazy(() => import("@/components/DebugHistory").then((m) => ({ default: m.DebugHistory })));
 
 const queryClient = new QueryClient();
 
@@ -73,22 +74,30 @@ function AppContent() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<HomePage user={user} />} />
-      <Route path="/crypto" element={<CryptoPage user={user} />} />
-      <Route path="/dca" element={<DCAPage user={user} />} />
-      <Route path="/report" element={<ReportPage user={user} />} />
-      <Route path="/account" element={<AccountPage user={user} />} />
-      <Route path="/add-income" element={<AddIncomePage user={user} />} />
-      <Route path="/add-expense" element={<AddExpensePage user={user} />} />
-      <Route path="/add-transfer" element={<AddTransferPage user={user} />} />
-      <Route path="/pending-payments" element={<PendingPaymentsPage user={user} />} />
-      <Route path="/debug" element={<DebugHistory />} />
-      {/* Legacy route redirect */}
-      <Route path="/settings" element={<Navigate to="/account" replace />} />
-      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      }
+    >
+      <Routes>
+        <Route path="/" element={<HomePage user={user} />} />
+        <Route path="/crypto" element={<CryptoPage user={user} />} />
+        <Route path="/dca" element={<DCAPage user={user} />} />
+        <Route path="/report" element={<ReportPage user={user} />} />
+        <Route path="/account" element={<AccountPage user={user} />} />
+        <Route path="/add-income" element={<AddIncomePage user={user} />} />
+        <Route path="/add-expense" element={<AddExpensePage user={user} />} />
+        <Route path="/add-transfer" element={<AddTransferPage user={user} />} />
+        <Route path="/pending-payments" element={<PendingPaymentsPage user={user} />} />
+        <Route path="/debug" element={<DebugHistory />} />
+        {/* Legacy route redirect */}
+        <Route path="/settings" element={<Navigate to="/account" replace />} />
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
   );
 }
 

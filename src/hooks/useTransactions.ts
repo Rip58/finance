@@ -30,7 +30,7 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
 
       let q = supabase
         .from("transactions")
-        .select("*")
+        .select("id, user_id, type, amount, currency, category_id, bank_account_id, description, date, value_date, is_validated, created_at")
         .eq("user_id", userId)
         .order("date", { ascending: false });
 
@@ -43,6 +43,7 @@ export function useTransactions(userId: string | undefined, type?: TransactionTy
       return (data || []) as Transaction[];
     },
     enabled: !!userId,
+    staleTime: 30 * 1000,
   });
 
   const createMutation = useMutation({

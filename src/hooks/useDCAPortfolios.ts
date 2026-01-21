@@ -23,7 +23,7 @@ export function useDCAPortfolios(userId: string | undefined) {
       
       const { data, error } = await supabase
         .from("dca_portfolios")
-        .select("*")
+        .select("id, user_id, name, symbol, asset_type, is_active, created_at")
         .eq("user_id", userId)
         .order("created_at", { ascending: true });
       
@@ -31,6 +31,7 @@ export function useDCAPortfolios(userId: string | undefined) {
       return (data || []) as DCAPortfolio[];
     },
     enabled: !!userId,
+    staleTime: 5 * 60 * 1000,
   });
 
   const createMutation = useMutation({
