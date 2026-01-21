@@ -22,25 +22,44 @@ export interface Transaction {
 export function useTransactions(userId: string | undefined, type?: TransactionType) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMissingColumn = (error: unknown, column: string) => {
+    if (!error || typeof error !== "object") return false;
+    const err = error as { code?: string; message?: string };
+    if (err.code === "42703") return true;
+    if (typeof err.message === "string" && err.message.includes(`"${column}"`)) return true;
+    return false;
+  };
 
   const query = useQuery({
     queryKey: ["transactions", userId, type],
     queryFn: async (): Promise<Transaction[]> => {
       if (!userId) return [];
 
-      let q = supabase
-        .from("transactions")
-        .select("id, user_id, type, amount, currency, category_id, bank_account_id, description, date, value_date, is_validated, created_at")
-        .eq("user_id", userId)
-        .order("date", { ascending: false });
+      const baseFields = "id, user_id, type, amount, currency, category_id, bank_account_id, description, date, value_date, created_at";
+      const fieldsWithValidation = `${baseFields}, is_validated`;
 
-      if (type) {
-        q = q.eq("type", type);
+      const buildQuery = (fields: string) => {
+        let q = supabase
+          .from("transactions")
+          .select(fields)
+          .eq("user_id", userId)
+          .order("date", { ascending: false });
+
+        if (type) {
+          q = q.eq("type", type);
+        }
+
+        return q;
+      };
+
+      const { data, error } = await buildQuery(fieldsWithValidation);
+      if (error && isMissingColumn(error, "is_validated")) {
+        const { data: fallbackData, error: fallbackError } = await buildQuery(baseFields);
+        if (fallbackError) throw fallbackError;
+        return (fallbackData || []) as unknown as Transaction[];
       }
-
-      const { data, error } = await q;
       if (error) throw error;
-      return (data || []) as Transaction[];
+      return (data || []) as unknown as Transaction[];
     },
     enabled: !!userId,
     staleTime: 30 * 1000,

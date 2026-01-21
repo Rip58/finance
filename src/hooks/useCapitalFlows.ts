@@ -102,6 +102,28 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
             total: { totalInvested: 0, currentValue: 0, pnl: 0, pnlPercent: 0 }
         };
 
+        const periodDelta = {
+            savings: 0,
+            investment: 0,
+            crypto: 0,
+            dca: 0,
+            general: 0,
+            total: 0,
+        };
+
+        const shouldInclude = (dateValue: string) => {
+            if (timeRange === "ALL") return true;
+            const now = new Date();
+            let cutoff = now;
+            if (timeRange === "24h") cutoff = subHours(now, 24);
+            if (timeRange === "7d") cutoff = subDays(now, 7);
+            if (timeRange === "1m") cutoff = subMonths(now, 1);
+            if (timeRange === "3m") cutoff = subMonths(now, 3);
+            if (timeRange === "6m") cutoff = subMonths(now, 6);
+            if (timeRange === "1y") cutoff = subYears(now, 1);
+            return new Date(dateValue) >= cutoff;
+        };
+
         // A. DCA: Calculate Invested & Current Value (DCA portfolios only)
         const dcaInvestedPerSymbol: Record<string, number> = {};
         const dcaQuantityPerSymbol: Record<string, number> = {};
@@ -132,6 +154,14 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
 
         Object.keys(dcaInvestedPerSymbol).forEach(sym => {
             res.dca.totalInvested += dcaInvestedPerSymbol[sym];
+        });
+
+        assetTransactions.forEach(tx => {
+            if (!shouldInclude(tx.transaction_date)) return;
+            const delta = tx.quantity * tx.price_eur * (tx.side === "buy" ? 1 : -1);
+            const categoryKey = tx.dca_portfolio_id ? "dca" : "crypto";
+            periodDelta[categoryKey] += delta;
+            periodDelta.total += delta;
         });
 
         // B. Crypto Current Value (Holdings only)
@@ -184,6 +214,15 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
                     if (tx.type === 'income') balance += amount;
                     else balance -= amount;
                 }
+            });
+
+            transactions.forEach(tx => {
+                if (tx.bank_account_id !== acc.id) return;
+                if (!shouldInclude(tx.date)) return;
+                if (tx.currency !== acc.currency) return;
+                const amount = Number(tx.amount) * (tx.type === "income" ? 1 : -1);
+                periodDelta[cat] += amount;
+                periodDelta.total += amount;
             });
 
             // Transfers
@@ -251,8 +290,24 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         calcPnL(res.general);
         calcPnL(res.total);
 
+        if (timeRange !== "ALL") {
+            const applyPeriodDelta = (key: keyof typeof periodDelta, metric: { totalInvested: number; currentValue: number; pnl: number; pnlPercent: number }) => {
+                const delta = periodDelta[key];
+                const startValue = metric.currentValue - delta;
+                metric.pnl = delta;
+                metric.pnlPercent = startValue !== 0 ? (delta / startValue) * 100 : 0;
+            };
+
+            applyPeriodDelta("savings", res.savings);
+            applyPeriodDelta("investment", res.investment);
+            applyPeriodDelta("crypto", res.crypto);
+            applyPeriodDelta("dca", res.dca);
+            applyPeriodDelta("general", res.general);
+            applyPeriodDelta("total", res.total);
+        }
+
         return res;
-    }, [accounts, transactions, assetTransactions, transfers, currentPrices, usdtEurRate, categoryMap, portfolios, cryptoAccountIds]);
+    }, [accounts, transactions, assetTransactions, transfers, currentPrices, usdtEurRate, categoryMap, portfolios, cryptoAccountIds, timeRange]);
 
 
 

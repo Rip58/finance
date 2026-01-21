@@ -25,7 +25,7 @@ interface PatrimonyEvolutionProps {
 }
 
 export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
-    const [timeRange, setTimeRange] = useState<TimeRange>("ALL");
+    const [timeRange, setTimeRange] = useState<TimeRange>("24h");
     const [isExpanded, setIsExpanded] = useState(false);
     const [editingBankTx, setEditingBankTx] = useState<any | null>(null);
     const [editingAssetTx, setEditingAssetTx] = useState<any | null>(null);

@@ -22,20 +22,39 @@ export interface Transfer {
 export function useTransfers(userId: string | undefined) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMissingColumn = (error: unknown, column: string) => {
+    if (!error || typeof error !== "object") return false;
+    const err = error as { code?: string; message?: string };
+    if (err.code === "42703") return true;
+    if (typeof err.message === "string" && err.message.includes(`"${column}"`)) return true;
+    return false;
+  };
 
   const query = useQuery({
     queryKey: ["transfers", userId],
     queryFn: async (): Promise<Transfer[]> => {
       if (!userId) return [];
 
-      const { data, error } = await supabase
-        .from("transfers")
-        .select("id, user_id, from_account_id, to_account_id, amount_from, currency_from, amount_to, currency_to, fx_rate, date, value_date, description, is_validated, created_at")
-        .eq("user_id", userId)
-        .order("date", { ascending: false });
+      const baseFields = "id, user_id, from_account_id, to_account_id, amount_from, currency_from, amount_to, currency_to, fx_rate, date, value_date, description, created_at";
+      const fieldsWithValidation = `${baseFields}, is_validated`;
+
+      const buildQuery = (fields: string) => (
+        supabase
+          .from("transfers")
+          .select(fields)
+          .eq("user_id", userId)
+          .order("date", { ascending: false })
+      );
+
+      const { data, error } = await buildQuery(fieldsWithValidation);
+      if (error && isMissingColumn(error, "is_validated")) {
+        const { data: fallbackData, error: fallbackError } = await buildQuery(baseFields);
+        if (fallbackError) throw fallbackError;
+        return (fallbackData || []) as unknown as Transfer[];
+      }
 
       if (error) throw error;
-      return data || [];
+      return (data || []) as unknown as Transfer[];
     },
     enabled: !!userId,
     staleTime: 30 * 1000,
