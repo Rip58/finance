@@ -24,6 +24,7 @@ import { useCryptoAssets } from "@/hooks/useCryptoAssets";
 import { useBankAccounts } from "@/hooks/useBankAccounts";
 import { useCurrentPrices } from "@/hooks/useCurrentPrices";
 import { supabase } from "@/integrations/supabase/client";
+import { updateCryptoPrices } from "@/lib/cryptoPrices";
 
 interface BankAccount {
   id: string;
@@ -146,10 +147,9 @@ function CryptoAccountDialog({
       });
 
       try {
-        await supabase.functions.invoke("get-asset-prices", {
-          body: { symbols: [finalSymbol] },
-        });
+        await updateCryptoPrices([finalSymbol]);
         queryClient.invalidateQueries({ queryKey: ["current-prices"] });
+        queryClient.invalidateQueries({ queryKey: ["crypto-market-data"] });
         queryClient.invalidateQueries({ queryKey: ["dashboard-metrics"] });
         queryClient.invalidateQueries({ queryKey: ["chart-data"] });
       } catch (e) {

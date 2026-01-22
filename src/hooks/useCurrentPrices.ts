@@ -5,22 +5,24 @@ import { updateCryptoPrices } from "@/lib/cryptoPrices";
 export function useCurrentPrices(symbols: string[]) {
   const queryClient = useQueryClient();
   const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
+  const stableSymbols = uniqueSymbols.filter(symbol => symbol === "USDT");
+  const binanceSymbols = uniqueSymbols.filter(symbol => symbol !== "USDT");
 
   const query = useQuery({
     queryKey: ["current-prices", uniqueSymbols],
     queryFn: async (): Promise<Record<string, number>> => {
       if (uniqueSymbols.length === 0) return {};
 
-      // Prepare symbols for Binance (BTC -> BTCUSDT)
-      const binanceSymbols = uniqueSymbols.map(s => `"${s}USDT"`).join(",");
-      // Binance API expects: ["BTCUSDT","ETHUSDT"]
-      // If only one symbol, the format is different (?symbol=BTCUSDT), but we handle batch.
-
       try {
-        // If 0 symbols, return empty
-        if (!binanceSymbols) return {};
+        const prices: Record<string, number> = {};
+        for (const symbol of stableSymbols) {
+          prices[symbol] = 1;
+        }
 
-        const url = `https://api.binance.com/api/v3/ticker/price?symbols=[${binanceSymbols}]`;
+        if (binanceSymbols.length === 0) return prices;
+
+        const binancePairs = binanceSymbols.map(symbol => `${symbol}USDT`);
+        const url = `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(binancePairs))}`;
         const response = await fetch(url);
 
         if (!response.ok) {
@@ -32,11 +34,10 @@ export function useCurrentPrices(symbols: string[]) {
         const data = await response.json();
         // Data format: [{ symbol: "BTCUSDT", price: "65000.00" }, ...]
 
-        const prices: Record<string, number> = {};
         if (Array.isArray(data)) {
           for (const item of data) {
             const symbol = item.symbol.replace("USDT", ""); // Remove USDT suffix
-            if (uniqueSymbols.includes(symbol)) {
+            if (binanceSymbols.includes(symbol)) {
               prices[symbol] = parseFloat(item.price);
             }
           }
@@ -58,6 +59,9 @@ export function useCurrentPrices(symbols: string[]) {
         if (error) throw error;
 
         const latestPrices: Record<string, number> = {};
+        for (const symbol of stableSymbols) {
+          latestPrices[symbol] = 1;
+        }
         for (const p of data || []) {
           if (!latestPrices[p.symbol]) {
             latestPrices[p.symbol] = p.close_price;

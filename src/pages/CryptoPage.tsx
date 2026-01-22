@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
 import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
@@ -47,6 +47,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
     const { toast } = useToast();
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [timeframe, setTimeframe] = useState<Timeframe>("24h");
+    const autoRefreshKeyRef = useRef("");
 
     const { data: cryptoAssets = [] } = useCryptoAssets(user.id);
 
@@ -57,6 +58,17 @@ export function CryptoPage({ user }: CryptoPageProps) {
 
     // Use the new hook for rich market data
     const { data: marketData = {}, refreshMarketData } = useCryptoMarketData(symbols);
+
+    useEffect(() => {
+        if (symbols.length === 0) return;
+        const refreshKey = symbols.join("|");
+        if (autoRefreshKeyRef.current === refreshKey) return;
+        autoRefreshKeyRef.current = refreshKey;
+
+        refreshMarketData().catch((error) => {
+            console.error("Auto refresh market data failed:", error);
+        });
+    }, [symbols, refreshMarketData]);
 
     // Aggregate assets with real market data
     const aggregatedAssets = useMemo(() => {

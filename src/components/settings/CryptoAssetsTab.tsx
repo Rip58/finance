@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Pencil, Trash2, Loader2, Coins } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { updateCryptoPrices } from "@/lib/cryptoPrices";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -61,6 +62,12 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
         .insert(assetsToInsert);
 
       if (error) throw error;
+
+      try {
+        await updateCryptoPrices(assetsToInsert.map(asset => asset.symbol));
+      } catch (updateError) {
+        console.error("Error updating default crypto prices:", updateError);
+      }
 
       queryClient.invalidateQueries({ queryKey: ["crypto-assets", userId] });
     } catch (error) {
@@ -126,8 +133,22 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
     // Proceed to save
     if (editingAsset) {
       await update({ id: editingAsset.id, ...formData });
+      if (editingAsset.symbol !== formData.symbol && formData.asset_type === "crypto") {
+        try {
+          await updateCryptoPrices([formData.symbol.toUpperCase()]);
+        } catch (updateError) {
+          console.error("Error updating crypto price:", updateError);
+        }
+      }
     } else {
       await create(formData);
+      if (formData.asset_type === "crypto") {
+        try {
+          await updateCryptoPrices([formData.symbol.toUpperCase()]);
+        } catch (updateError) {
+          console.error("Error updating crypto price:", updateError);
+        }
+      }
     }
     setIsDialogOpen(false);
     resetForm();
