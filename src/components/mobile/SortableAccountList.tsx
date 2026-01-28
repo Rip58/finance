@@ -61,36 +61,39 @@ function SortableAccountItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between w-full rounded-2xl p-3 mb-2 transition-colors border border-border/40 bg-card/40",
-        isDragging ? "bg-muted shadow-lg z-10" : "hover:bg-muted/50"
+        "flex items-center justify-between w-full rounded-3xl p-4 mb-3 transition-all duration-200 border border-border/50 bg-card/50 backdrop-blur-sm shadow-sm",
+        isDragging ? "bg-accent shadow-xl scale-105 z-10 border-primary/20 ring-1 ring-primary/20" : "hover:bg-accent/50 active:scale-[0.98]"
       )}
     >
-      <div className="flex items-center gap-2 flex-1">
+      <div className="flex items-center gap-3 flex-1">
         <button
           {...attributes}
           {...listeners}
-          className="touch-none cursor-grab active:cursor-grabbing p-1 -ml-1"
+          className="touch-none cursor-grab active:cursor-grabbing p-1.5 -ml-1.5 text-muted-foreground/50 hover:text-foreground transition-colors"
         >
-          <GripVertical className="h-4 w-4 text-muted-foreground" />
+          <GripVertical className="h-5 w-5" />
         </button>
         <button
           onClick={onClick}
-          className="flex items-center gap-2 flex-1 text-left"
+          className="flex items-center gap-3 flex-1 text-left"
         >
-          <Avatar className="h-5 w-5 mr-2">
+          <Avatar className="h-10 w-10 border border-border/50 shadow-sm">
             <AvatarImage
               src={`https://logo.clearbit.com/${account.name.toLowerCase().replace(/\s/g, "")}.com`}
               alt={account.name}
-              className="object-contain"
+              className="object-contain p-1"
             />
-            <AvatarFallback className="bg-transparent">
-              <Building2 className="h-4 w-4 text-muted-foreground" />
+            <AvatarFallback className="bg-muted text-muted-foreground">
+              <Building2 className="h-5 w-5" />
             </AvatarFallback>
           </Avatar>
-          <span className="text-sm">{account.name}</span>
+          <div>
+            <span className="text-base font-semibold block leading-none mb-1">{account.name}</span>
+            <span className="text-xs text-muted-foreground font-medium bg-secondary/50 px-1.5 py-0.5 rounded-md">{account.currency}</span>
+          </div>
         </button>
       </div>
-      <span className="font-medium text-sm">{getDisplayValue(account)}</span>
+      <span className="font-bold text-base tracking-tight">{getDisplayValue(account)}</span>
     </div>
   );
 }

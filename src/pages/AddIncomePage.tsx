@@ -112,6 +112,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         initial_balance: 0,
         category_id: null,
         is_archived: false,
+        importe_inicial: false,
       });
       setFormData(prev => ({ ...prev, bank_account_id: id }));
       setIsAccountDialogOpen(false);
@@ -176,7 +177,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         if (existing.person) setLoanData(prev => ({ ...prev, personName: existing.person! }));
 
         // Initialize Debt Type and Force Debt Mode
-        if (existing.cadence === 'manual') {
+        if ((existing.cadence as string) === 'manual') {
           setDebtType('manual');
           setForceDebt(true);
         } else if (existing.loan_total_payments && existing.loan_total_payments > 0) {
@@ -343,8 +344,8 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
 
   return (
     <MobileLayout hideNav>
-      <header className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+      <header className="flex items-center gap-3 px-4 pt-14 pb-2 bg-background/80 backdrop-blur-md sticky top-0 z-10 border-b border-border/40">
+        <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="-ml-2">
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="flex items-center gap-2">
@@ -357,23 +358,24 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
         </div>
       </header>
 
-      <div className="px-4 py-4 space-y-4">
+      <div className="px-4 py-6 space-y-6 pb-32">
         {/* Amount & Currency */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Importe</Label>
+            <Label className="text-xs text-muted-foreground ml-1">Importe</Label>
             <Input
               type="number"
               step="0.01"
               placeholder="0.00"
               value={formData.amount}
               onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+              className="text-lg font-medium h-12"
             />
           </div>
           <div className="space-y-2">
-            <Label>Moneda</Label>
+            <Label className="text-xs text-muted-foreground ml-1">Moneda</Label>
             <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
-              <SelectTrigger>
+              <SelectTrigger className="h-12">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -386,17 +388,18 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
 
         {/* Date */}
         <div className="space-y-2">
-          <Label>Fecha</Label>
+          <Label className="text-xs text-muted-foreground ml-1">Fecha</Label>
           <Input
             type="date"
             value={formData.date}
             onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+            className="block w-full h-12"
           />
         </div>
 
         {/* Category */}
         <div className="space-y-2">
-          <Label>Categoría</Label>
+          <Label className="text-xs text-muted-foreground ml-1">Categoría</Label>
           <Select
             value={formData.category_id}
             onValueChange={(v) => {
@@ -407,7 +410,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
               }
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-12">
               <SelectValue placeholder="Sin categoría" />
             </SelectTrigger>
             <SelectContent>
@@ -424,7 +427,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
 
         {/* Account */}
         <div className="space-y-2">
-          <Label>Cuenta</Label>
+          <Label className="text-xs text-muted-foreground ml-1">Cuenta</Label>
           <Select
             value={formData.bank_account_id}
             onValueChange={(v) => {
@@ -435,7 +438,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
               }
             }}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-12">
               <SelectValue placeholder="Sin cuenta" />
             </SelectTrigger>
             <SelectContent>
@@ -452,37 +455,40 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
 
         {/* Description */}
         <div className="space-y-2">
-          <Label>Descripción</Label>
+          <Label className="text-xs text-muted-foreground ml-1">Descripción</Label>
           <Textarea
             placeholder="Opcional"
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={2}
+            className="resize-none"
           />
         </div>
 
         {/* Loan Specific Fields */}
         {isLoan && (
-          <div className="space-y-4 p-4 bg-muted/30 rounded-2xl border border-border/50">
-            <h3 className="text-sm font-medium text-success">Detalles de Deuda a Cobrar</h3>
+          <div className="space-y-5 p-5 bg-card rounded-3xl border border-border">
+            <h3 className="text-base font-semibold text-success mb-2">Detalles de Deuda a Cobrar</h3>
             {/* Person Name */}
             <div className="space-y-2">
-              <Label>Persona / Entidad (Deudor)</Label>
+              <Label className="text-xs text-muted-foreground ml-1">Persona / Entidad (Deudor)</Label>
               <Input
                 placeholder="Ej: Juan, Empresa..."
                 value={loanData.personName}
                 onChange={(e) => setLoanData({ ...loanData, personName: e.target.value })}
+                className="h-11"
               />
             </div>
-            <div className="space-y-4">
+
+            <div className="space-y-5">
               {/* Debt Type Selector */}
-              <div className="bg-background/50 p-1 rounded-lg flex text-sm mb-2">
+              <div className="bg-muted p-1 rounded-xl flex text-sm mb-2">
                 <button
                   type="button"
                   onClick={() => setDebtType("manual")}
                   className={cn(
-                    "flex-1 py-1.5 rounded-md transition-all font-medium",
-                    debtType === "manual" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    "flex-1 py-2 rounded-lg transition-all font-medium text-xs",
+                    debtType === "manual" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Deuda Manual
@@ -491,8 +497,8 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
                   type="button"
                   onClick={() => setDebtType("loan")}
                   className={cn(
-                    "flex-1 py-1.5 rounded-md transition-all font-medium",
-                    debtType === "loan" ? "bg-white text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                    "flex-1 py-2 rounded-lg transition-all font-medium text-xs",
+                    debtType === "loan" ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   Préstamo (Cuotas)
@@ -500,7 +506,14 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
               </div>
 
               <div className="space-y-2">
-                <Label>Importe Total a Cobrar</Label>
+                <div className="flex justify-between items-end">
+                  <Label className="text-xs text-muted-foreground ml-1">Importe Total a Cobrar</Label>
+                  {(parseFloat(loanData.totalAmount) > 0) && (
+                    <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-success/10 text-success">
+                      Pendiente: {new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(Math.max(0, parseFloat(loanData.totalAmount) - (parseFloat(loanData.amountPaid) || 0)))}
+                    </span>
+                  )}
+                </div>
                 <Input
                   type="number"
                   step="0.01"
@@ -508,6 +521,7 @@ export function AddIncomePage({ user }: AddIncomePageProps) {
                   placeholder="0.00"
                   value={loanData.totalAmount}
                   onChange={(e) => setLoanData({ ...loanData, totalAmount: e.target.value })}
+                  className="h-11 font-medium"
                 />
               </div>
 

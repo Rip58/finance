@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Loader2, CalendarIcon, X } from "lucide-react";
+import { Loader2, CalendarIcon, X, Wallet } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
@@ -125,65 +125,71 @@ export function DebtFormDialog({ isOpen, onClose, type, userId }: DebtFormDialog
 
     return (
         <Dialog open={isOpen} onOpenChange={onClose}>
-            <DialogContent className="sm:max-w-md rounded-2xl">
-                <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
+            <DialogContent className="sm:max-w-md rounded-3xl pt-8">
+                <DialogHeader className="flex flex-col items-center pb-4 space-y-2">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center mb-1">
+                        <Wallet className="h-5 w-5 text-primary" />
+                    </div>
+                    <DialogTitle className="text-xl">{title}</DialogTitle>
                 </DialogHeader>
 
-                <div className="space-y-4 py-2">
+                <div className="space-y-5 px-1 py-1">
                     {/* Person Name */}
                     <div className="space-y-2">
-                        <Label>{personLabel}</Label>
+                        <Label className="text-xs text-muted-foreground ml-1">{personLabel}</Label>
                         <Input
                             placeholder="Ej: Juan, Empresa X..."
                             value={personName}
                             onChange={(e) => setPersonName(e.target.value)}
+                            className="bg-muted/50 border-none h-11"
                         />
                     </div>
 
                     {/* Description (Optional) */}
                     <div className="space-y-2">
-                        <Label>Concepto (Opcional)</Label>
+                        <Label className="text-xs text-muted-foreground ml-1">Concepto (Opcional)</Label>
                         <Input
                             placeholder="Ej: Préstamo Coche..."
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
+                            className="bg-muted/50 border-none h-11"
                         />
                     </div>
 
                     {/* Total Amount */}
                     <div className="space-y-2">
-                        <Label>Importe Total Deuda</Label>
+                        <Label className="text-xs text-muted-foreground ml-1">Importe Total Deuda</Label>
                         <Input
                             type="number"
                             step="0.01"
                             placeholder="0.00"
                             value={totalAmount}
                             onChange={(e) => setTotalAmount(e.target.value)}
+                            className="text-lg font-semibold bg-muted/50 border-none h-14"
                         />
                     </div>
 
                     {/* Contributions Section */}
-                    <div className="pt-2 border-t border-border/50">
-                        <Label className="text-xs font-semibold uppercase text-muted-foreground ml-1 mb-2 block">
+                    <div className="pt-4 border-t border-border/40">
+                        <Label className="text-xs font-semibold uppercase text-muted-foreground ml-1 mb-3 block">
                             Aportaciones Realizadas
                         </Label>
 
                         {contributions.length > 0 && (
-                            <div className="flex flex-col gap-2 mb-3">
+                            <div className="flex flex-col gap-2 mb-4">
                                 {contributions.map((c, i) => (
-                                    <div key={i} className="flex justify-between items-center text-sm p-2 bg-secondary/30 rounded-lg">
-                                        <span>{new Intl.DateTimeFormat('es-ES').format(c.date)}</span>
-                                        <div className="flex items-center gap-2">
-                                            <span className="font-medium">{formatCurrency(parseFloat(c.amount))}</span>
+                                    <div key={i} className="flex justify-between items-center text-sm p-3 bg-secondary/30 rounded-xl">
+                                        <span className="text-muted-foreground font-medium">{format(c.date, "dd MMM yyyy", { locale: es })}</span>
+                                        <div className="flex items-center gap-3">
+                                            <span className="font-bold">{formatCurrency(parseFloat(c.amount))}</span>
                                             <div className="flex gap-1">
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => editContribution(i)}>
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
+                                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => editContribution(i)}>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></svg>
                                                 </Button>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    className="h-6 w-6 text-destructive hover:text-destructive/80"
+                                                    className="h-7 w-7 text-destructive hover:text-destructive/80"
                                                     onClick={() => removeContribution(i)}
                                                 >
                                                     <X className="h-4 w-4" />
@@ -204,12 +210,12 @@ export function DebtFormDialog({ isOpen, onClose, type, userId }: DebtFormDialog
                                         <Button
                                             variant={"outline"}
                                             className={cn(
-                                                "w-full h-10 rounded-xl justify-start text-left font-normal border-input/50 bg-background/50 px-3",
+                                                "w-full h-11 rounded-xl justify-start text-left font-normal border-none bg-muted/50 px-3",
                                                 !newContrib.date && "text-muted-foreground"
                                             )}
                                         >
-                                            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                                            {newContrib.date ? format(newContrib.date, "dd/MM/yyyy", { locale: es }) : <span>Fecha</span>}
+                                            <CalendarIcon className="mr-2 h-4 w-4 opacity-50" />
+                                            {newContrib.date ? format(newContrib.date, "dd MMM", { locale: es }) : <span>Fecha</span>}
                                         </Button>
                                     </PopoverTrigger>
                                     <PopoverContent className="w-auto p-0" align="start">
@@ -226,7 +232,7 @@ export function DebtFormDialog({ isOpen, onClose, type, userId }: DebtFormDialog
                                 <span className="text-[10px] text-muted-foreground ml-1 uppercase">Importe</span>
                                 <Input
                                     type="number"
-                                    className="h-10 rounded-xl bg-background/50"
+                                    className="h-11 rounded-xl bg-muted/50 border-none"
                                     placeholder="0.00"
                                     value={newContrib.amount}
                                     onChange={(e) => setNewContrib({ ...newContrib, amount: e.target.value })}
@@ -235,18 +241,18 @@ export function DebtFormDialog({ isOpen, onClose, type, userId }: DebtFormDialog
                             <Button
                                 type="button"
                                 onClick={addContribution}
-                                className="h-10 px-4 rounded-xl ml-2 bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary"
+                                className="h-11 px-4 rounded-xl ml-2 w-11 shrink-0"
                                 disabled={!newContrib.amount}
                             >
-                                <span className="text-sm font-medium">Añadir</span>
+                                <span className="text-xl leading-none -mt-1">+</span>
                             </Button>
                         </div>
                     </div>
                 </div>
 
-                <div className="pt-4">
+                <div className="pt-2">
                     <Button
-                        className="w-full h-12 rounded-xl text-base font-medium"
+                        className="w-full h-14 rounded-2xl text-base font-semibold shadow-lg shadow-primary/20"
                         onClick={handleSubmit}
                         disabled={isSubmitting || !totalAmount || !personName}
                     >

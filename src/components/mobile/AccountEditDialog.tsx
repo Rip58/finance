@@ -568,78 +568,83 @@ function SavingsAccountDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[92vw] max-w-sm">
-        <DialogHeader>
-          <DialogTitle>{account?.name}</DialogTitle>
+      <DialogContent className="w-[92vw] max-w-sm rounded-3xl">
+        <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            disabled={isDeleting}
+            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 -ml-2"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <div className="flex-1 flex justify-center mr-6">
+            <DialogTitle className="text-center">{account?.name}</DialogTitle>
+          </div>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="initial-balance">Importe inicial (base PnL)</Label>
-            <div className="flex items-center gap-3">
+        <div className="space-y-6 py-2">
+          {/* Main Balance Input - Focused by default */}
+          <div className="space-y-3">
+            <Label htmlFor="balance" className="text-center block text-muted-foreground">Saldo actual</Label>
+            <div className="relative">
               <Input
-                id="initial-balance"
+                id="balance"
                 type="number"
-                value={initialBalance}
-                onChange={(e) => setInitialBalance(e.target.value)}
+                value={balance}
+                onChange={(e) => {
+                  let val = e.target.value;
+                  if (val.length > 1 && val.startsWith("0") && val[1] !== ".") {
+                    val = val.substring(1);
+                  }
+                  setBalance(val);
+                }}
+                autoFocus
                 onFocus={(e) => e.target.select()}
                 placeholder="0.00"
                 step="0.01"
-                className="flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="text-3xl font-bold text-center h-16 border-none bg-transparent shadow-none focus-visible:ring-0 px-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] text-muted-foreground">Activar</span>
+              <p className="text-sm text-center text-muted-foreground mt-1">
+                {formatCurrency(balance)}
+              </p>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-4 border-t border-border/40">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="initial-balance" className="text-xs text-muted-foreground">Importe inicial (base PnL)</Label>
                 <Switch
                   checked={useInitialBalance}
                   onCheckedChange={handleToggleInitialBalance}
                   disabled={isUpdating}
+                  className="scale-75"
                 />
               </div>
+              {useInitialBalance && (
+                <div className="flex items-center gap-3">
+                  <Input
+                    id="initial-balance"
+                    type="number"
+                    value={initialBalance}
+                    onChange={(e) => setInitialBalance(e.target.value)}
+                    onFocus={(e) => e.target.select()}
+                    placeholder="0.00"
+                    step="0.01"
+                    className="bg-muted/30 border-none h-9"
+                  />
+                </div>
+              )}
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="balance">Saldo actual de la cuenta</Label>
-            <Input
-              id="balance"
-              type="number"
-              value={balance}
-              onChange={(e) => {
-                let val = e.target.value;
-                if (val.length > 1 && val.startsWith("0") && val[1] !== ".") {
-                  val = val.substring(1);
-                }
-                setBalance(val);
-              }}
-              onFocus={(e) => e.target.select()}
-              placeholder="0.00"
-              step="0.01"
-              className="text-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <p className="text-sm text-muted-foreground">
-              {formatCurrency(balance)}
-            </p>
           </div>
         </div>
 
-        <DialogFooter className="flex-col sm:flex-row sm:justify-between gap-2">
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="gap-2 w-full sm:w-auto"
-          >
-            <Trash2 className="h-4 w-4" />
-            Eliminar Cuenta
+        <DialogFooter className="sm:justify-center">
+          <Button size="lg" onClick={handleSave} disabled={isUpdating} className="w-full rounded-2xl h-12 text-base font-medium">
+            Guardar Cambios
           </Button>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)} className="flex-1 sm:flex-none">
-              Cancelar
-            </Button>
-            <Button size="sm" onClick={handleSave} disabled={isUpdating} className="flex-1 sm:flex-none">
-              Guardar
-            </Button>
-          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

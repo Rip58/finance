@@ -51,13 +51,15 @@ export function AccountPage({ user }: AccountPageProps) {
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
-                className="w-full flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/50 transition-colors hover:bg-accent/50"
+                className="w-full flex items-center gap-4 p-5 rounded-3xl bg-card/60 border border-border/40 transition-all duration-200 hover:bg-accent/50 active:scale-[0.98] shadow-sm backdrop-blur-sm group"
               >
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <tab.icon className="h-5 w-5" />
+                <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+                  <tab.icon className="h-6 w-6" />
                 </div>
-                <span className="flex-1 text-left font-medium">{tab.label}</span>
-                <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                <div className="flex-1 text-left">
+                  <span className="font-semibold text-lg block">{tab.label}</span>
+                </div>
+                <ChevronRight className="h-5 w-5 text-muted-foreground/50 group-hover:text-primary transition-colors" />
               </button>
             ))}
           </div>
