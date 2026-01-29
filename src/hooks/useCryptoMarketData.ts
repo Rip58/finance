@@ -72,12 +72,39 @@ export function useCryptoMarketData(symbols: string[]) {
         if (uniqueSymbols.length === 0) return;
 
         try {
-            // Re-use existing update logic which calls the updated Edge Function
-            await updateCryptoPrices(uniqueSymbols);
+            // Split symbols to avoid cross-pollution
+            // We need the constant. We can import it or define it. 
+            // Since this is inside an async function, dynamic import is fine.
+            const { INSTITUTIONAL_SYMBOLS } = await import("@/lib/finance_api");
+
+            const institutionalSymbols = uniqueSymbols.filter(s => INSTITUTIONAL_SYMBOLS.includes(s));
+            const cryptoSymbols = uniqueSymbols.filter(s => !INSTITUTIONAL_SYMBOLS.includes(s));
+
+            const promises = [];
+
+            // 1. Update Crypto (via Edge Function) using only crypto symbols
+            if (cryptoSymbols.length > 0) {
+                promises.push(
+                    updateCryptoPrices(cryptoSymbols).catch(e => console.error("Crypto update failed:", e))
+                );
+            }
+
+            // 2. Update Institutional (via FMP) using only institutional symbols
+            if (institutionalSymbols.length > 0) {
+                const { updateInstitutionalPrices } = await import("@/lib/institutionalPrices");
+                promises.push(
+                    updateInstitutionalPrices(institutionalSymbols).catch(e => console.error("Institutional update failed:", e))
+                );
+            }
+
+            await Promise.all(promises);
+
             queryClient.invalidateQueries({ queryKey: ["crypto-market-data"] });
         } catch (err) {
             console.error("Error refreshing market data:", err);
-            throw err;
+            // Don't throw to UI? User gets a toast if we do? 
+            // The original logic threw. Let's throw if both fail?
+            // Actually, we caught individual errors above, so this catch block might not be reached unless import fails.
         }
     };
 

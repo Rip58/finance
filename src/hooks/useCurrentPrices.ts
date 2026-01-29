@@ -2,11 +2,15 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { updateCryptoPrices } from "@/lib/cryptoPrices";
 
+import { INSTITUTIONAL_SYMBOLS } from '@/lib/finance_api';
+
 export function useCurrentPrices(symbols: string[]) {
   const queryClient = useQueryClient();
   const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
   const stableSymbols = uniqueSymbols.filter(symbol => symbol === "USDT");
-  const binanceSymbols = uniqueSymbols.filter(symbol => symbol !== "USDT");
+
+  const binanceSymbols = uniqueSymbols.filter(symbol => symbol !== "USDT" && !INSTITUTIONAL_SYMBOLS.includes(symbol));
+
 
   const query = useQuery({
     queryKey: ["current-prices", uniqueSymbols],
@@ -19,27 +23,55 @@ export function useCurrentPrices(symbols: string[]) {
           prices[symbol] = 1;
         }
 
-        if (binanceSymbols.length === 0) return prices;
+        if (binanceSymbols.length > 0) {
+          const binancePairs = binanceSymbols.map(symbol => `${symbol}USDT`);
+          const url = `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(binancePairs))}`;
+          const response = await fetch(url);
 
-        const binancePairs = binanceSymbols.map(symbol => `${symbol}USDT`);
-        const url = `https://api.binance.com/api/v3/ticker/price?symbols=${encodeURIComponent(JSON.stringify(binancePairs))}`;
-        const response = await fetch(url);
+          if (!response.ok) {
+            // Fallback to DB if Binance fails (e.g. strict firewall or rate limit)
+            console.warn("Binance API failed, falling back to DB", response.status);
+            throw new Error("Binance fetch failed");
+          }
 
-        if (!response.ok) {
-          // Fallback to DB if Binance fails (e.g. strict firewall or rate limit)
-          console.warn("Binance API failed, falling back to DB", response.status);
-          throw new Error("Binance fetch failed");
+          const data = await response.json();
+          // Data format: [{ symbol: "BTCUSDT", price: "65000.00" }, ...]
+
+          if (Array.isArray(data)) {
+            for (const item of data) {
+              const symbol = item.symbol.replace("USDT", ""); // Remove USDT suffix
+              if (binanceSymbols.includes(symbol)) {
+                prices[symbol] = parseFloat(item.price);
+              }
+            }
+          }
         }
 
-        const data = await response.json();
-        // Data format: [{ symbol: "BTCUSDT", price: "65000.00" }, ...]
+        // --- Institutional Assets: NO AUTO-REFRESH ---
+        // Institutional assets are NOT fetched here to avoid Alpha Vantage rate limits
+        // They are ONLY updated when user clicks manual "Refresh" button
+        // which triggers updateInstitutionalPrices()
 
-        if (Array.isArray(data)) {
-          for (const item of data) {
-            const symbol = item.symbol.replace("USDT", ""); // Remove USDT suffix
-            if (binanceSymbols.includes(symbol)) {
-              prices[symbol] = parseFloat(item.price);
+        // For any institutional symbols, try to get from DB
+        const institutionalSymbols = uniqueSymbols.filter(s =>
+          INSTITUTIONAL_SYMBOLS.includes(s) && !prices[s]
+        );
+
+        if (institutionalSymbols.length > 0) {
+          const { data: dbPrices } = await supabase
+            .from("asset_prices")
+            .select("symbol, close_price, price_date")
+            .in("symbol", institutionalSymbols)
+            .order("price_date", { ascending: false });
+
+          if (dbPrices) {
+            const latestBySymbol: Record<string, number> = {};
+            for (const p of dbPrices) {
+              if (!latestBySymbol[p.symbol]) {
+                latestBySymbol[p.symbol] = p.close_price;
+              }
             }
+            Object.assign(prices, latestBySymbol);
           }
         }
 
@@ -72,7 +104,7 @@ export function useCurrentPrices(symbols: string[]) {
     },
     enabled: uniqueSymbols.length > 0,
     staleTime: 2000,
-    refetchInterval: 5000, // Update every 5 seconds
+    // refetchInterval: 5000, // DISABLED: No auto-refresh, only manual button
     refetchIntervalInBackground: false,
   });
 

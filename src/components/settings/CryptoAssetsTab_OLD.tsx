@@ -9,11 +9,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Loader2, Coins, Search } from "lucide-react";
+import { Plus, Pencil, Trash2, Loader2, Coins } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { updateCryptoPrices } from "@/lib/cryptoPrices";
 import { updateInstitutionalPrices } from "@/lib/institutionalPrices";
-import { fetchAssetPrice, searchSymbolOnline, isCryptoSymbol, NAME_TO_SYMBOL } from "@/lib/finance_api";
+import { fetchAssetPrice, searchSymbolOnline, NAME_TO_SYMBOL } from "@/lib/finance_api";
 
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -49,51 +49,6 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
     { symbol: "DOGE", name: "Dogecoin" },
     { symbol: "TRX", name: "TRON" },
   ];
-
-  const handleSearchSymbol = async () => {
-    if (formData.name.length < 3) {
-      toast({
-        title: "Nombre muy corto",
-        description: "Escribe al menos 3 caracteres",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    setIsSearching(true);
-    try {
-      // Pass asset type to search the correct API
-      const result = await searchSymbolOnline(formData.name, formData.asset_type as 'crypto' | 'institutional');
-
-      if (result) {
-        setFormData(prev => ({
-          ...prev,
-          symbol: result.symbol,
-          name: result.name,
-          // Don't override asset_type - user already selected it
-        }));
-
-        toast({
-          title: result.source === 'local' ? "¡Encontrado!" : "Encontrado en línea",
-          description: `${result.symbol} - ${result.name}`,
-        });
-      } else {
-        toast({
-          title: "No encontrado",
-          description: "Prueba con otro nombre o escribe el símbolo manualmente",
-          variant: "destructive"
-        });
-      }
-    } catch (err: any) {
-      toast({
-        title: "Error de búsqueda",
-        description: err.message || "No se pudo conectar",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSearching(false);
-    }
-  };
 
   const handleInitializeDefaults = async () => {
     setIsInitializing(true);
@@ -157,11 +112,14 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
 
         // If valid, check name match and maybe auto-correct
         if (data.name && data.name.toLowerCase() !== formData.name.toLowerCase()) {
+          // We could auto-correct or ask, but for now let's just warn or use the official name?
+          // The user said "ponga el correcto". Let's update the name automatically or notify.
           setFormData(prev => ({ ...prev, name: data.name }));
           toast({
             title: "Nombre actualizado",
             description: `Se actualizado el nombre a: ${data.name} (oficial de CMC)`,
           });
+          // We continue to save with the new name
         }
 
       } catch (err: any) {
@@ -176,11 +134,15 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
       }
     } else if (needsValidation && formData.asset_type === 'institutional') {
       try {
+        // SKIPPING validation for Trusted/Auto-filled symbols to allow instant creation
+        // The user specifically asked: "si el simbolo lo buscas tu casi que no tienen sentido verificar"
         const isTrusted = Object.values(NAME_TO_SYMBOL).includes(formData.symbol);
 
         if (isTrusted) {
+          // It's a trusted mapping (Tesla -> TSLA), skip network check
           console.log("Skipping validation for trusted symbol:", formData.symbol);
         } else {
+          // Only validate unknown symbols
           const priceData = await fetchAssetPrice(formData.symbol);
           if (priceData.name && priceData.name.toLowerCase() !== formData.name.toLowerCase()) {
             setFormData(prev => ({ ...prev, name: priceData.name || prev.name }));
@@ -192,6 +154,9 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
         }
       } catch (err: any) {
         console.error("Validation error:", err);
+        // If it fails but it's institutional, maybe we let them pass with a warning?
+        // Or strictly block? The screenshot showed "Símbolo inválido" blocking action.
+        // Let's degrade to warning for now if it's FMP failure? No, safer to block invalid inputs unless trusted.
         toast({
           title: "Símbolo no verificado",
           description: "No se pudo verificar el precio. Comprueba el ticker o prueba más tarde.",
@@ -342,72 +307,86 @@ export function CryptoAssetsTab({ userId }: CryptoAssetsTabProps) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            {/* 1. TIPO DE ACTIVO - Primero */}
-            <div className="space-y-2">
-              <Label>Tipo de Activo</Label>
-              <Select
-                value={formData.asset_type}
-                onValueChange={(val) => setFormData({ ...formData, asset_type: val })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="crypto">Crypto</SelectItem>
-                  <SelectItem value="institutional">Institucional</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* 2. NOMBRE - Segundo, con búsqueda */}
             <div className="space-y-2">
               <Label>Nombre</Label>
               <div className="flex gap-2">
                 <Input
-                  placeholder={formData.asset_type === 'crypto' ? "Bitcoin, Ethereum, Solana..." : "Tesla, Apple, Microsoft..."}
+                  placeholder="Bitcoin, Tesla, Apple..."
                   value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  className="flex-1"
+                  onChange={async (e) => {
+                    const newName = e.target.value;
+                    setFormData(prev => ({ ...prev, name: newName }));
+
+                    // Auto-suggest symbol
+                    if (newName.length > 2 && !formData.symbol) {
+                      setIsSearching(true);
+                      try {
+                        const suggested = await findSymbolByName(newName);
+                        if (suggested) {
+                          setFormData(current => {
+                            if (!current.symbol) {
+                              const upper = suggested.toUpperCase();
+                              const isCrypto = ['BTC', 'ETH', 'SOL', 'XRP', 'ADA', 'DOGE', 'USDT', 'USDC'].includes(upper);
+
+                              toast({
+                                title: "Símbolo encontrado",
+                                description: `${suggested} asignado a ${newName}`,
+                              });
+
+                              return {
+                                ...current,
+                                symbol: suggested,
+                                asset_type: isCrypto ? 'crypto' : 'institutional'
+                              };
+                            }
+                            return current;
+                          });
+                        }
+                      } catch (err) {
+                        console.warn("Auto-suggest failed", err);
+                      } finally {
+                        setIsSearching(false);
+                      }
+                    }
+                  }}
                 />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  onClick={handleSearchSymbol}
-                  disabled={isSearching || formData.name.length < 3}
-                  title="Buscar símbolo"
+              </div>
+              <div className="space-y-2">
+                <Label>Símbolo</Label>
+                <Input
+                  placeholder="BTC, ETH, SOL..."
+                  value={formData.symbol}
+                  onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Tipo de Activo</Label>
+                <Select
+                  value={formData.asset_type}
+                  onValueChange={(val) => setFormData({ ...formData, asset_type: val })}
                 >
-                  {isSearching ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                </Button>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="crypto">Crypto</SelectItem>
+                    <SelectItem value="institutional">Institucional</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-
-            {/* 3. SÍMBOLO - Tercero */}
-            <div className="space-y-2">
-              <Label>Símbolo</Label>
-              <Input
-                placeholder={formData.asset_type === 'crypto' ? "BTC, ETH, SOL..." : "TSLA, AAPL, MSFT..."}
-                value={formData.symbol}
-                onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={isCreating || isUpdating || !formData.symbol || !formData.name}
-            >
-              {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingAsset ? "Guardar" : "Crear"}
-            </Button>
-          </DialogFooter>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetForm(); }}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={isCreating || isUpdating || !formData.symbol || !formData.name}
+              >
+                {(isCreating || isUpdating) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {editingAsset ? "Guardar" : "Crear"}
+              </Button>
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

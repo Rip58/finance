@@ -6,204 +6,113 @@
 
 @layer base {
   :root {
-    /* Exodus Style / Deep Space Theme */
-    --background: 265 40% 10%;
-    /* Deep Violet Base */
-    --foreground: 210 40% 98%;
+    --background: oklch(0.9821 0 0);
+    --foreground: oklch(0.2435 0 0);
+    --card: oklch(0.9911 0 0);
+    --card-foreground: oklch(0.2435 0 0);
+    --popover: oklch(0.9911 0 0);
+    --popover-foreground: oklch(0.2435 0 0);
+    --primary: oklch(0.4341 0.0392 41.9938);
+    --primary-foreground: oklch(1.0000 0 0);
+    --secondary: oklch(0.9200 0.0651 74.3695);
+    --secondary-foreground: oklch(0.3499 0.0685 40.8288);
+    --muted: oklch(0.9521 0 0);
+    --muted-foreground: oklch(0.5032 0 0);
+    --accent: oklch(0.9310 0 0);
+    --accent-foreground: oklch(0.2435 0 0);
+    --destructive: oklch(0.6271 0.1936 33.3390);
+    --destructive-foreground: oklch(1.0000 0 0);
+    --border: oklch(0.8822 0 0);
+    --input: oklch(0.8822 0 0);
+    --ring: oklch(0.4341 0.0392 41.9938);
+    --chart-1: oklch(0.4341 0.0392 41.9938);
+    --chart-2: oklch(0.9200 0.0651 74.3695);
+    --chart-3: oklch(0.9310 0 0);
+    --chart-4: oklch(0.9367 0.0523 75.5009);
+    --chart-5: oklch(0.4338 0.0437 41.6746);
+    --sidebar: oklch(0.9881 0 0);
+    --sidebar-foreground: oklch(0.2645 0 0);
+    --sidebar-primary: oklch(0.3250 0 0);
+    --sidebar-primary-foreground: oklch(0.9881 0 0);
+    --sidebar-accent: oklch(0.9761 0 0);
+    --sidebar-accent-foreground: oklch(0.3250 0 0);
+    --sidebar-border: oklch(0.9401 0 0);
+    --sidebar-ring: oklch(0.7731 0 0);
 
-    --card: 260 30% 16%;
-    /* Rich Dark Violet Card */
-    --card-foreground: 210 40% 98%;
+    --radius: 0.5rem;
+    --shadow-x: 0;
+    --shadow-y: 1px;
+    --shadow-blur: 3px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.1;
+    --shadow-color: oklch(0 0 0);
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+    --tracking-normal: 0em;
+    --spacing: 0.25rem;
 
-    --popover: 260 30% 16%;
-    --popover-foreground: 210 40% 98%;
+    /* Legacy support / placeholders */
+    --chart-income: var(--chart-1);
+    --chart-expense: var(--chart-2);
+    --chart-assets: var(--chart-3);
+    --sidebar-background: var(--sidebar);
 
-    /* Electric Violet Primary */
-    --primary: 270 90% 65%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 260 25% 22%;
-    --secondary-foreground: 210 40% 98%;
-
-    --muted: 260 25% 22%;
-    --muted-foreground: 260 10% 65%;
-
-    --accent: 270 90% 65%;
-    --accent-foreground: 0 0% 100%;
-
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-
-    --success: 150 100% 45%;
-    --success-foreground: 0 0% 100%;
-
-    --warning: 35 100% 60%;
-    --warning-foreground: 0 0% 0%;
-
-    --border: 260 30% 25%;
-    --input: 260 30% 25%;
-    --ring: 270 90% 65%;
-
-    --radius: 1.25rem;
-
-    --chart-income: 150 100% 45%;
-    --chart-expense: 0 84% 60%;
-    --chart-assets: 270 90% 65%;
-
-    --sidebar-background: 265 40% 10%;
-    --sidebar-foreground: 210 40% 90%;
-    --sidebar-primary: 270 90% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 260 25% 22%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 260 30% 25%;
-    --sidebar-ring: 270 90% 65%;
-
-    /* Exodus Body Background */
-    --body-background: linear-gradient(135deg, hsl(265 40% 12%) 0%, hsl(240 40% 8%) 100%);
-
-    /* Premium Gradients */
-    --gradient-card: linear-gradient(145deg, hsl(240 10% 7%) 0%, hsl(240 10% 4%) 100%);
-    --gradient-primary: linear-gradient(135deg, hsl(265 89% 66%) 0%, hsl(265 80% 50%) 100%);
-    --gradient-success: linear-gradient(135deg, hsl(150 100% 40%) 0%, hsl(150 100% 30%) 100%);
-    --gradient-danger: linear-gradient(135deg, hsl(0 84% 60%) 0%, hsl(0 84% 50%) 100%);
-
-    /* Premium Glows */
-    --shadow-glow-primary: 0 0 30px hsl(265 89% 66% / 0.2);
-    --shadow-glow-success: 0 0 30px hsl(150 100% 40% / 0.2);
-    --shadow-glow-danger: 0 0 30px hsl(0 84% 60% / 0.2);
-    --shadow-card: 0 8px 30px hsl(0 0% 0% / 0.4);
-
-    /* Glassmorphism - Exodus Style */
-    --glass-bg: hsl(260 30% 10% / 0.6);
-    --glass-border: hsl(270 50% 60% / 0.15);
   }
 
-  /* Light mode adjustments (if toggled, though Dark is default premium) */
-  .light {
-    --background: 240 10% 98%;
-    --foreground: 240 10% 4%;
-    --body-background: hsl(240 10% 98%);
+  .dark {
+    --background: oklch(0.1776 0 0);
+    --foreground: oklch(0.9491 0 0);
+    --card: oklch(0.2134 0 0);
+    --card-foreground: oklch(0.9491 0 0);
+    --popover: oklch(0.2134 0 0);
+    --popover-foreground: oklch(0.9491 0 0);
+    --primary: oklch(0.9247 0.0524 66.1732);
+    --primary-foreground: oklch(0.2029 0.0240 200.1962);
+    --secondary: oklch(0.3163 0.0190 63.6992);
+    --secondary-foreground: oklch(0.9247 0.0524 66.1732);
+    --muted: oklch(0.2520 0 0);
+    --muted-foreground: oklch(0.7699 0 0);
+    --accent: oklch(0.2850 0 0);
+    --accent-foreground: oklch(0.9491 0 0);
+    --destructive: oklch(0.6271 0.1936 33.3390);
+    --destructive-foreground: oklch(1.0000 0 0);
+    --border: oklch(0.2351 0.0115 91.7467);
+    --input: oklch(0.4017 0 0);
+    --ring: oklch(0.9247 0.0524 66.1732);
+    --chart-1: oklch(0.9247 0.0524 66.1732);
+    --chart-2: oklch(0.3163 0.0190 63.6992);
+    --chart-3: oklch(0.2850 0 0);
+    --chart-4: oklch(0.3481 0.0219 67.0001);
+    --chart-5: oklch(0.9245 0.0533 67.0855);
+    --sidebar: oklch(0.2103 0.0059 285.8852);
+    --sidebar-foreground: oklch(0.9674 0.0013 286.3752);
+    --sidebar-primary: oklch(0.4882 0.2172 264.3763);
+    --sidebar-primary-foreground: oklch(1.0000 0 0);
+    --sidebar-accent: oklch(0.2739 0.0055 286.0326);
+    --sidebar-accent-foreground: oklch(0.9674 0.0013 286.3752);
+    --sidebar-border: oklch(0.2739 0.0055 286.0326);
+    --sidebar-ring: oklch(0.8711 0.0055 286.2860);
 
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 4%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 4%;
-
-    --primary: 265 89% 60%;
-    --primary-foreground: 0 0% 98%;
-
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 10% 4%;
-
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 45%;
-
-    --accent: 240 5% 94%;
-    --accent-foreground: 240 10% 4%;
-
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 265 89% 60%;
-
-    --sidebar-background: 240 10% 99%;
-    --sidebar-foreground: 240 10% 10%;
-    --sidebar-primary: 265 89% 60%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 5% 94%;
-    --sidebar-accent-foreground: 240 10% 4%;
-    --sidebar-border: 240 6% 90%;
-
-    /* Light Mode Glassmorphism - RADICALLY CLEAR */
-    --glass-bg: hsl(0 0% 100% / 0.85);
-    --glass-border: hsl(240 6% 90% / 0.6);
-  }
-
-  /* Theme Overrides (Applied via ThemeColorProvider) */
-  /* Violet (Default) */
-  .theme-violet {
-    --primary: 265 95% 68%;
-    --ring: 265 95% 68%;
-    --sidebar-primary: 265 95% 68%;
-    --gradient-primary: linear-gradient(135deg, hsl(265 89% 66%) 0%, hsl(265 80% 50%) 100%);
-    --shadow-glow-primary: 0 0 30px hsl(265 89% 66% / 0.2);
-  }
-
-  .light.theme-violet,
-  .light .theme-violet {
-    --primary: 265 89% 60%;
-    --ring: 265 89% 60%;
-    --sidebar-primary: 265 89% 60%;
-  }
-
-  /* Blue (Pastel Sky) */
-  .theme-blue {
-    --primary: 200 95% 65%;
-    --ring: 200 95% 65%;
-    --sidebar-primary: 200 95% 65%;
-    --gradient-primary: linear-gradient(135deg, hsl(200 95% 65%) 0%, hsl(200 90% 45%) 100%);
-    --shadow-glow-primary: 0 0 30px hsl(200 95% 65% / 0.2);
-  }
-
-  .light.theme-blue,
-  .light .theme-blue {
-    --primary: 200 90% 45%;
-    --ring: 200 90% 45%;
-    --sidebar-primary: 200 90% 45%;
-    --gradient-primary: linear-gradient(135deg, hsl(200 90% 55%) 0%, hsl(200 90% 40%) 100%);
-    /* Slightly darker gradient for light mode readability against white text? BalanceCard uses text-white */
-  }
-
-  /* Rose (Pastel Pink) */
-  .theme-rose {
-    --primary: 340 90% 75%;
-    --ring: 340 90% 75%;
-    --sidebar-primary: 340 90% 75%;
-    --gradient-primary: linear-gradient(135deg, hsl(340 90% 75%) 0%, hsl(340 80% 60%) 100%);
-    --shadow-glow-primary: 0 0 30px hsl(340 90% 75% / 0.2);
-  }
-
-  .light.theme-rose,
-  .light .theme-rose {
-    --primary: 340 80% 60%;
-    --ring: 340 80% 60%;
-    --sidebar-primary: 340 80% 60%;
-    --gradient-primary: linear-gradient(135deg, hsl(340 85% 65%) 0%, hsl(340 80% 50%) 100%);
-  }
-
-  /* Orange (Peach/Apricot) */
-  .theme-orange {
-    --primary: 30 100% 70%;
-    --ring: 30 100% 70%;
-    --sidebar-primary: 30 100% 70%;
-    --gradient-primary: linear-gradient(135deg, hsl(30 100% 70%) 0%, hsl(30 90% 55%) 100%);
-    --shadow-glow-primary: 0 0 30px hsl(30 100% 70% / 0.2);
-  }
-
-  .light.theme-orange,
-  .light .theme-orange {
-    --primary: 30 90% 55%;
-    --ring: 30 90% 55%;
-    --sidebar-primary: 30 90% 55%;
-    --gradient-primary: linear-gradient(135deg, hsl(30 95% 60%) 0%, hsl(30 90% 45%) 100%);
-  }
-
-  /* Green (Sage/Mint) */
-  .theme-green {
-    --primary: 160 70% 55%;
-    --ring: 160 70% 55%;
-    --sidebar-primary: 160 70% 55%;
-    --gradient-primary: linear-gradient(135deg, hsl(160 70% 55%) 0%, hsl(160 60% 40%) 100%);
-    --shadow-glow-primary: 0 0 30px hsl(160 70% 55% / 0.2);
-  }
-
-  .light.theme-green,
-  .light .theme-green {
-    --primary: 160 60% 45%;
-    --ring: 160 60% 45%;
-    --sidebar-primary: 160 60% 45%;
-    --gradient-primary: linear-gradient(135deg, hsl(160 65% 50%) 0%, hsl(160 60% 35%) 100%);
+    --shadow-x: 0;
+    --shadow-y: 1px;
+    --shadow-blur: 3px;
+    --shadow-spread: 0px;
+    --shadow-opacity: 0.1;
+    --shadow-color: oklch(0 0 0);
+    --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
+    --shadow-sm: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 1px 2px -1px hsl(0 0% 0% / 0.10);
+    --shadow-md: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 2px 4px -1px hsl(0 0% 0% / 0.10);
+    --shadow-lg: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 4px 6px -1px hsl(0 0% 0% / 0.10);
+    --shadow-xl: 0 1px 3px 0px hsl(0 0% 0% / 0.10), 0 8px 10px -1px hsl(0 0% 0% / 0.10);
+    --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
   }
 }
 
@@ -214,9 +123,6 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    /* Exodus Style: Deep Space Gradient or Solid Light */
-    background: var(--body-background);
-    background-attachment: fixed;
     font-family: 'Inter', system-ui, sans-serif;
   }
 
@@ -226,45 +132,21 @@
 }
 
 @layer utilities {
-  .gradient-card {
-    background: var(--gradient-card);
-  }
-
-  .gradient-primary {
-    background: var(--gradient-primary);
-  }
-
-  .gradient-success {
-    background: var(--gradient-success);
-  }
-
-  .gradient-danger {
-    background: var(--gradient-danger);
-  }
-
-  .glow-primary {
-    box-shadow: var(--shadow-glow-primary);
-  }
-
-  .glow-success {
-    box-shadow: var(--shadow-glow-success);
-  }
-
-  .glow-danger {
-    box-shadow: var(--shadow-glow-danger);
-  }
-
-  .glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-  }
-
   .safe-area-pt {
     padding-top: max(59px, env(safe-area-inset-top, 59px));
   }
 
   .safe-area-pb {
     padding-bottom: max(34px, env(safe-area-inset-bottom, 34px));
+  }
+
+  /* Restored Gradients and Glows with new Primary Color (Brown) */
+  .gradient-primary {
+    /* User requested specific hex: #ffe0c2 */
+    background: linear-gradient(135deg, #ffe0c2 0%, #ffcd9e 100%);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 30px oklch(0.4341 0.0392 41.9938 / 0.2);
   }
 }

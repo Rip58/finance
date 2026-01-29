@@ -7,8 +7,11 @@ export async function updateCryptoPrices(
     logger.log("[cryptoPrices] 🚀 Starting updateCryptoPrices with symbols:", symbols);
 
     try {
-        const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))];
-        logger.log("[cryptoPrices] ✅ Unique symbols after dedup:", uniqueSymbols);
+        const { INSTITUTIONAL_SYMBOLS } = await import("./finance_api");
+        const uniqueSymbols = [...new Set(symbols.map(s => s.toUpperCase()))]
+            .filter(s => !INSTITUTIONAL_SYMBOLS.includes(s));
+
+        logger.log("[cryptoPrices] ✅ Unique symbols after dedup & filtering:", uniqueSymbols);
 
         if (uniqueSymbols.length === 0) {
             logger.warn("[cryptoPrices] ⚠️ No symbols to update, returning early");
