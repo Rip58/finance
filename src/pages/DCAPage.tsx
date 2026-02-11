@@ -31,6 +31,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DCAGlobalSummary } from "@/components/dca/DCAGlobalSummary";
 
 interface DCAPageProps {
   user: User;
@@ -76,24 +77,61 @@ export function DCAPage({ user }: DCAPageProps) {
     );
   }, [assetTransactions.data, selectedPortfolioId]);
 
-  // Get symbol from selected portfolio
-  const symbols = useMemo(() => {
-    if (!selectedPortfolio) return [];
-    return [selectedPortfolio.symbol.toUpperCase()];
-  }, [selectedPortfolio]);
+  // Get ALL symbols for global summary
+  const allSymbols = useMemo(() => {
+    return portfolios.data?.map(p => p.symbol.toUpperCase()) || [];
+  }, [portfolios.data]);
 
-  const { data: currentPrices, refreshPrices } = useCurrentPrices(symbols);
+  const { data: currentPrices, refreshPrices } = useCurrentPrices(allSymbols);
+
+  const globalStats = useMemo(() => {
+    if (!portfolios.data || !assetTransactions.data || !currentPrices) {
+      return { totalInvested: 0, totalCurrentValue: 0, totalPnL: 0, totalPnLPercent: 0 };
+    }
+
+    let totalInvested = 0;
+    let totalCurrentValue = 0;
+
+    portfolios.data.forEach(portfolio => {
+      const portfolioTxs = assetTransactions.data!.filter(tx => tx.dca_portfolio_id === portfolio.id);
+
+      let netQuantity = 0;
+      let costBasis = 0;
+
+      for (const tx of portfolioTxs) {
+        if (tx.side === "buy") {
+          netQuantity += tx.quantity;
+          costBasis += tx.quantity * tx.price_eur;
+        } else {
+          const avgCost = netQuantity > 0 ? costBasis / netQuantity : 0;
+          netQuantity -= tx.quantity;
+          costBasis -= tx.quantity * avgCost;
+        }
+      }
+
+      if (netQuantity < 0) netQuantity = 0;
+      if (costBasis < 0) costBasis = 0;
+
+      const price = currentPrices[portfolio.symbol.toUpperCase()] || 0;
+      const value = netQuantity * price;
+
+      totalInvested += costBasis;
+      totalCurrentValue += value;
+    });
+
+    const totalPnL = totalCurrentValue - totalInvested;
+    const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+
+    return { totalInvested, totalCurrentValue, totalPnL, totalPnLPercent };
+  }, [portfolios.data, assetTransactions.data, currentPrices]);
 
   const handleRefreshPrices = async () => {
-    if (symbols.length === 0) {
-      // Don't toast on initial auto-refresh if empty, just return
+    if (allSymbols.length === 0) {
       return;
     }
     setIsRefreshing(true);
     try {
       await refreshPrices();
-      // Only toast if manually triggered? Or maybe suppress toast on auto-refresh?
-      // For now, let's keep it simple.
     } catch (error) {
       console.error("Failed to refresh prices", error);
     } finally {
@@ -101,12 +139,12 @@ export function DCAPage({ user }: DCAPageProps) {
     }
   };
 
-  // Auto-refresh on symbol change (portfolio selection)
+  // Auto-refresh on symbols change
   useEffect(() => {
-    if (symbols.length > 0) {
+    if (allSymbols.length > 0) {
       handleRefreshPrices();
     }
-  }, [symbols.join(',')]); // Use minimal dependency
+  }, [allSymbols.join(',')]);
 
 
   const handleSubmit = async (data: {
@@ -225,6 +263,13 @@ export function DCAPage({ user }: DCAPageProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           }
+        />
+
+        <DCAGlobalSummary
+          totalInvested={globalStats.totalInvested}
+          totalCurrentValue={globalStats.totalCurrentValue}
+          totalPnL={globalStats.totalPnL}
+          totalPnLPercent={globalStats.totalPnLPercent}
         />
 
         {/* Portfolio selector */}

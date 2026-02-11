@@ -109,13 +109,25 @@ function CryptoAccountDialog({
   // Edit state
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
   const [editQuantity, setEditQuantity] = useState("");
+  const [name, setName] = useState("");
 
   useEffect(() => {
     if (account) {
       setInitialBalance((account.initial_balance ?? 0).toString());
       setUseInitialBalance(!!account.importe_inicial);
+      setName(account.name);
     }
   }, [account]);
+
+  const handleUpdateName = async () => {
+    if (account && name && name !== account.name) {
+      try {
+        await updateAccount({ id: account.id, name });
+      } catch (error) {
+        console.error("Error updating account name:", error);
+      }
+    }
+  };
 
   const handleAddHolding = async () => {
     let finalSymbol = newSymbol;
@@ -245,7 +257,16 @@ function CryptoAccountDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[92vw] max-w-md max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{account?.name} - Activos</DialogTitle>
+          <div className="flex items-center justify-center gap-1 w-full relative left-[-10px]">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onBlur={handleUpdateName}
+              className="text-right font-bold text-lg border-transparent hover:border-border focus:border-border bg-transparent shadow-none h-auto py-1 px-2 w-[180px]"
+              placeholder="Nombre"
+            />
+            <span className="text-lg font-bold whitespace-nowrap">- Activos</span>
+          </div>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -473,17 +494,27 @@ function SavingsAccountDialog({
   const [balance, setBalance] = useState("");
   const [initialBalance, setInitialBalance] = useState("");
   const [useInitialBalance, setUseInitialBalance] = useState(false);
+  const [name, setName] = useState("");
 
   useEffect(() => {
     if (account) {
       setBalance((currentBalance ?? account.initial_balance).toString());
       setInitialBalance((account.initial_balance ?? 0).toString());
       setUseInitialBalance(!!account.importe_inicial);
+      setName(account.name);
     }
   }, [account, currentBalance]);
 
   const handleSave = async () => {
     if (!account) return;
+
+    if (name && name !== account.name) {
+      try {
+        await update({ id: account.id, name });
+      } catch (error) {
+        console.error("Error updating account name:", error);
+      }
+    }
 
     if (currentBalance !== undefined) {
       const newBalance = parseFloat(balance) || 0;
@@ -580,7 +611,12 @@ function SavingsAccountDialog({
             <Trash2 className="h-4 w-4" />
           </Button>
           <div className="flex-1 flex justify-center mr-6">
-            <DialogTitle className="text-center">{account?.name}</DialogTitle>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="text-center font-bold text-lg border-transparent hover:border-border focus:border-border bg-transparent shadow-none h-auto py-1 px-2 w-full max-w-[200px]"
+              placeholder="Nombre cuenta"
+            />
           </div>
         </DialogHeader>
 
