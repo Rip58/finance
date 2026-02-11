@@ -18,6 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 import { formatCurrency } from "@/lib/utils";
+import { Zap } from "lucide-react";
 
 interface BankAccount {
   id: string;
@@ -30,7 +31,9 @@ interface DCAFormDialogProps {
   symbol: string;
   editingTx?: AssetTransaction | null;
   bankAccounts?: BankAccount[];
+  currentPrices?: Record<string, number>;
   onSubmit: (data: {
+    side: "buy" | "sell";
     quantity: number;
     price_eur: number;
     transaction_date: string;
@@ -47,10 +50,12 @@ export function DCAFormDialog({
   symbol,
   editingTx,
   bankAccounts = [],
+  currentPrices = {},
   onSubmit,
   onDelete,
   isSubmitting,
 }: DCAFormDialogProps) {
+  const [side, setSide] = useState<"buy" | "sell">("buy");
   const [formData, setFormData] = useState({
     quantity: "",
     price_eur: "",
@@ -61,6 +66,7 @@ export function DCAFormDialog({
 
   useEffect(() => {
     if (editingTx) {
+      setSide(editingTx.side);
       setFormData({
         quantity: String(editingTx.quantity),
         price_eur: String(editingTx.price_eur),
@@ -69,6 +75,7 @@ export function DCAFormDialog({
         bank_account_id: (editingTx as any).bank_account_id || "",
       });
     } else {
+      setSide("buy");
       setFormData({
         quantity: "",
         price_eur: "",
@@ -79,15 +86,24 @@ export function DCAFormDialog({
     }
   }, [editingTx, open]);
 
-  const totalInvestment = useMemo(() => {
+  const totalAmount = useMemo(() => {
     const qty = parseFloat(formData.quantity) || 0;
     const price = parseFloat(formData.price_eur) || 0;
     return qty * price;
   }, [formData.quantity, formData.price_eur]);
 
+  const handleFetchPrice = () => {
+    const upperSymbol = symbol.toUpperCase();
+    const price = currentPrices[upperSymbol];
+    if (price) {
+      setFormData((prev) => ({ ...prev, price_eur: String(price) }));
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     await onSubmit({
+      side,
       quantity: parseFloat(formData.quantity),
       price_eur: parseFloat(formData.price_eur),
       transaction_date: formData.transaction_date,
@@ -97,15 +113,43 @@ export function DCAFormDialog({
     onOpenChange(false);
   };
 
+  const isSell = side === "sell";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md rounded-3xl">
         <DialogHeader>
           <DialogTitle>
-            {editingTx ? "Editar compra" : `Nueva compra ${symbol}`}
+            {editingTx
+              ? `Editar ${isSell ? "venta" : "compra"}`
+              : `${isSell ? "Nueva venta" : "Nueva compra"} ${symbol}`}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Buy / Sell toggle */}
+          <div className="flex rounded-xl bg-muted p-1">
+            <button
+              type="button"
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${!isSell
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+                }`}
+              onClick={() => setSide("buy")}
+            >
+              Compra
+            </button>
+            <button
+              type="button"
+              className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${isSell
+                  ? "bg-destructive text-destructive-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+                }`}
+              onClick={() => setSide("sell")}
+            >
+              Venta
+            </button>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="transaction_date">Fecha</Label>
             <Input
@@ -135,25 +179,46 @@ export function DCAFormDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="price_eur">Precio (USDT)</Label>
-              <Input
-                id="price_eur"
-                type="number"
-                step="0.01"
-                placeholder="85000"
-                value={formData.price_eur}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, price_eur: e.target.value }))
-                }
-                required
-              />
+              <Label htmlFor="price_eur">Precio ($)</Label>
+              <div className="flex gap-1.5">
+                <Input
+                  id="price_eur"
+                  type="number"
+                  step="0.01"
+                  placeholder="85000"
+                  value={formData.price_eur}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, price_eur: e.target.value }))
+                  }
+                  required
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleFetchPrice}
+                  title="Precio actual"
+                  className="shrink-0"
+                >
+                  <Zap className="h-4 w-4 text-yellow-500" />
+                </Button>
+              </div>
             </div>
           </div>
 
-          <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-            <p className="text-sm text-muted-foreground">Inversión total</p>
-            <p className="text-2xl font-bold text-primary">
-              {formatCurrency(totalInvestment, "USDT")}
+          <div
+            className={`p-3 rounded-lg border ${isSell
+                ? "bg-destructive/10 border-destructive/20"
+                : "bg-primary/10 border-primary/20"
+              }`}
+          >
+            <p className="text-sm text-muted-foreground">Total</p>
+            <p
+              className={`text-2xl font-bold ${isSell ? "text-destructive" : "text-primary"
+                }`}
+            >
+              {formatCurrency(totalAmount, "USDT")}
             </p>
           </div>
 
@@ -185,7 +250,7 @@ export function DCAFormDialog({
             <Label htmlFor="notes">Notas (opcional)</Label>
             <Textarea
               id="notes"
-              placeholder="Ej: Compra mensual programada"
+              placeholder={isSell ? "Ej: Toma de beneficios parcial" : "Ej: Compra mensual programada"}
               value={formData.notes}
               onChange={(e) =>
                 setFormData((prev) => ({ ...prev, notes: e.target.value }))

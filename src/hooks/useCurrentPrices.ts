@@ -14,7 +14,7 @@ export function useCurrentPrices(symbols: string[]) {
 
   const query = useQuery({
     queryKey: ["current-prices", uniqueSymbols],
-    queryFn: async (): Promise<Record<string, number>> => {
+    queryFn: async (): Promise<Record<string, any>> => {
       if (uniqueSymbols.length === 0) return {};
 
       try {
@@ -60,23 +60,26 @@ export function useCurrentPrices(symbols: string[]) {
         if (institutionalSymbols.length > 0) {
           const { data: dbPrices } = await supabase
             .from("asset_prices")
-            .select("symbol, close_price, price_date")
+            .select("symbol, close_price, price_date, percent_change_24h, percent_change_7d, percent_change_30d, market_closed")
             .in("symbol", institutionalSymbols)
             .order("price_date", { ascending: false });
 
           if (dbPrices) {
-            const latestBySymbol: Record<string, number> = {};
+            const latestBySymbol: Record<string, any> = {};
             for (const p of dbPrices) {
               if (!latestBySymbol[p.symbol]) {
-                latestBySymbol[p.symbol] = p.close_price;
+                latestBySymbol[p.symbol] = {
+                  price: p.close_price,
+                  change24h: p.percent_change_24h,
+                  change7d: p.percent_change_7d,
+                  change30d: p.percent_change_30d
+                };
               }
             }
             Object.assign(prices, latestBySymbol);
           }
         }
 
-        // If we missed any symbols (maybe not USDT pair?), try DB fallback for those?
-        // For now, let's just return what we found.
         return prices;
 
       } catch (e) {
@@ -84,19 +87,24 @@ export function useCurrentPrices(symbols: string[]) {
         // Fallback to Supabase DB on error
         const { data, error } = await supabase
           .from("asset_prices")
-          .select("symbol, close_price, price_date")
+          .select("symbol, close_price, price_date, percent_change_24h, percent_change_7d, percent_change_30d")
           .in("symbol", uniqueSymbols)
           .order("price_date", { ascending: false });
 
         if (error) throw error;
 
-        const latestPrices: Record<string, number> = {};
+        const latestPrices: Record<string, any> = {};
         for (const symbol of stableSymbols) {
           latestPrices[symbol] = 1;
         }
         for (const p of data || []) {
           if (!latestPrices[p.symbol]) {
-            latestPrices[p.symbol] = p.close_price;
+            latestPrices[p.symbol] = {
+              price: p.close_price,
+              change24h: p.percent_change_24h,
+              change7d: p.percent_change_7d,
+              change30d: p.percent_change_30d
+            };
           }
         }
         return latestPrices;

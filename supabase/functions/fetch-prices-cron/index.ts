@@ -31,8 +31,20 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ message: "No assets to track" }), { headers: corsHeaders });
         }
 
-        // Get unique symbols
-        const uniqueSymbols = [...new Set(assets.map(a => a.symbol.toUpperCase()))];
+        // Institutional symbols to exclude from CMC/Crypto fetches
+        const INSTITUTIONAL_SYMBOLS = [
+            'XAU', 'GOLD',
+            'SPY', 'SP500', 'S&P500',
+            'XAG', 'SILVER',
+            'EUR', 'EURUSD',
+            'AAPL', 'GOOGL', 'MSFT', 'NVDA', 'TSLA', 'AMZN', 'META', 'NFLX',
+            'USD', 'USDT', 'USDC' // Stablecoins or Fiat might handle differently, but good to check
+        ];
+
+        // Get unique symbols, filtering out institutional ones
+        const uniqueSymbols = [...new Set(assets.map(a => a.symbol.toUpperCase()))]
+            .filter(symbol => !INSTITUTIONAL_SYMBOLS.includes(symbol));
+
         console.log(`Tracking prices for ${uniqueSymbols.length} symbols: ${uniqueSymbols.join(', ')}`);
 
         // 3. Fetch Prices from CoinMarketCap

@@ -110,6 +110,7 @@ export function DCAPage({ user }: DCAPageProps) {
 
 
   const handleSubmit = async (data: {
+    side: "buy" | "sell";
     quantity: number;
     price_eur: number;
     transaction_date: string;
@@ -121,13 +122,17 @@ export function DCAPage({ user }: DCAPageProps) {
     if (editingTx) {
       await assetTransactions.update({
         id: editingTx.id,
-        ...data,
+        side: data.side,
+        quantity: data.quantity,
+        price_eur: data.price_eur,
+        transaction_date: data.transaction_date,
+        notes: data.notes,
       });
     } else {
       await assetTransactions.create({
         symbol: selectedPortfolio.symbol,
         asset_type: selectedPortfolio.asset_type as "crypto" | "commodity" | "other",
-        side: "buy",
+        side: data.side,
         quantity: data.quantity,
         price_eur: data.price_eur,
         transaction_date: data.transaction_date,
@@ -273,6 +278,7 @@ export function DCAPage({ user }: DCAPageProps) {
         symbol={selectedPortfolio?.symbol || ""}
         editingTx={editingTx}
         bankAccounts={activeBankAccounts}
+        currentPrices={currentPrices || {}}
         onSubmit={handleSubmit}
         isSubmitting={assetTransactions.isCreating || assetTransactions.isUpdating}
       />

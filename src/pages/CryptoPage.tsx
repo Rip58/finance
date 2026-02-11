@@ -108,11 +108,22 @@ export function CryptoPage({ user }: CryptoPageProps) {
         }).sort((a, b) => (a.rank || 0) - (b.rank || 0));
     }, [cryptoOnlyAssets, marketData]);
 
-    // Aggregate institutional assets with database prices
     const aggregatedInstitutionalAssets = useMemo(() => {
         return institutionalAssets.map(asset => {
             const symbol = asset.symbol.toUpperCase();
-            const price = dbPrices[symbol] || 0;
+            const data = dbPrices[symbol] || { price: 0 };
+
+            // Handle both simple number (old format) and object (new format)
+            const price = typeof data === 'number' ? data : data.price || 0;
+            const variations = typeof data === 'object' ? {
+                "24h": data.change24h ?? null,
+                "7d": data.change7d ?? null,
+                "30d": data.change30d ?? null
+            } : {
+                "24h": null,
+                "7d": null,
+                "30d": null
+            };
 
             return {
                 symbol: asset.symbol,
@@ -120,11 +131,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                 currentPrice: price,
                 rank: 999999,
                 volume24h: null,
-                variations: {
-                    "24h": null,  // Not available for institutional from DB
-                    "7d": null,
-                    "30d": null
-                }
+                variations
             };
         }).sort((a, b) => a.symbol.localeCompare(b.symbol)); // Sort alphabetically
     }, [institutionalAssets, dbPrices]);

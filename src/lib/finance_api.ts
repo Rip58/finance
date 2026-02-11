@@ -241,62 +241,87 @@ export const isCryptoSymbol = (symbol: string): boolean => {
  * Fetches asset price from Yahoo Finance via a CORS proxy.
  * @param symbol Yahoo Finance symbol (e.g., 'GC=F' for Gold, '^GSPC' for S&P 500)
  */
-/**
- * Fetches asset price from Alpha Vantage for institutional assets.
- * Includes market closed detection based on latest trading day.
- * @param symbol Stock symbol (e.g., 'TSLA', 'AAPL', 'SPY')
- */
-export const fetchAssetPrice = async (symbol: string): Promise<AssetPrice> => {
+// Helper to get historical variation
+const calculateVariation = (currentPrice: number, history: { price: number, date: string }[], days: number): number | null => {
+    if (!history || history.length === 0) return null;
+
+    // Find the price 'days' ago.
+    // Since markets aren't open every day, we look for the entry closest to (today - days)
+    // but NOT after that target date.
+    const targetDate = new Date();
+    targetDate.setDate(targetDate.getDate() - days);
+    const targetDateStr = targetDate.toISOString().split('T')[0];
+
+    // History is usually sorted by date desc or asc. Let's assume we sort it desc for safety.
+    const sortedHistory = [...history].sort((a, b) => b.date.localeCompare(a.date));
+
+    // Find first entry where date <= targetDateStr
+    const pastEntry = sortedHistory.find(h => h.date <= targetDateStr);
+
+    if (pastEntry) {
+        return ((currentPrice - pastEntry.price) / pastEntry.price) * 100;
+    }
+
+    return null;
+};
+
+export const fetchAssetPrice = async (symbol: string): Promise<AssetPrice & { change7d: number | null, change30d: number | null }> => {
     const alphaVantageKey = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY || 'HZMXGN5NP06VS6UZ';
 
-    // Use Alpha Vantage GLOBAL_QUOTE for institutional assets
+    // Use Alpha Vantage GLOBAL_QUOTE for current price + TIME_SERIES_DAILY for history
     try {
-        const response = await fetch(
-            `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`
-        );
+        // Parallel fetch: Current price (realtime/delayed) AND History
+        const [quoteRec, historyRec] = await Promise.all([
+            fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`),
+            fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${alphaVantageKey}`)
+        ]);
 
-        if (!response.ok) {
-            throw new Error(`Alpha Vantage HTTP ${response.status}`);
-        }
+        if (!quoteRec.ok) throw new Error(`Alpha Vantage Quote HTTP ${quoteRec.status}`);
+        const quoteData = await quoteRec.json();
 
-        const data = await response.json();
+        // Check reliability of quote data
+        if (quoteData["Note"]) throw new Error("Alpha Vantage rate limit");
+        if (quoteData["Error Message"]) throw new Error("Alpha Vantage error");
 
-        // Check for rate limit or error
-        if (data["Note"]) {
-            console.warn(`Alpha Vantage rate limit hit: ${data["Note"]}`);
-            throw new Error("Alpha Vantage rate limit exceeded");
-        }
+        const quote = quoteData["Global Quote"];
+        if (!quote || !quote["05. price"]) throw new Error(`No price data for ${symbol}`);
 
-        if (data["Error Message"]) {
-            throw new Error(`Alpha Vantage error: ${data["Error Message"]}`);
-        }
-
-        const quote = data["Global Quote"];
-
-        if (!quote || !quote["05. price"]) {
-            throw new Error(`No price data returned for ${symbol}`);
-        }
-
-        // Detect if market is closed by comparing latest trading day with today
-        const lastTradingDay = quote["07. latest trading day"]; // Format: "YYYY-MM-DD"
+        // Parse Current Price
+        const currentPrice = parseFloat(quote["05. price"]);
+        const lastTradingDay = quote["07. latest trading day"];
         const today = new Date().toISOString().split('T')[0];
         const marketClosed = lastTradingDay !== today;
-
-        // Parse the data
-        const price = parseFloat(quote["05. price"]);
-        const change = parseFloat(quote["09. change"]);
-        const changePercent = parseFloat(quote["10. change percent"].replace('%', ''));
         const volume = parseFloat(quote["06. volume"]) || 0;
 
-        console.log(`[fetchAssetPrice] ${symbol}: price=${price}, changePercent=${changePercent}, marketClosed=${marketClosed}`);
+        // Parse History for Variations
+        let change7d = null;
+        let change30d = null;
+
+        if (historyRec.ok) {
+            const historyData = await historyRec.json();
+            const timeSeries = historyData["Time Series (Daily)"];
+            if (timeSeries) {
+                const history = Object.entries(timeSeries).map(([date, val]: [string, any]) => ({
+                    date,
+                    price: parseFloat(val["4. close"])
+                }));
+
+                change7d = calculateVariation(currentPrice, history, 7);
+                change30d = calculateVariation(currentPrice, history, 30);
+            }
+        }
+
+        console.log(`[fetchAssetPrice] ${symbol}: price=${currentPrice}, 7d=${change7d?.toFixed(2)}%, 30d=${change30d?.toFixed(2)}%`);
 
         return {
             symbol,
             name: symbol,
-            price,
+            price: currentPrice,
             currency: "USD",
-            change: marketClosed ? 0 : change,
-            changePercent: marketClosed ? null : changePercent, // Don't show change % when market is closed
+            change: marketClosed ? 0 : parseFloat(quote["09. change"]),
+            changePercent: marketClosed ? null : parseFloat(quote["10. change percent"].replace('%', '')),
+            change7d,
+            change30d,
             volume,
             timestamp: Math.floor(Date.now() / 1000),
             marketClosed
@@ -305,48 +330,59 @@ export const fetchAssetPrice = async (symbol: string): Promise<AssetPrice> => {
     } catch (error) {
         console.error(`[fetchAssetPrice] Failed to fetch ${symbol} from Alpha Vantage:`, error);
 
-        // Fallback to Yahoo Finance (for commodities like XAU or if Alpha Vantage fails)
+        // Fallback to Yahoo Finance
         try {
             const yahooSymbol = resolveAssetSymbol(symbol);
-            const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`;
-            const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+            // Fetch 3 months to be safe for 30d calculation
+            const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=3mo`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-            console.log(`[fetchAssetPrice] Trying Yahoo Finance fallback for ${symbol} (${yahooSymbol})`);
+            console.log(`[fetchAssetPrice] Yahoo Fallback for ${symbol} via proxy`);
 
             const response = await fetch(proxyUrl);
-            if (!response.ok) {
-                throw new Error(`Yahoo Proxy Error: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`Yahoo Proxy Error: ${response.status}`);
 
             const data = await response.json();
             const result = data.chart?.result?.[0];
+            if (!result) throw new Error(`No data found for ${symbol}`);
 
-            if (!result) throw new Error(`No data found for symbol ${symbol}`);
+            const meta = result.meta;
+            const timestamps = result.timestamp || [];
+            const quotes = result.indicators?.quote?.[0] || {};
+            const closes = quotes.close || [];
 
-            const quote = result.meta;
-            const price = quote.regularMarketPrice;
-            const prevClose = quote.chartPreviousClose;
-            const change = price - prevClose;
-            const changePercent = (change / prevClose) * 100;
+            const currentPrice = meta.regularMarketPrice;
 
-            console.log(`[fetchAssetPrice] Yahoo Finance success for ${symbol}: price=${price}`);
+            // Reconstruct history
+            const history = timestamps.map((ts: number, i: number) => ({
+                date: new Date(ts * 1000).toISOString().split('T')[0],
+                price: closes[i]
+            })).filter((h: any) => h.price != null); // Filter out nulls
+
+            const change7d = calculateVariation(currentPrice, history, 7);
+            const change30d = calculateVariation(currentPrice, history, 30);
+
+            // Calculate 24h change manually if needed, or use meta
+            const prevClose = meta.chartPreviousClose;
+            const change24h = currentPrice - prevClose;
+            const changePercent24h = (change24h / prevClose) * 100;
 
             return {
                 symbol: symbol,
                 name: symbol,
-                price: price,
-                currency: quote.currency || "USD",
-                change: change,
-                changePercent: changePercent,
-                volume: result.indicators?.quote?.[0]?.volume?.[0] || 0,
-                timestamp: quote.regularMarketTime || Math.floor(Date.now() / 1000),
-                marketClosed: false // Yahoo doesn't provide this info reliably
+                price: currentPrice,
+                currency: meta.currency || "USD",
+                change: change24h,
+                changePercent: changePercent24h,
+                change7d,
+                change30d,
+                volume: result.indicators?.quote?.[0]?.volume?.slice(-1)[0] || 0,
+                timestamp: meta.regularMarketTime || Math.floor(Date.now() / 1000),
+                marketClosed: false
             };
 
         } catch (yahooError) {
-            console.error(`[fetchAssetPrice] Yahoo Finance also failed for ${symbol}:`, yahooError);
-
-            // Final fallback: Return placeholder
+            console.error(`[fetchAssetPrice] Yahoo also failed for ${symbol}:`, yahooError);
             return {
                 symbol,
                 name: symbol,
@@ -354,6 +390,8 @@ export const fetchAssetPrice = async (symbol: string): Promise<AssetPrice> => {
                 currency: "USD",
                 change: 0,
                 changePercent: null,
+                change7d: null,
+                change30d: null,
                 volume: 0,
                 timestamp: Math.floor(Date.now() / 1000),
                 marketClosed: true

@@ -15,7 +15,7 @@ export const formatCurrency = (value: number, currency: string = "EUR"): string 
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
       useGrouping: true,
-    })} USDT`;
+    })}$`;
   }
 
   return new Intl.NumberFormat("es-ES", {

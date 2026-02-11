@@ -27,24 +27,19 @@ export async function updateInstitutionalPrices(symbols: string[]): Promise<void
                 // So we insert using `originalSymbol` but the price from `yahooSymbol`.
                 const today = new Date().toISOString().split('T')[0];
 
-                // Cleanup: Delete specific existing entry for today to avoid duplicates/bad data persistence
-                // This ensures we replace any "crypto-polluted" data with the correct FMP data
-                await supabase
-                    .from("asset_prices")
-                    .delete()
-                    .eq("symbol", originalSymbol)
-                    .eq("price_date", today);
-
+                // Upsert into asset_prices table to handle existing entries gracefully
                 const { error } = await supabase
                     .from("asset_prices")
-                    .insert({
+                    .upsert({
                         symbol: originalSymbol, // Store as the USER's symbol (e.g. XAU)
-                        price_date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
+                        price_date: today, // YYYY-MM-DD
                         close_price: data.price,
                         volume_24h: data.volume,
-                        percent_change_24h: data.changePercent, // Will be null if market is closed
-                        market_closed: data.marketClosed || false, // NEW: Store market status
-                    });
+                        percent_change_24h: data.changePercent,
+                        percent_change_7d: data.change7d, // Persist 7d variation
+                        percent_change_30d: data.change30d, // Persist 30d variation
+                        market_closed: data.marketClosed || false,
+                    }, { onConflict: 'symbol,price_date' });
 
                 if (error) {
                     console.error(`[InstitutionalPrices] ❌ Error inserting price for ${originalSymbol}:`, error);
