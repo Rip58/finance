@@ -8,7 +8,7 @@ import { CryptoLogo } from "./CryptoLogo";
 
 interface DCASummaryCardProps {
   transactions: AssetTransaction[] | undefined;
-  currentPrices: Record<string, number>;
+  currentPrices: Record<string, number | any>;
   symbol: string;
   onRefresh: () => void;
   isRefreshing?: boolean;
@@ -45,7 +45,8 @@ export function DCASummaryCard({
     if (costBasis < 0) costBasis = 0;
 
     const upperSymbol = symbol.toUpperCase();
-    const currentPrice = currentPrices[upperSymbol] || 0;
+    const priceData = currentPrices[upperSymbol];
+    const currentPrice = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
     const currentValue = netQuantity * currentPrice;
     const totalInvested = costBasis;
     const averagePrice = netQuantity > 0 ? costBasis / netQuantity : 0;
@@ -56,7 +57,8 @@ export function DCASummaryCard({
   }, [transactions, currentPrices, symbol]);
 
   const formatUSD = (value: number) => formatCurrency(value, "USD");
-  const currentPrice = symbol ? currentPrices[symbol.toUpperCase()] : null;
+  const priceData = symbol ? currentPrices[symbol.toUpperCase()] : null;
+  const currentPrice = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
   const isProfitable = totals.pnl >= 0;
 
   return (

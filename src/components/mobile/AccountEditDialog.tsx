@@ -321,11 +321,15 @@ function CryptoAccountDialog({
                           <span className="text-muted-foreground ml-2">
                             {holding.quantity.toLocaleString("es-ES", { maximumFractionDigits: 8 })}
                           </span>
-                          {(prices[holding.symbol] || 0) > 0 && (
-                            <span className="text-[10px] text-muted-foreground/70 ml-2">
-                              ≈ {((prices[holding.symbol] || 0) * holding.quantity).toLocaleString("en-US", { style: "currency", currency: "USD" })}
-                            </span>
-                          )}
+                          {(() => {
+                            const priceData = prices[holding.symbol];
+                            const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
+                            return price > 0 ? (
+                              <span className="text-[10px] text-muted-foreground/70 ml-2">
+                                ≈ {(price * holding.quantity).toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                              </span>
+                            ) : null;
+                          })()}
                         </>
                       )}
                     </div>

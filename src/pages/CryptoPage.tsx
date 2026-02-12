@@ -11,6 +11,8 @@ import { updateInstitutionalPrices } from "@/lib/institutionalPrices";
 import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCurrency } from "@/lib/utils";
+import { InstitutionalMarketStatus } from "@/components/dca/InstitutionalMarketStatus";
+import { BTCHalvingCountdown } from "@/components/dca/BTCHalvingCountdown";
 
 interface CryptoPageProps {
     user: User;
@@ -231,6 +233,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                         ({aggregatedCryptoAssets.length})
                                     </span>
                                 </div>
+                                <BTCHalvingCountdown />
                                 <div className="grid grid-cols-3 gap-2">
                                     {aggregatedCryptoAssets.map((asset) => {
                                         const variation = asset.variations[timeframe];
@@ -292,6 +295,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                         ({aggregatedInstitutionalAssets.length})
                                     </span>
                                 </div>
+                                <InstitutionalMarketStatus />
                                 <div className="grid grid-cols-3 gap-2">
                                     {aggregatedInstitutionalAssets.map((asset) => {
                                         const variation = asset.variations[timeframe];

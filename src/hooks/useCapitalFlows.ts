@@ -233,7 +233,8 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         // B. Crypto Current Value (Holdings only)
         let cryptoHoldingsValue = 0;
         accountHoldings.forEach(h => {
-            const price = currentPrices[h.symbol.toUpperCase()] || 0;
+            const priceData = currentPrices[h.symbol.toUpperCase()];
+            const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
             cryptoHoldingsValue += (h.quantity * price * usdtEurRate);
         });
 
@@ -244,7 +245,8 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
 
         // We need to re-calculate quantities specifically for DCA portfolios
         Object.entries(dcaQuantityPerSymbol).forEach(([sym, qty]) => {
-            const price = currentPrices[sym] || 0;
+            const priceData = currentPrices[sym];
+            const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
             dcaHoldingsValue += (qty * price * usdtEurRate);
         });
 
@@ -253,7 +255,8 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         const getStartPrice = (sym: string) => {
             if (periodPrices[sym] !== undefined) return periodPrices[sym];
 
-            const currentPrice = currentPrices[sym] ?? 0;
+            const priceData = currentPrices[sym];
+            const currentPrice = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
             const change = (() => {
                 if (timeRange === "24h") return marketData[sym]?.change24h;
                 if (timeRange === "7d") return marketData[sym]?.change7d;

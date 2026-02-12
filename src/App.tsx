@@ -15,6 +15,7 @@ import NotFound from "./pages/NotFound";
 import type { User } from "@supabase/supabase-js";
 import { ThemeColorProvider } from "@/components/providers/ThemeColorProvider";
 import { VersionChecker } from "@/components/VersionChecker";
+import { BottomNav } from "@/components/mobile/BottomNav";
 
 const ReportPage = lazy(() => import("@/pages/ReportPage").then((m) => ({ default: m.ReportPage })));
 const AccountPage = lazy(() => import("@/pages/AccountPage").then((m) => ({ default: m.AccountPage })));
@@ -24,6 +25,7 @@ const AddTransferPage = lazy(() => import("@/pages/AddTransferPage").then((m) =>
 const PendingPaymentsPage = lazy(() => import("@/pages/PendingPaymentsPage").then((m) => ({ default: m.PendingPaymentsPage })));
 const DCAPage = lazy(() => import("@/pages/DCAPage").then((m) => ({ default: m.DCAPage })));
 const CryptoPage = lazy(() => import("@/pages/CryptoPage").then((m) => ({ default: m.CryptoPage })));
+const TradingPage = lazy(() => import("@/pages/TradingPage").then((m) => ({ default: m.default })));
 const DebugHistory = lazy(() => import("@/components/DebugHistory").then((m) => ({ default: m.DebugHistory })));
 
 const queryClient = new QueryClient();
@@ -85,6 +87,7 @@ function AppContent() {
         <Route path="/" element={<HomePage user={user} />} />
         <Route path="/crypto" element={<CryptoPage user={user} />} />
         <Route path="/dca" element={<DCAPage user={user} />} />
+        <Route path="/trading" element={<TradingPage user={user} />} />
         <Route path="/report" element={<ReportPage user={user} />} />
         <Route path="/account" element={<AccountPage user={user} />} />
         <Route path="/add-income" element={<AddIncomePage user={user} />} />
@@ -97,6 +100,11 @@ function AppContent() {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <div className="md:hidden fixed bottom-6 left-0 right-0 z-50 pointer-events-none">
+        <div className="pointer-events-auto">
+          <BottomNav />
+        </div>
+      </div>
     </Suspense>
   );
 }

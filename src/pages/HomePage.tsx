@@ -211,7 +211,8 @@ export function HomePage({ user }: HomePageProps) {
     let totalUsd = 0;
     for (const [symbol, qty] of Object.entries(holdings)) {
       // Priority: Current Price from DB > 0 (Live Price removed for stability)
-      const price = currentPrices[symbol] || 0;
+      const priceData = currentPrices[symbol];
+      const price = typeof priceData === 'number' ? priceData : (priceData?.price || 0);
       totalUsd += qty * price;
     }
 
@@ -229,7 +230,8 @@ export function HomePage({ user }: HomePageProps) {
     for (const holding of allAccountHoldings) {
       const symbol = holding.symbol.toUpperCase();
       // Priority: Current Price from DB > 0
-      const price = currentPrices[symbol] || 0;
+      const priceData = currentPrices[symbol];
+      const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
       const value = Number(holding.quantity) * price;
 
       if (!values[holding.bank_account_id]) {

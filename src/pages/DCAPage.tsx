@@ -112,7 +112,8 @@ export function DCAPage({ user }: DCAPageProps) {
       if (netQuantity < 0) netQuantity = 0;
       if (costBasis < 0) costBasis = 0;
 
-      const price = currentPrices[portfolio.symbol.toUpperCase()] || 0;
+      const priceData = currentPrices[portfolio.symbol.toUpperCase()];
+      const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
       const value = netQuantity * price;
 
       totalInvested += costBasis;
