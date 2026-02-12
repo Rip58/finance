@@ -9,6 +9,7 @@ export interface AssetPrice {
     volume?: number;
     timestamp: number;
     marketClosed?: boolean; // NEW: Indicates if market was closed when fetched
+    lastTradingDay?: string; // NEW: YYYY-MM-DD of the price data
 }
 
 // Basic mapping for common institutional asset names/tickers to Yahoo Finance symbols
@@ -64,6 +65,28 @@ export interface SymbolSearchResult {
     source: 'local' | 'online';
 }
 
+// Helper for fetch with timeout
+interface FetchOptions extends RequestInit {
+    timeout?: number;
+}
+
+const fetchWithTimeout = async (resource: string, options: FetchOptions = {}) => {
+    const { timeout = 8000, ...rest } = options; // 8s timeout default
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    try {
+        const response = await fetch(resource, {
+            ...rest,
+            signal: controller.signal
+        });
+        clearTimeout(id);
+        return response;
+    } catch (error) {
+        clearTimeout(id);
+        throw error;
+    }
+}
+
 // New function for explicit button-triggered search
 export const searchSymbolOnline = async (
     nameQuery: string,
@@ -97,8 +120,9 @@ export const searchSymbolOnline = async (
     // 3A. If asset type is crypto, ONLY search CoinGecko
     if (assetType === 'crypto') {
         try {
-            const response = await fetch(
-                `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(nameQuery)}`
+            const response = await fetchWithTimeout(
+                `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(nameQuery)}`,
+                { timeout: 5000 }
             );
 
             if (response.ok) {
@@ -123,8 +147,9 @@ export const searchSymbolOnline = async (
         try {
             const alphaVantageKey = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY || 'HZMXGN5NP06VS6UZ';
 
-            const response = await fetch(
-                `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(nameQuery)}&apikey=${alphaVantageKey}`
+            const response = await fetchWithTimeout(
+                `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(nameQuery)}&apikey=${alphaVantageKey}`,
+                { timeout: 5000 }
             );
 
             if (response.ok) {
@@ -155,8 +180,9 @@ export const searchSymbolOnline = async (
     // 3C. LEGACY: If no asset type specified, try both (backwards compatibility)
     // Try CoinGecko first
     try {
-        const response = await fetch(
-            `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(nameQuery)}`
+        const response = await fetchWithTimeout(
+            `https://api.coingecko.com/api/v3/search?query=${encodeURIComponent(nameQuery)}`,
+            { timeout: 5000 }
         );
 
         if (response.ok) {
@@ -178,8 +204,9 @@ export const searchSymbolOnline = async (
     try {
         const alphaVantageKey = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY || 'HZMXGN5NP06VS6UZ';
 
-        const response = await fetch(
-            `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(nameQuery)}&apikey=${alphaVantageKey}`
+        const response = await fetchWithTimeout(
+            `https://www.alphavantage.co/query?function=SYMBOL_SEARCH&keywords=${encodeURIComponent(nameQuery)}&apikey=${alphaVantageKey}`,
+            { timeout: 5000 }
         );
 
         if (response.ok) {
@@ -266,123 +293,122 @@ const calculateVariation = (currentPrice: number, history: { price: number, date
 };
 
 export const fetchAssetPrice = async (symbol: string): Promise<AssetPrice & { change7d: number | null, change30d: number | null }> => {
-    const alphaVantageKey = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY || 'HZMXGN5NP06VS6UZ';
-
-    // Use Alpha Vantage GLOBAL_QUOTE for current price + TIME_SERIES_DAILY for history
+    // 1. Try Yahoo Finance via Proxy first (Faster, less rate limited)
     try {
-        // Parallel fetch: Current price (realtime/delayed) AND History
-        const [quoteRec, historyRec] = await Promise.all([
-            fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`),
-            fetch(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${alphaVantageKey}`)
-        ]);
+        const yahooSymbol = resolveAssetSymbol(symbol);
+        // Fetch 3 months to be safe for 30d calculation
+        const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=3mo`;
+        const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-        if (!quoteRec.ok) throw new Error(`Alpha Vantage Quote HTTP ${quoteRec.status}`);
-        const quoteData = await quoteRec.json();
+        const response = await fetchWithTimeout(proxyUrl, { timeout: 8000 });
+        if (!response.ok) throw new Error(`Yahoo Proxy Error: ${response.status}`);
 
-        // Check reliability of quote data
-        if (quoteData["Note"]) throw new Error("Alpha Vantage rate limit");
-        if (quoteData["Error Message"]) throw new Error("Alpha Vantage error");
+        const data = await response.json();
+        const result = data.chart?.result?.[0];
+        if (!result) throw new Error(`No data found for ${symbol}`);
 
-        const quote = quoteData["Global Quote"];
-        if (!quote || !quote["05. price"]) throw new Error(`No price data for ${symbol}`);
+        const meta = result.meta;
+        const timestamps = result.timestamp || [];
+        const quotes = result.indicators?.quote?.[0] || {};
+        const closes = quotes.close || [];
 
-        // Parse Current Price
-        const currentPrice = parseFloat(quote["05. price"]);
-        const lastTradingDay = quote["07. latest trading day"];
-        const today = new Date().toISOString().split('T')[0];
-        const marketClosed = lastTradingDay !== today;
-        const volume = parseFloat(quote["06. volume"]) || 0;
+        const currentPrice = meta.regularMarketPrice;
 
-        // Parse History for Variations
-        let change7d = null;
-        let change30d = null;
+        // Reconstruct history
+        const history = timestamps.map((ts: number, i: number) => ({
+            date: new Date(ts * 1000).toISOString().split('T')[0],
+            price: closes[i]
+        })).filter((h: any) => h.price != null); // Filter out nulls
 
-        if (historyRec.ok) {
-            const historyData = await historyRec.json();
-            const timeSeries = historyData["Time Series (Daily)"];
-            if (timeSeries) {
-                const history = Object.entries(timeSeries).map(([date, val]: [string, any]) => ({
-                    date,
-                    price: parseFloat(val["4. close"])
-                }));
+        const change7d = calculateVariation(currentPrice, history, 7);
+        const change30d = calculateVariation(currentPrice, history, 30);
 
-                change7d = calculateVariation(currentPrice, history, 7);
-                change30d = calculateVariation(currentPrice, history, 30);
-            }
-        }
+        // Calculate 24h change manually if needed, or use meta
+        const prevClose = meta.chartPreviousClose;
+        const change24h = currentPrice - prevClose;
+        const changePercent24h = (change24h / prevClose) * 100;
 
-        console.log(`[fetchAssetPrice] ${symbol}: price=${currentPrice}, 7d=${change7d?.toFixed(2)}%, 30d=${change30d?.toFixed(2)}%`);
+        // Get last trading day from Yahoo meta
+        const lastTradingDay = new Date((meta.regularMarketTime || Date.now() / 1000) * 1000).toISOString().split('T')[0];
 
         return {
-            symbol,
+            symbol: symbol,
             name: symbol,
             price: currentPrice,
-            currency: "USD",
-            change: parseFloat(quote["09. change"]),
-            changePercent: parseFloat(quote["10. change percent"].replace('%', '')),
+            currency: meta.currency || "USD",
+            change: change24h,
+            changePercent: changePercent24h,
             change7d,
             change30d,
-            volume,
-            timestamp: Math.floor(Date.now() / 1000),
-            marketClosed
+            volume: result.indicators?.quote?.[0]?.volume?.slice(-1)[0] || 0,
+            timestamp: meta.regularMarketTime || Math.floor(Date.now() / 1000),
+            marketClosed: false, // You might calculate this if needed
+            lastTradingDay
         };
 
-    } catch (error) {
-        console.error(`[fetchAssetPrice] Failed to fetch ${symbol} from Alpha Vantage:`, error);
+    } catch (yahooError) {
+        console.warn(`[fetchAssetPrice] Yahoo failed for ${symbol}, trying Alpha Vantage fallback...`, yahooError);
 
-        // Fallback to Yahoo Finance
+        // 2. Fallback to Alpha Vantage (Slower, rate limited)
+        const alphaVantageKey = import.meta.env.VITE_ALPHA_VANTAGE_API_KEY || 'HZMXGN5NP06VS6UZ';
+
         try {
-            const yahooSymbol = resolveAssetSymbol(symbol);
-            // Fetch 3 months to be safe for 30d calculation
-            const targetUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=3mo`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+            // Parallel fetch: Current price (realtime/delayed) AND History
+            const [quoteRec, historyRec] = await Promise.all([
+                fetchWithTimeout(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${alphaVantageKey}`, { timeout: 8000 }),
+                fetchWithTimeout(`https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${alphaVantageKey}`, { timeout: 8000 })
+            ]);
 
-            console.log(`[fetchAssetPrice] Yahoo Fallback for ${symbol} via proxy`);
+            if (!quoteRec.ok) throw new Error(`Alpha Vantage Quote HTTP ${quoteRec.status}`);
+            const quoteData = await quoteRec.json();
 
-            const response = await fetch(proxyUrl);
-            if (!response.ok) throw new Error(`Yahoo Proxy Error: ${response.status}`);
+            if (quoteData["Note"]) throw new Error("Alpha Vantage rate limit");
+            if (quoteData["Error Message"]) throw new Error("Alpha Vantage error");
 
-            const data = await response.json();
-            const result = data.chart?.result?.[0];
-            if (!result) throw new Error(`No data found for ${symbol}`);
+            const quote = quoteData["Global Quote"];
+            if (!quote || !quote["05. price"]) throw new Error(`No price data for ${symbol}`);
 
-            const meta = result.meta;
-            const timestamps = result.timestamp || [];
-            const quotes = result.indicators?.quote?.[0] || {};
-            const closes = quotes.close || [];
+            const currentPrice = parseFloat(quote["05. price"]);
+            const lastTradingDay = quote["07. latest trading day"]; // YYYY-MM-DD
+            const today = new Date().toISOString().split('T')[0];
+            const marketClosed = lastTradingDay !== today;
+            const volume = parseFloat(quote["06. volume"]) || 0;
 
-            const currentPrice = meta.regularMarketPrice;
+            let change7d = null;
+            let change30d = null;
 
-            // Reconstruct history
-            const history = timestamps.map((ts: number, i: number) => ({
-                date: new Date(ts * 1000).toISOString().split('T')[0],
-                price: closes[i]
-            })).filter((h: any) => h.price != null); // Filter out nulls
+            if (historyRec.ok) {
+                const historyData = await historyRec.json();
+                const timeSeries = historyData["Time Series (Daily)"];
+                if (timeSeries) {
+                    const history = Object.entries(timeSeries).map(([date, val]: [string, any]) => ({
+                        date,
+                        price: parseFloat(val["4. close"])
+                    }));
 
-            const change7d = calculateVariation(currentPrice, history, 7);
-            const change30d = calculateVariation(currentPrice, history, 30);
+                    change7d = calculateVariation(currentPrice, history, 7);
+                    change30d = calculateVariation(currentPrice, history, 30);
+                }
+            }
 
-            // Calculate 24h change manually if needed, or use meta
-            const prevClose = meta.chartPreviousClose;
-            const change24h = currentPrice - prevClose;
-            const changePercent24h = (change24h / prevClose) * 100;
+            console.log(`[fetchAssetPrice] ${symbol} (AV): price=${currentPrice}, 7d=${change7d?.toFixed(2)}%, 30d=${change30d?.toFixed(2)}%`);
 
             return {
-                symbol: symbol,
+                symbol,
                 name: symbol,
                 price: currentPrice,
-                currency: meta.currency || "USD",
-                change: change24h,
-                changePercent: changePercent24h,
+                currency: "USD",
+                change: parseFloat(quote["09. change"]),
+                changePercent: quote["10. change percent"] ? parseFloat(quote["10. change percent"].replace('%', '')) : 0,
                 change7d,
                 change30d,
-                volume: result.indicators?.quote?.[0]?.volume?.slice(-1)[0] || 0,
-                timestamp: meta.regularMarketTime || Math.floor(Date.now() / 1000),
-                marketClosed: false
+                volume,
+                timestamp: Math.floor(Date.now() / 1000),
+                marketClosed,
+                lastTradingDay
             };
-
-        } catch (yahooError) {
-            console.error(`[fetchAssetPrice] Yahoo also failed for ${symbol}:`, yahooError);
+        } catch (avError) {
+            console.error(`[fetchAssetPrice] All providers failed for ${symbol}`);
             return {
                 symbol,
                 name: symbol,
@@ -394,7 +420,8 @@ export const fetchAssetPrice = async (symbol: string): Promise<AssetPrice & { ch
                 change30d: null,
                 volume: 0,
                 timestamp: Math.floor(Date.now() / 1000),
-                marketClosed: true
+                marketClosed: true,
+                lastTradingDay: new Date().toISOString().split('T')[0] // Fallback to today
             };
         }
     }

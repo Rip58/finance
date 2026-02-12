@@ -1,10 +1,8 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Check } from "lucide-react";
-import {
-  MobileLayout,
-  MobilePageHeader,
-} from "@/components/mobile";
+import { MobileLayout } from "@/components/mobile/MobileLayout";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -234,7 +232,7 @@ export function ReportPage({ user }: ReportPageProps) {
   const CreateAction = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className="h-9 w-9">
+        <Button className="h-full aspect-square p-0 rounded-xl bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 shadow-sm transition-all hover:scale-105 active:scale-95">
           <Plus className="h-5 w-5" />
         </Button>
       </DropdownMenuTrigger>
@@ -275,19 +273,22 @@ export function ReportPage({ user }: ReportPageProps) {
 
   return (
     <MobileLayout>
-      <MobilePageHeader title="Informe visual" showBack rightAction={CreateAction} />
+      <div className="container mx-auto p-4 space-y-6 pb-20 fade-in safe-area-pt">
+        <PageHeader
+          title="Informe Mensual"
+          description="Resumen de gastos e ingresos recurrentes"
+        />
 
-      <div className="flex flex-col h-[calc(100vh-120px)]">
         {/* Centered Tabs */}
         <div className="px-4 mt-2 mb-2">
-          <div className="grid grid-cols-4 p-1 bg-secondary/50 rounded-2xl w-full gap-1">
+          <div className="flex items-stretch p-1 bg-secondary/50 rounded-2xl w-full gap-1">
             <button
               onClick={() => setActiveTab("expense")}
               className={cn(
-                "px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
+                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
                 activeTab === "expense"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-orange-100 text-orange-700 shadow-sm border border-orange-200"
+                  : "text-muted-foreground hover:text-orange-700/70"
               )}
             >
               Gastos
@@ -295,10 +296,10 @@ export function ReportPage({ user }: ReportPageProps) {
             <button
               onClick={() => setActiveTab("income")}
               className={cn(
-                "px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
+                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
                 activeTab === "income"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-blue-100 text-blue-700 shadow-sm border border-blue-200"
+                  : "text-muted-foreground hover:text-blue-700/70"
               )}
             >
               Ingresos
@@ -306,7 +307,7 @@ export function ReportPage({ user }: ReportPageProps) {
             <button
               onClick={() => setActiveTab("debt_pay")}
               className={cn(
-                "px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
+                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
                 activeTab === "debt_pay"
                   ? "bg-red-100 text-red-700 shadow-sm border border-red-200"
                   : "text-muted-foreground hover:text-red-700/70"
@@ -317,7 +318,7 @@ export function ReportPage({ user }: ReportPageProps) {
             <button
               onClick={() => setActiveTab("debt_collect")}
               className={cn(
-                "px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
+                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
                 activeTab === "debt_collect"
                   ? "bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200"
                   : "text-muted-foreground hover:text-emerald-700/70"
@@ -325,6 +326,7 @@ export function ReportPage({ user }: ReportPageProps) {
             >
               Cobrar
             </button>
+            {CreateAction}
           </div>
         </div>
 
@@ -345,7 +347,7 @@ export function ReportPage({ user }: ReportPageProps) {
         </div>
 
         {/* List Section */}
-        <div className="space-y-6 pb-20 overflow-y-auto px-4 [&::-webkit-scrollbar]:hidden">
+        <div className="space-y-6 pb-20 px-4">
           <div className="flex items-center justify-between px-2 mb-2">
             <h3 className="text-sm font-medium capitalize">{currentMonthName}</h3>
             <span className="text-xs text-muted-foreground">{currentMonthItems.length} elementos</span>
@@ -355,7 +357,7 @@ export function ReportPage({ user }: ReportPageProps) {
             groupedItems.map((group) => (
               <div key={group.accountId || 'general'} className="space-y-2">
                 {/* Group Header */}
-                <div className="px-2 sticky top-0 bg-background/95 backdrop-blur z-10 py-2 mt-4 first:mt-0">
+                <div className="px-2 py-2 mt-4 first:mt-0">
                   <div className="inline-block px-4 py-1.5 rounded-xl bg-secondary/80 border border-border/50 shadow-sm backdrop-blur-md">
                     <h4 className="text-xs font-bold text-foreground uppercase tracking-widest">
                       {group.accountName}
@@ -486,15 +488,15 @@ export function ReportPage({ user }: ReportPageProps) {
             </div>
           )}
         </div>
-      </div >
 
 
-      <DebtFormDialog
-        isOpen={!!debtDialogType}
-        onClose={() => setDebtDialogType(null)}
-        type={debtDialogType}
-        userId={user.id}
-      />
-    </MobileLayout >
+        <DebtFormDialog
+          isOpen={!!debtDialogType}
+          onClose={() => setDebtDialogType(null)}
+          type={debtDialogType}
+          userId={user.id}
+        />
+      </div>
+    </MobileLayout>
   );
 }

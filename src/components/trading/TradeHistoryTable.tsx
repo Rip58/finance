@@ -50,12 +50,12 @@ export function TradeHistoryTable({ trades }: TradeHistoryTableProps) {
                         return (
                             <TableRow key={trade.id}>
                                 <TableCell className="whitespace-nowrap font-medium text-xs text-muted-foreground">
-                                    {format(new Date(trade.entry_date), "dd/MM/yyyy HH:mm")}
+                                    {format(new Date(trade.entry_date), "dd/MM/yyyy")}
                                 </TableCell>
                                 <TableCell className="font-bold">{trade.symbol}</TableCell>
                                 <TableCell>
                                     <Badge variant={isLong ? "outline" : "destructive"} className={`text-[10px] ${isLong ? "border-green-500 text-green-500" : ""}`}>
-                                        {trade.direction} {trade.leverage > 1 && `${trade.leverage}x`}
+                                        {trade.direction}
                                     </Badge>
                                 </TableCell>
                                 <TableCell className="text-right font-mono text-sm">

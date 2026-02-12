@@ -1,7 +1,8 @@
 import { useState, useMemo, useEffect } from "react";
 import type { User } from "@supabase/supabase-js";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
-import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
+// import { MobilePageHeader } from "@/components/mobile/MobilePageHeader"; // Removed
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Plus, Settings2 } from "lucide-react";
 import { useAssetTransactions, type AssetTransaction } from "@/hooks/useAssetTransactions";
@@ -212,7 +213,7 @@ export function DCAPage({ user }: DCAPageProps) {
   if (portfolios.data && portfolios.data.length === 0) {
     return (
       <MobileLayout>
-        <MobilePageHeader title="DCA" />
+        <PageHeader title="DCA" />
         <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
             <Settings2 className="h-8 w-8 text-primary" />
@@ -238,82 +239,88 @@ export function DCAPage({ user }: DCAPageProps) {
   return (
     <>
       <MobileLayout>
-
-        <MobilePageHeader
-          title="DCA"
-          rightAction={
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="rounded-xl">
-                <DropdownMenuItem onClick={() => setShowPortfolioForm(true)}>
+        <div className="container mx-auto p-4 space-y-6 pb-20 fade-in safe-area-pt">
+          <PageHeader
+            title="DCA"
+            description="Estrategia de inversión recurrente"
+            actions={
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowPortfolioForm(true)}
+                  className="h-8 text-xs"
+                >
                   Nuevo DCA
-                </DropdownMenuItem>
-                <DropdownMenuItem
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
                   onClick={() => {
                     setEditingTx(null);
                     setShowForm(true);
                   }}
                   disabled={!selectedPortfolioId}
+                  className="h-8 text-xs gap-1"
                 >
-                  Nueva Entrada
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          }
-        />
+                  <Plus className="h-3 w-3" />
+                  Entrada
+                </Button>
+              </div>
+            }
+          />
 
-        <DCAGlobalSummary
-          totalInvested={globalStats.totalInvested}
-          totalCurrentValue={globalStats.totalCurrentValue}
-          totalPnL={globalStats.totalPnL}
-          totalPnLPercent={globalStats.totalPnLPercent}
-        />
+          <DCAGlobalSummary
+            totalInvested={globalStats.totalInvested}
+            totalCurrentValue={globalStats.totalCurrentValue}
+            totalPnL={globalStats.totalPnL}
+            totalPnLPercent={globalStats.totalPnLPercent}
+          />
 
-        {/* Portfolio selector */}
-        <div className="px-4 py-3">
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            {portfolios.data?.map((portfolio) => (
-              <Button
-                key={portfolio.id}
-                variant={selectedPortfolioId === portfolio.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedPortfolioId(portfolio.id)}
-                className="flex-shrink-0 rounded-full flex items-center gap-2 px-3"
-              >
-                <CryptoLogo symbol={portfolio.symbol} size={20} />
-                <span>{portfolio.symbol}</span>
-              </Button>
-            ))}
+          {/* Portfolio selector */}
+          <div className="px-4 py-3">
+            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              {portfolios.data?.map((portfolio) => (
+                <Button
+                  key={portfolio.id}
+                  variant={selectedPortfolioId === portfolio.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedPortfolioId(portfolio.id)}
+                  className="flex-shrink-0 rounded-full flex items-center gap-2 px-3"
+                >
+                  <CryptoLogo symbol={portfolio.symbol} size={20} />
+                  {selectedPortfolioId === portfolio.id && (
+                    <span>{portfolio.symbol}</span>
+                  )}
+                </Button>
+              ))}
+            </div>
           </div>
+
+          <div className="space-y-4 pb-24">
+            {selectedPortfolioId && (
+              <>
+                <DCASummaryCard
+                  transactions={filteredTransactions}
+                  currentPrices={currentPrices || {}}
+                  symbol={selectedPortfolio?.symbol || ""}
+                  onRefresh={handleRefreshPrices}
+                  isRefreshing={isRefreshing}
+                  onDelete={() => setDeletePortfolioId(selectedPortfolioId)}
+                />
+
+                <DCAEntryList
+                  transactions={filteredTransactions}
+                  bankAccounts={bankAccounts.data || []}
+                  onEdit={handleEdit}
+                  onDelete={(id) => setDeleteId(id)}
+                />
+              </>
+            )}
+          </div>
+
+          {/* Floating action button removed */}
         </div>
-
-        <div className="space-y-4 pb-24">
-          {selectedPortfolioId && (
-            <>
-              <DCASummaryCard
-                transactions={filteredTransactions}
-                currentPrices={currentPrices || {}}
-                symbol={selectedPortfolio?.symbol || ""}
-                onRefresh={handleRefreshPrices}
-                isRefreshing={isRefreshing}
-                onDelete={() => setDeletePortfolioId(selectedPortfolioId)}
-              />
-
-              <DCAEntryList
-                transactions={filteredTransactions}
-                bankAccounts={bankAccounts.data || []}
-                onEdit={handleEdit}
-                onDelete={(id) => setDeleteId(id)}
-              />
-            </>
-          )}
-        </div>
-
-        {/* Floating action button removed */}
       </MobileLayout>
 
 

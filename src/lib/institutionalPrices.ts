@@ -14,25 +14,35 @@ export async function updateInstitutionalPrices(symbols: string[]): Promise<void
 
     console.log("[InstitutionalPrices] Updating symbols:", uniqueSymbols);
 
+    // Helper delay function
+    const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
     try {
-        const promises = uniqueSymbols.map(async (originalSymbol) => {
+        // Execute sequentially to avoid API rate limits (Alpha Vantage: 5 calls/min)
+        for (let i = 0; i < uniqueSymbols.length; i++) {
+            const originalSymbol = uniqueSymbols[i];
             const yahooSymbol = resolveAssetSymbol(originalSymbol);
+
             try {
+                // Add delay between requests (except the first one)
+                // 2 seconds delay is sufficient for Yahoo Finance via proxy
+                if (i > 0) {
+                    console.log(`[InstitutionalPrices] Waiting 2s before fetching ${originalSymbol}...`);
+                    await delay(2000);
+                }
+
+                console.log(`[InstitutionalPrices] Fetching ${originalSymbol} (${yahooSymbol})...`);
                 const data = await fetchAssetPrice(yahooSymbol);
 
-                // Insert into asset_prices table
-                // We should store using the ORIGINAL symbol (e.g. XAU) so queries match?
-                // OR we store the Yahoo symbol and map on read?
-                // The current design suggests `asset_prices` uses the same symbol as `crypto_assets` (original).
-                // So we insert using `originalSymbol` but the price from `yahooSymbol`.
-                const today = new Date().toISOString().split('T')[0];
+                // Use the actual trading day from the API, or fallback to today
+                const priceDate = data.lastTradingDay || new Date().toISOString().split('T')[0];
 
                 // Upsert into asset_prices table to handle existing entries gracefully
                 const { error } = await supabase
                     .from("asset_prices")
                     .upsert({
                         symbol: originalSymbol, // Store as the USER's symbol (e.g. XAU)
-                        price_date: today, // YYYY-MM-DD
+                        price_date: priceDate, // YYYY-MM-DD
                         close_price: data.price,
                         volume_24h: data.volume,
                         percent_change_24h: data.changePercent,
@@ -49,9 +59,7 @@ export async function updateInstitutionalPrices(symbols: string[]): Promise<void
             } catch (err) {
                 console.error(`[InstitutionalPrices] ❌ Failed to fetch/update ${originalSymbol}:`, err);
             }
-        });
-
-        await Promise.all(promises);
+        }
     } catch (error) {
         console.error("[InstitutionalPrices] Fatal error:", error);
     }

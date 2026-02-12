@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
-import { MobilePageHeader } from "@/components/mobile/MobilePageHeader";
+// import { MobilePageHeader } from "@/components/mobile/MobilePageHeader"; // Removed
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, TrendingUp, TrendingDown } from "lucide-react";
 import { useCryptoAssets } from "@/hooks/useCryptoAssets";
@@ -177,177 +178,182 @@ export function CryptoPage({ user }: CryptoPageProps) {
 
     return (
         <MobileLayout>
-            <MobilePageHeader
-                title="Mercado Crypto"
-                rightAction={
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleRefresh}
-                        disabled={isRefreshing}
-                        className="h-8 w-8"
-                    >
-                        <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-                    </Button>
-                }
-            />
+            <div className="container mx-auto p-4 space-y-6 pb-20 fade-in safe-area-pt">
+                <PageHeader
+                    title="Mercado Crypto"
+                    description="Precios en tiempo real"
+                    actions={
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleRefresh}
+                                disabled={isRefreshing}
+                                className="gap-2 h-8 px-2 text-muted-foreground hover:text-foreground -ml-2"
+                            >
+                                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                                Actualizar
+                            </Button>
 
-            {/* Timeframe Selector */}
-            <div className="px-4 py-2 flex justify-center">
-                <div className="flex bg-muted/30 rounded-lg p-1 gap-1 shadow-sm border border-border/10">
-                    {(["24h", "7d", "30d"] as Timeframe[]).map((tf) => (
-                        <button
-                            key={tf}
-                            onClick={() => setTimeframe(tf)}
-                            className={cn(
-                                "px-4 py-1.5 rounded-md text-xs font-medium transition-all duration-200",
-                                timeframe === tf
-                                    ? "bg-background shadow-sm text-foreground scale-105 font-semibold"
-                                    : "text-muted-foreground hover:text-foreground"
+                            <div className="h-4 w-px bg-border/40 mx-2" />
+
+                            <div className="flex bg-muted/30 rounded-lg p-1 gap-1 shadow-sm border border-border/10">
+                                {(["24h", "7d", "30d"] as Timeframe[]).map((tf) => (
+                                    <button
+                                        key={tf}
+                                        onClick={() => setTimeframe(tf)}
+                                        className={cn(
+                                            "px-3 py-1 rounded-md text-[10px] font-medium transition-all duration-200",
+                                            timeframe === tf
+                                                ? "bg-background shadow-sm text-foreground scale-105 font-semibold"
+                                                : "text-muted-foreground hover:text-foreground"
+                                        )}
+                                    >
+                                        {tf === "30d" ? "1m" : tf}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    }
+                />
+
+                {/* Assets Grid */}
+                <div className="px-4 py-2 pb-24 space-y-6">
+                    {cryptoAssets.length === 0 ? (
+                        <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
+                            <p className="text-muted-foreground">No hay criptomonedas configuradas</p>
+                            <p className="text-sm text-muted-foreground mt-2">
+                                Añade activos desde la sección de cuenta
+                            </p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Crypto Assets Section */}
+                            {aggregatedCryptoAssets.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-3 px-1">
+                                        <div className="h-8 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full" />
+                                        <h2 className="text-lg font-bold tracking-tight">Criptomonedas</h2>
+                                        <span className="text-xs text-muted-foreground font-medium">
+                                            ({aggregatedCryptoAssets.length})
+                                        </span>
+                                    </div>
+                                    <BTCHalvingCountdown />
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {aggregatedCryptoAssets.map((asset) => {
+                                            const variation = asset.variations[timeframe];
+                                            const hasData = variation !== null;
+                                            const isPositive = hasData && variation >= 0;
+
+                                            return (
+                                                <div
+                                                    key={asset.symbol}
+                                                    className="group relative flex flex-col justify-between p-2.5 rounded-xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
+                                                >
+                                                    {/* Top: Logo + Symbol */}
+                                                    <div className="flex items-center gap-1.5 mb-2">
+                                                        <div className="relative">
+                                                            <CryptoLogo symbol={asset.symbol} size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="font-bold text-xs tracking-tight truncate">{asset.symbol}</span>
+                                                            <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wide truncate">{asset.name}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Bottom: Price + Variation */}
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <p className="font-bold text-xs tabular-nums tracking-tight">
+                                                            {formatCryptoPrice(asset.currentPrice)}
+                                                        </p>
+
+                                                        <div className={cn(
+                                                            "flex items-center justify-center px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-full text-center",
+                                                            !hasData
+                                                                ? "text-muted-foreground bg-muted"
+                                                                : isPositive
+                                                                    ? "text-green-600 bg-green-500/10"
+                                                                    : "text-red-600 bg-red-500/10"
+                                                        )}>
+                                                            {hasData ? (
+                                                                <>
+                                                                    {isPositive ? "+" : ""}
+                                                                    {variation.toFixed(2)}%
+                                                                </>
+                                                            ) : "—"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             )}
-                        >
-                            {tf === "30d" ? "1m" : tf}
-                        </button>
-                    ))}
+
+                            {/* Institutional Assets Section */}
+                            {aggregatedInstitutionalAssets.length > 0 && (
+                                <div>
+                                    <div className="flex items-center gap-2 mb-3 px-1">
+                                        <div className="h-8 w-1 bg-gradient-to-b from-amber-500 to-orange-500 rounded-full" />
+                                        <h2 className="text-lg font-bold tracking-tight">Activos Institucionales</h2>
+                                        <span className="text-xs text-muted-foreground font-medium">
+                                            ({aggregatedInstitutionalAssets.length})
+                                        </span>
+                                    </div>
+                                    <InstitutionalMarketStatus />
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {aggregatedInstitutionalAssets.map((asset) => {
+                                            const variation = asset.variations[timeframe];
+                                            const hasData = variation !== null;
+                                            const isPositive = hasData && variation >= 0;
+
+                                            return (
+                                                <div
+                                                    key={asset.symbol}
+                                                    className="group relative flex flex-col justify-between p-2.5 rounded-xl bg-card border border-amber-500/20 shadow-sm transition-all hover:shadow-md hover:border-amber-500/40"
+                                                >
+                                                    {/* Top: Logo + Symbol */}
+                                                    <div className="flex items-center gap-1.5 mb-2">
+                                                        <div className="relative">
+                                                            <CryptoLogo symbol={asset.symbol} size={24} />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="font-bold text-xs tracking-tight truncate">{asset.symbol}</span>
+                                                            <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wide truncate">{asset.name}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Bottom: Price + Variation */}
+                                                    <div className="flex flex-col items-end gap-0.5">
+                                                        <p className="font-bold text-xs tabular-nums tracking-tight">
+                                                            {formatCryptoPrice(asset.currentPrice)}
+                                                        </p>
+
+                                                        <div className={cn(
+                                                            "flex items-center justify-center px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-full text-center",
+                                                            !hasData
+                                                                ? "text-muted-foreground bg-muted"
+                                                                : isPositive
+                                                                    ? "text-green-600 bg-green-500/10"
+                                                                    : "text-red-600 bg-red-500/10"
+                                                        )}>
+                                                            {hasData ? (
+                                                                <>
+                                                                    {isPositive ? "+" : ""}
+                                                                    {variation.toFixed(2)}%
+                                                                </>
+                                                            ) : "—"}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </div>
-            </div>
-
-            {/* Assets Grid */}
-            <div className="px-4 py-2 pb-24 space-y-6">
-                {cryptoAssets.length === 0 ? (
-                    <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
-                        <p className="text-muted-foreground">No hay criptomonedas configuradas</p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Añade activos desde la sección de cuenta
-                        </p>
-                    </div>
-                ) : (
-                    <>
-                        {/* Crypto Assets Section */}
-                        {aggregatedCryptoAssets.length > 0 && (
-                            <div>
-                                <div className="flex items-center gap-2 mb-3 px-1">
-                                    <div className="h-8 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full" />
-                                    <h2 className="text-lg font-bold tracking-tight">Criptomonedas</h2>
-                                    <span className="text-xs text-muted-foreground font-medium">
-                                        ({aggregatedCryptoAssets.length})
-                                    </span>
-                                </div>
-                                <BTCHalvingCountdown />
-                                <div className="grid grid-cols-3 gap-2">
-                                    {aggregatedCryptoAssets.map((asset) => {
-                                        const variation = asset.variations[timeframe];
-                                        const hasData = variation !== null;
-                                        const isPositive = hasData && variation >= 0;
-
-                                        return (
-                                            <div
-                                                key={asset.symbol}
-                                                className="group relative flex flex-col justify-between p-2.5 rounded-xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
-                                            >
-                                                {/* Top: Logo + Symbol */}
-                                                <div className="flex items-center gap-1.5 mb-2">
-                                                    <div className="relative">
-                                                        <CryptoLogo symbol={asset.symbol} size={24} />
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="font-bold text-xs tracking-tight truncate">{asset.symbol}</span>
-                                                        <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wide truncate">{asset.name}</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Bottom: Price + Variation */}
-                                                <div className="flex flex-col items-end gap-0.5">
-                                                    <p className="font-bold text-xs tabular-nums tracking-tight">
-                                                        {formatCryptoPrice(asset.currentPrice)}
-                                                    </p>
-
-                                                    <div className={cn(
-                                                        "flex items-center justify-center px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-full text-center",
-                                                        !hasData
-                                                            ? "text-muted-foreground bg-muted"
-                                                            : isPositive
-                                                                ? "text-green-600 bg-green-500/10"
-                                                                : "text-red-600 bg-red-500/10"
-                                                    )}>
-                                                        {hasData ? (
-                                                            <>
-                                                                {isPositive ? "+" : ""}
-                                                                {variation.toFixed(2)}%
-                                                            </>
-                                                        ) : "—"}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Institutional Assets Section */}
-                        {aggregatedInstitutionalAssets.length > 0 && (
-                            <div>
-                                <div className="flex items-center gap-2 mb-3 px-1">
-                                    <div className="h-8 w-1 bg-gradient-to-b from-amber-500 to-orange-500 rounded-full" />
-                                    <h2 className="text-lg font-bold tracking-tight">Activos Institucionales</h2>
-                                    <span className="text-xs text-muted-foreground font-medium">
-                                        ({aggregatedInstitutionalAssets.length})
-                                    </span>
-                                </div>
-                                <InstitutionalMarketStatus />
-                                <div className="grid grid-cols-3 gap-2">
-                                    {aggregatedInstitutionalAssets.map((asset) => {
-                                        const variation = asset.variations[timeframe];
-                                        const hasData = variation !== null;
-                                        const isPositive = hasData && variation >= 0;
-
-                                        return (
-                                            <div
-                                                key={asset.symbol}
-                                                className="group relative flex flex-col justify-between p-2.5 rounded-xl bg-card border border-amber-500/20 shadow-sm transition-all hover:shadow-md hover:border-amber-500/40"
-                                            >
-                                                {/* Top: Logo + Symbol */}
-                                                <div className="flex items-center gap-1.5 mb-2">
-                                                    <div className="relative">
-                                                        <CryptoLogo symbol={asset.symbol} size={24} />
-                                                    </div>
-                                                    <div className="flex flex-col min-w-0">
-                                                        <span className="font-bold text-xs tracking-tight truncate">{asset.symbol}</span>
-                                                        <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wide truncate">{asset.name}</span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Bottom: Price + Variation */}
-                                                <div className="flex flex-col items-end gap-0.5">
-                                                    <p className="font-bold text-xs tabular-nums tracking-tight">
-                                                        {formatCryptoPrice(asset.currentPrice)}
-                                                    </p>
-
-                                                    <div className={cn(
-                                                        "flex items-center justify-center px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-full text-center",
-                                                        !hasData
-                                                            ? "text-muted-foreground bg-muted"
-                                                            : isPositive
-                                                                ? "text-green-600 bg-green-500/10"
-                                                                : "text-red-600 bg-red-500/10"
-                                                    )}>
-                                                        {hasData ? (
-                                                            <>
-                                                                {isPositive ? "+" : ""}
-                                                                {variation.toFixed(2)}%
-                                                            </>
-                                                        ) : "—"}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-                    </>
-                )}
             </div>
         </MobileLayout>
     );

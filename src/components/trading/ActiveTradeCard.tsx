@@ -16,9 +16,10 @@ interface ActiveTradeCardProps {
     currentPrices: Record<string, any>; // Keeping any here as it comes from API response usually
     onEdit?: (trade: Trade) => void;
     onClose?: (trade: Trade) => void;
+    onDelete?: (trade: Trade) => void;
 }
 
-export function ActiveTradeCard({ trade, currentPrices, onEdit, onClose }: ActiveTradeCardProps) {
+export function ActiveTradeCard({ trade, currentPrices, onEdit, onClose, onDelete }: ActiveTradeCardProps) {
     const currentPriceData = currentPrices[trade.symbol];
     const currentPrice = typeof currentPriceData === 'number'
         ? currentPriceData
@@ -73,7 +74,8 @@ export function ActiveTradeCard({ trade, currentPrices, onEdit, onClose }: Activ
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => onEdit?.(trade)}>Editar</DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onClose?.(trade)} className="text-destructive">Cerrar Trade</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onClose?.(trade)}>Cerrar Trade</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete?.(trade)} className="text-destructive focus:text-destructive">Eliminar</DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
             </CardHeader>
