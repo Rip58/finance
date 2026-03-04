@@ -12,7 +12,7 @@
     --card-foreground: oklch(0.2435 0 0);
     --popover: oklch(0.9911 0 0);
     --popover-foreground: oklch(0.2435 0 0);
-    --primary: oklch(0.4341 0.0392 41.9938);
+    --primary: oklch(0.623 0.214 259.815);
     --primary-foreground: oklch(1.0000 0 0);
     --secondary: oklch(0.9200 0.0651 74.3695);
     --secondary-foreground: oklch(0.3499 0.0685 40.8288);
@@ -24,8 +24,8 @@
     --destructive-foreground: oklch(1.0000 0 0);
     --border: oklch(0.8822 0 0);
     --input: oklch(0.8822 0 0);
-    --ring: oklch(0.4341 0.0392 41.9938);
-    --chart-1: oklch(0.4341 0.0392 41.9938);
+    --ring: oklch(0.623 0.214 259.815);
+    --chart-1: oklch(0.623 0.214 259.815);
     --chart-2: oklch(0.9200 0.0651 74.3695);
     --chart-3: oklch(0.9310 0 0);
     --chart-4: oklch(0.9367 0.0523 75.5009);
@@ -72,8 +72,8 @@
     --card-foreground: oklch(0.9491 0 0);
     --popover: oklch(0.2134 0 0);
     --popover-foreground: oklch(0.9491 0 0);
-    --primary: oklch(0.9247 0.0524 66.1732);
-    --primary-foreground: oklch(0.2029 0.0240 200.1962);
+    --primary: oklch(0.704 0.191 259.815);
+    --primary-foreground: oklch(0.145 0.042 265.8);
     --secondary: oklch(0.3163 0.0190 63.6992);
     --secondary-foreground: oklch(0.9247 0.0524 66.1732);
     --muted: oklch(0.2520 0 0);
@@ -84,8 +84,8 @@
     --destructive-foreground: oklch(1.0000 0 0);
     --border: oklch(0.2351 0.0115 91.7467);
     --input: oklch(0.4017 0 0);
-    --ring: oklch(0.9247 0.0524 66.1732);
-    --chart-1: oklch(0.9247 0.0524 66.1732);
+    --ring: oklch(0.704 0.191 259.815);
+    --chart-1: oklch(0.704 0.191 259.815);
     --chart-2: oklch(0.3163 0.0190 63.6992);
     --chart-3: oklch(0.2850 0 0);
     --chart-4: oklch(0.3481 0.0219 67.0001);
@@ -140,13 +140,12 @@
     padding-bottom: max(34px, env(safe-area-inset-bottom, 34px));
   }
 
-  /* Restored Gradients and Glows with new Primary Color (Brown) */
+  /* Restored Gradients and Glows with new Primary Color (Blue) */
   .gradient-primary {
-    /* User requested specific hex: #ffe0c2 */
-    background: linear-gradient(135deg, #ffe0c2 0%, #ffcd9e 100%);
+    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
   }
 
   .glow-primary {
-    box-shadow: 0 0 30px oklch(0.4341 0.0392 41.9938 / 0.2);
+    box-shadow: 0 0 30px oklch(0.623 0.214 259.815 / 0.2);
   }
 }

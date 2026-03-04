@@ -10,9 +10,9 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
     return (
-        <div className={cn("flex flex-col gap-4 mb-6", className)}>
-            <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight">
+        <div className={cn("flex items-start justify-between gap-4 mb-6", className)}>
+            <div className="flex-1 min-w-0">
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight truncate">
                     {title}
                 </h1>
                 {description && (
@@ -22,7 +22,7 @@ export function PageHeader({ title, description, actions, className }: PageHeade
                 )}
             </div>
             {actions && (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 shrink-0 mt-1">
                     {actions}
                 </div>
             )}

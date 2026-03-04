@@ -33,6 +33,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DCAGlobalSummary } from "@/components/dca/DCAGlobalSummary";
+import { calculateDCAStats } from "@/lib/dcaUtils";
 
 interface DCAPageProps {
   user: User;
@@ -92,26 +93,13 @@ export function DCAPage({ user }: DCAPageProps) {
 
     let totalInvested = 0;
     let totalCurrentValue = 0;
+    let totalRealizedPnL = 0;
+    let totalInvestedAllTime = 0;
 
     portfolios.data.forEach(portfolio => {
       const portfolioTxs = assetTransactions.data!.filter(tx => tx.dca_portfolio_id === portfolio.id);
 
-      let netQuantity = 0;
-      let costBasis = 0;
-
-      for (const tx of portfolioTxs) {
-        if (tx.side === "buy") {
-          netQuantity += tx.quantity;
-          costBasis += tx.quantity * tx.price_eur;
-        } else {
-          const avgCost = netQuantity > 0 ? costBasis / netQuantity : 0;
-          netQuantity -= tx.quantity;
-          costBasis -= tx.quantity * avgCost;
-        }
-      }
-
-      if (netQuantity < 0) netQuantity = 0;
-      if (costBasis < 0) costBasis = 0;
+      const { netQuantity, costBasis, realizedPnL, totalInvestedAllTime: portInvestedAllTime } = calculateDCAStats(portfolioTxs);
 
       const priceData = currentPrices[portfolio.symbol.toUpperCase()];
       const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
@@ -119,10 +107,13 @@ export function DCAPage({ user }: DCAPageProps) {
 
       totalInvested += costBasis;
       totalCurrentValue += value;
+      totalRealizedPnL += realizedPnL;
+      totalInvestedAllTime += portInvestedAllTime;
     });
 
-    const totalPnL = totalCurrentValue - totalInvested;
-    const totalPnLPercent = totalInvested > 0 ? (totalPnL / totalInvested) * 100 : 0;
+    const totalUnrealizedPnL = totalCurrentValue - totalInvested;
+    const totalPnL = totalRealizedPnL + totalUnrealizedPnL;
+    const totalPnLPercent = totalInvestedAllTime > 0 ? (totalPnL / totalInvestedAllTime) * 100 : 0;
 
     return { totalInvested, totalCurrentValue, totalPnL, totalPnLPercent };
   }, [portfolios.data, assetTransactions.data, currentPrices]);
@@ -238,8 +229,8 @@ export function DCAPage({ user }: DCAPageProps) {
 
   return (
     <>
-      <MobileLayout>
-        <div className="container mx-auto p-4 space-y-6 pb-20 fade-in safe-area-pt">
+      <MobileLayout className="bg-[#F6F7F9] dark:bg-background">
+        <div className="container mx-auto p-4 space-y-4 pb-20 fade-in safe-area-pt min-h-screen">
           <PageHeader
             title="DCA"
             description="Estrategia de inversión recurrente"
@@ -278,8 +269,8 @@ export function DCAPage({ user }: DCAPageProps) {
           />
 
           {/* Portfolio selector */}
-          <div className="px-4 py-3">
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="py-1 flex justify-center w-full">
+            <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide max-w-full px-2">
               {portfolios.data?.map((portfolio) => (
                 <Button
                   key={portfolio.id}

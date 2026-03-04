@@ -10,17 +10,17 @@ export function cn(...inputs: ClassValue[]) {
  * Supports EUR, USD, and USDT
  */
 export const formatCurrency = (value: number, currency: string = "EUR"): string => {
-  if (currency === "USDT") {
+  if (currency === "USDT" || currency === "USD") {
     return `${value.toLocaleString("es-ES", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
       useGrouping: true,
-    })}$`;
+    })} $`;
   }
 
   return new Intl.NumberFormat("es-ES", {
     style: "currency",
-    currency: currency === "USDT" ? "USD" : currency,
+    currency: currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
     useGrouping: true,

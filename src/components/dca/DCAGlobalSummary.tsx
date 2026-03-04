@@ -20,48 +20,43 @@ export function DCAGlobalSummary({
     return (
         <div className="mx-4 mb-6 grid grid-cols-3 gap-3">
             {/* Total Invested */}
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col justify-between shadow-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <Wallet className="h-3.5 w-3.5" />
-                    <span className="text-[10px] uppercase font-semibold tracking-wider">Invertido</span>
+            <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-black mb-3">
+                    <Wallet className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                    <span className="text-[13px] font-medium">Invertido</span>
                 </div>
-                <p className="text-sm font-bold text-foreground">
+                <p className="text-[17px] font-bold text-foreground">
                     {formatCurrency(totalInvested, "USD")}
                 </p>
             </div>
 
             {/* PnL */}
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col justify-between shadow-sm relative overflow-hidden">
-                <div className={cn(
-                    "absolute right-0 top-0 p-1 rounded-bl-lg",
-                    isProfitable ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
-                )}>
-                    {isProfitable ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between relative overflow-hidden">
+                <div className="flex items-center gap-1.5 text-black mb-3">
+                    <Activity className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                    <span className="text-[13px] font-medium">PnL Global</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <Activity className="h-3.5 w-3.5" />
-                    <span className="text-[10px] uppercase font-semibold tracking-wider">PnL Global</span>
-                </div>
-                <div className="flex flex-col">
+                <div className="flex flex-col gap-0.5">
                     <span className={cn(
-                        "text-sm font-bold",
+                        "text-[17px] font-bold flex items-center gap-1",
                         isProfitable ? "text-emerald-500" : "text-rose-500"
                     )}>
                         {isProfitable ? "+" : ""}{formatCurrency(totalPnL, "USD")}
+                        {isProfitable ? <TrendingUp className="h-4 w-4" strokeWidth={2.5} /> : <TrendingDown className="h-4 w-4" strokeWidth={2.5} />}
                     </span>
-                    <span className={cn("text-[10px] font-medium opacity-80", isProfitable ? "text-emerald-500" : "text-rose-500")}>
+                    <span className={cn("text-[13px] font-medium", isProfitable ? "text-emerald-500/70" : "text-rose-400/80")}>
                         {formatPercent(totalPnLPercent)}
                     </span>
                 </div>
             </div>
 
             {/* Current Value */}
-            <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-3 flex flex-col justify-between shadow-sm">
-                <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
-                    <PieChart className="h-3.5 w-3.5" />
-                    <span className="text-[10px] uppercase font-semibold tracking-wider">Valor Total</span>
+            <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between">
+                <div className="flex items-center gap-1.5 text-black mb-3">
+                    <PieChart className="h-[18px] w-[18px]" strokeWidth={1.5} />
+                    <span className="text-[13px] font-medium">Actual</span>
                 </div>
-                <p className="text-sm font-bold text-foreground">
+                <p className="text-[17px] font-bold text-foreground">
                     {formatCurrency(totalCurrentValue, "USD")}
                 </p>
             </div>

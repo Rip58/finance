@@ -59,6 +59,7 @@ export function DCAFormDialog({
   const [formData, setFormData] = useState({
     quantity: "",
     price_eur: "",
+    totalOutput: "",
     transaction_date: new Date().toISOString().split("T")[0],
     notes: "",
     bank_account_id: "",
@@ -67,9 +68,13 @@ export function DCAFormDialog({
   useEffect(() => {
     if (editingTx) {
       setSide(editingTx.side);
+      const qty = Number(editingTx.quantity);
+      const price = Number(editingTx.price_eur);
+      const total = qty * price;
       setFormData({
-        quantity: String(editingTx.quantity),
-        price_eur: String(editingTx.price_eur),
+        quantity: String(qty),
+        price_eur: String(price),
+        totalOutput: String(total),
         transaction_date: editingTx.transaction_date.split("T")[0],
         notes: editingTx.notes || "",
         bank_account_id: (editingTx as any).bank_account_id || "",
@@ -79,6 +84,7 @@ export function DCAFormDialog({
       setFormData({
         quantity: "",
         price_eur: "",
+        totalOutput: "",
         transaction_date: new Date().toISOString().split("T")[0],
         notes: "",
         bank_account_id: "",
@@ -86,17 +92,70 @@ export function DCAFormDialog({
     }
   }, [editingTx, open]);
 
-  const totalAmount = useMemo(() => {
-    const qty = parseFloat(formData.quantity) || 0;
-    const price = parseFloat(formData.price_eur) || 0;
-    return qty * price;
-  }, [formData.quantity, formData.price_eur]);
+  const formatVal = (num: number) => {
+    // Avoid scientific notation and long decimals
+    return Number(num.toFixed(8)).toString();
+  };
+
+  const handleQuantityChange = (val: string) => {
+    const qty = parseFloat(val);
+    const price = parseFloat(formData.price_eur);
+    const total = parseFloat(formData.totalOutput);
+
+    if (!isNaN(qty) && qty >= 0) {
+      if (!isNaN(price) && price > 0) {
+        setFormData(prev => ({ ...prev, quantity: val, totalOutput: formatVal(qty * price) }));
+      } else if (!isNaN(total) && total > 0) {
+        setFormData(prev => ({ ...prev, quantity: val, price_eur: formatVal(total / qty) }));
+      } else {
+        setFormData(prev => ({ ...prev, quantity: val }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, quantity: val }));
+    }
+  };
+
+  const handlePriceChange = (val: string) => {
+    const price = parseFloat(val);
+    const qty = parseFloat(formData.quantity);
+    const total = parseFloat(formData.totalOutput);
+
+    if (!isNaN(price) && price > 0) {
+      if (!isNaN(qty) && qty > 0) {
+        setFormData(prev => ({ ...prev, price_eur: val, totalOutput: formatVal(qty * price) }));
+      } else if (!isNaN(total) && total > 0) {
+        setFormData(prev => ({ ...prev, price_eur: val, quantity: formatVal(total / price) }));
+      } else {
+        setFormData(prev => ({ ...prev, price_eur: val }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, price_eur: val }));
+    }
+  };
+
+  const handleTotalChange = (val: string) => {
+    const total = parseFloat(val);
+    const price = parseFloat(formData.price_eur);
+    const qty = parseFloat(formData.quantity);
+
+    if (!isNaN(total) && total >= 0) {
+      if (!isNaN(price) && price > 0) {
+        setFormData(prev => ({ ...prev, totalOutput: val, quantity: formatVal(total / price) }));
+      } else if (!isNaN(qty) && qty > 0) {
+        setFormData(prev => ({ ...prev, totalOutput: val, price_eur: formatVal(total / qty) }));
+      } else {
+        setFormData(prev => ({ ...prev, totalOutput: val }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, totalOutput: val }));
+    }
+  };
 
   const handleFetchPrice = () => {
     const upperSymbol = symbol.toUpperCase();
     const price = currentPrices[upperSymbol];
     if (price) {
-      setFormData((prev) => ({ ...prev, price_eur: String(price) }));
+      handlePriceChange(String(price));
     }
   };
 
@@ -131,8 +190,8 @@ export function DCAFormDialog({
             <button
               type="button"
               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${!isSell
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                ? "bg-primary text-primary-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
                 }`}
               onClick={() => setSide("buy")}
             >
@@ -141,8 +200,8 @@ export function DCAFormDialog({
             <button
               type="button"
               className={`flex-1 py-2 text-sm font-medium rounded-lg transition-all ${isSell
-                  ? "bg-destructive text-destructive-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                ? "bg-destructive text-destructive-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
                 }`}
               onClick={() => setSide("sell")}
             >
@@ -172,9 +231,7 @@ export function DCAFormDialog({
                 step="any"
                 placeholder="0.001"
                 value={formData.quantity}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, quantity: e.target.value }))
-                }
+                onChange={(e) => handleQuantityChange(e.target.value)}
                 required
               />
             </div>
@@ -187,9 +244,7 @@ export function DCAFormDialog({
                   step="0.01"
                   placeholder="85000"
                   value={formData.price_eur}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, price_eur: e.target.value }))
-                  }
+                  onChange={(e) => handlePriceChange(e.target.value)}
                   required
                   className="flex-1"
                 />
@@ -208,18 +263,27 @@ export function DCAFormDialog({
           </div>
 
           <div
-            className={`p-3 rounded-lg border ${isSell
-                ? "bg-destructive/10 border-destructive/20"
-                : "bg-primary/10 border-primary/20"
-              }`}
+            className={`p-3 rounded-xl border ${isSell
+              ? "bg-destructive/10 border-destructive/20 text-destructive focus-within:ring-1 focus-within:ring-destructive/50"
+              : "bg-primary/10 border-primary/20 text-primary focus-within:ring-1 focus-within:ring-primary/50"
+              } transition-all`}
           >
-            <p className="text-sm text-muted-foreground">Total</p>
-            <p
-              className={`text-2xl font-bold ${isSell ? "text-destructive" : "text-primary"
-                }`}
-            >
-              {formatCurrency(totalAmount, "USDT")}
-            </p>
+            <Label htmlFor="totalOutput" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1 block">
+              Total
+            </Label>
+            <div className="flex items-center">
+              <span className="text-2xl font-bold mr-1">$</span>
+              <Input
+                id="totalOutput"
+                type="number"
+                step="any"
+                placeholder="0.00"
+                value={formData.totalOutput}
+                onChange={(e) => handleTotalChange(e.target.value)}
+                required
+                className={`text-2xl font-bold h-10 w-full bg-transparent border-none p-0 focus-visible:ring-0 shadow-none ${isSell ? "text-destructive placeholder:text-destructive/40" : "text-primary placeholder:text-primary/40"}`}
+              />
+            </div>
           </div>
 
           {bankAccounts.length > 0 && (
