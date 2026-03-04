@@ -18,27 +18,27 @@ export function DCAGlobalSummary({
     const isProfitable = totalPnL >= 0;
 
     return (
-        <div className="mx-4 mb-6 grid grid-cols-3 gap-3">
+        <div className="mb-4 grid grid-cols-3 gap-2">
             {/* Total Invested */}
-            <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between">
+            <div className="bg-white dark:bg-card rounded-[24px] p-2.5 sm:p-3 flex flex-col justify-between">
                 <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
                     <Wallet className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     <span className="text-[13px] font-medium">Invertido</span>
                 </div>
-                <p className="text-[17px] font-bold text-foreground">
+                <p className="text-[15px] sm:text-[16px] font-bold tracking-tight text-foreground">
                     {formatCurrency(totalInvested, "USD")}
                 </p>
             </div>
 
             {/* PnL */}
-            <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between relative overflow-hidden">
+            <div className="bg-white dark:bg-card rounded-[24px] p-2.5 sm:p-3 flex flex-col justify-between relative overflow-hidden">
                 <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
                     <Activity className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     <span className="text-[13px] font-medium">PnL Global</span>
                 </div>
                 <div className="flex flex-col gap-0.5">
                     <span className={cn(
-                        "text-[17px] font-bold flex items-center gap-1",
+                        "text-[15px] sm:text-[16px] font-bold tracking-tight flex items-center gap-0.5",
                         isProfitable ? "text-emerald-500" : "text-rose-500"
                     )}>
                         {isProfitable ? "+" : ""}{formatCurrency(totalPnL, "USD")}
@@ -51,12 +51,12 @@ export function DCAGlobalSummary({
             </div>
 
             {/* Current Value */}
-            <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between">
+            <div className="bg-white dark:bg-card rounded-[24px] p-2.5 sm:p-3 flex flex-col justify-between">
                 <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
                     <PieChart className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     <span className="text-[13px] font-medium">Actual</span>
                 </div>
-                <p className="text-[17px] font-bold text-foreground">
+                <p className="text-[15px] sm:text-[16px] font-bold tracking-tight text-foreground">
                     {formatCurrency(totalCurrentValue, "USD")}
                 </p>
             </div>

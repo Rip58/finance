@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useState } from "react";
 
 export type ColorTheme = "violet" | "blue" | "rose" | "orange" | "green";
 
@@ -26,17 +26,6 @@ export function ThemeColorProvider({ children }: { children: React.ReactNode }) 
         setColorThemeState(color);
         localStorage.setItem("color-theme", color);
     };
-
-    useEffect(() => {
-        const root = document.documentElement;
-
-        // Remove old theme classes
-        const themes: ColorTheme[] = ["violet", "blue", "rose", "orange", "green"];
-        root.classList.remove(...themes.map(t => `theme-${t}`));
-
-        // Add new theme class
-        root.classList.add(`theme-${colorTheme}`);
-    }, [colorTheme]);
 
     return (
         <ThemeColorContext.Provider value={{ colorTheme, setColorTheme }}>

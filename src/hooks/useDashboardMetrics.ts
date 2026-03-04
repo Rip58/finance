@@ -155,6 +155,19 @@ export function useDashboardMetrics(userId: string | undefined) {
         }
       }
 
+      // Find categories early — needed for account classification below
+      const savingsCategoryIds = (categories.data || [])
+        .filter(c => c.name?.toLowerCase().includes("ahorro"))
+        .map(c => c.id);
+
+      const investmentsCategoryIds = (categories.data || [])
+        .filter(c => c.name?.toLowerCase().includes("inversión") || c.name?.toLowerCase().includes("inversion"))
+        .map(c => c.id);
+
+      const cryptoCategoryIds = (categories.data || [])
+        .filter(c => c.name?.toLowerCase().includes("crypto") || c.name?.toLowerCase().includes("cripto"))
+        .map(c => c.id);
+
       // Calculate total assets from DCA transactions
       let totalAssets = 0;
       for (const [symbol, quantity] of Object.entries(holdings)) {
@@ -162,9 +175,16 @@ export function useDashboardMetrics(userId: string | undefined) {
         totalAssets += quantity * price;
       }
 
-      // Add account holdings value (non-DCA crypto accounts)
+      // Add account holdings value (non-DCA, non-investment crypto accounts)
+      // Investment-category accounts with holdings are handled separately in the classification loop below
+      const investmentAccountIds = new Set(
+        accountsData
+          .filter(acc => acc.category_id && investmentsCategoryIds.includes(acc.category_id))
+          .map(acc => acc.id)
+      );
       let accountHoldingsValue = 0;
       for (const h of accountHoldingsResult.data || []) {
+        if (investmentAccountIds.has(h.bank_account_id)) continue; // already handled separately
         const price = latestPrices[h.symbol.toUpperCase()] || latestPrices[h.symbol] || 0;
         accountHoldingsValue += Number(h.quantity) * price;
       }
@@ -207,18 +227,6 @@ export function useDashboardMetrics(userId: string | undefined) {
         }
       }
 
-      // Find categories
-      const savingsCategoryIds = (categories.data || [])
-        .filter(c => c.name.toLowerCase().includes("ahorro"))
-        .map(c => c.id);
-
-      const investmentsCategoryIds = (categories.data || [])
-        .filter(c => c.name.toLowerCase().includes("inversión") || c.name.toLowerCase().includes("inversion"))
-        .map(c => c.id);
-
-      const cryptoCategoryIds = (categories.data || [])
-        .filter(c => c.name.toLowerCase().includes("crypto") || c.name.toLowerCase().includes("cripto"))
-        .map(c => c.id);
 
       // Calculate balances
       let savingsBalance = 0;
@@ -226,30 +234,44 @@ export function useDashboardMetrics(userId: string | undefined) {
       let cryptoBalance = 0;
 
       for (const acc of accountsData) {
-        // Accounts with "crypto" currency or category are typically crypto-related
-        // If it's a holding account (USDT/USD) we might want to check its holdings value instead of initial_balance logic if calculated above differently, 
-        // but existing logic uses 'accountBalances' for typical accounts.
-        // HOWEVER, for crypto accounts with holdings, we summed their value into `totalAssets` (via accountHoldingsValue).
-        // Standard bank accounts in EUR/USD without holdings use `accountBalances`.
-
         const balance = accountBalances[acc.id] || 0;
 
-        const isCryptoAccount = cryptoAccountIds.has(acc.id)
-          || acc.currency === "USD"
-          || acc.currency === "USDT"
-          || (acc.category_id ? cryptoCategoryIds.includes(acc.category_id) : false);
-
-        if (isCryptoAccount) {
-          // Crypto balance is derived from holdings only
-          continue;
-        }
-
+        // Priority 1: Explicit category assignment wins always
         if (acc.category_id) {
           if (savingsCategoryIds.includes(acc.category_id)) {
-            savingsBalance += balance;
-          } else if (investmentsCategoryIds.includes(acc.category_id)) {
-            investmentsBalance += balance;
+            // Always count EUR savings by balance
+            if (acc.currency === "EUR") savingsBalance += balance;
+            continue;
           }
+          if (investmentsCategoryIds.includes(acc.category_id)) {
+            // Investment accounts: use balance for EUR/non-crypto, use holdings for USD/USDT
+            if (acc.currency === "EUR") investmentsBalance += balance;
+            // USD-denominated investment accounts (like andbank BTC portion) go into crypto
+            // because their actual value is derived from holdings, not from a EUR balance
+            else if (acc.currency === "USD" || acc.currency === "USDT") {
+              const holdingsValue = (accountHoldingsResult.data || [])
+                .filter(h => h.bank_account_id === acc.id)
+                .reduce((sum, h) => {
+                  const price = latestPrices[h.symbol.toUpperCase()] || latestPrices[h.symbol] || 0;
+                  return sum + Number(h.quantity) * price;
+                }, 0);
+              cryptoBalance += holdingsValue * usdtRate;
+            }
+            continue;
+          }
+          if (cryptoCategoryIds.includes(acc.category_id)) {
+            // Pure crypto category → include in cryptoBalance via holdings
+            continue; // already computed via accountHoldingsValue below
+          }
+        }
+
+        // Priority 2: No explicit investment/savings category → fallback to heuristics
+        const isCryptoByHeuristic = cryptoAccountIds.has(acc.id)
+          || acc.currency === "USD"
+          || acc.currency === "USDT";
+
+        if (isCryptoByHeuristic) {
+          continue; // counted in accountHoldingsValue block below
         }
       }
 

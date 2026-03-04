@@ -140,12 +140,82 @@
     padding-bottom: max(34px, env(safe-area-inset-bottom, 34px));
   }
 
-  /* Restored Gradients and Glows with new Primary Color (Blue) */
+  /* Gradients and Glows using dynamic --primary variable */
   .gradient-primary {
-    background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+    background: linear-gradient(135deg, oklch(from var(--primary) calc(l + 0.08) c h) 0%, var(--primary) 100%);
   }
 
   .glow-primary {
-    box-shadow: 0 0 30px oklch(0.623 0.214 259.815 / 0.2);
+    box-shadow: 0 0 30px color-mix(in oklch, var(--primary) 20%, transparent);
+  }
+
+  /* ============================================================
+     Scoped Color Themes — apply only to the home module wrapper.
+     Light mode: pastel (high L, low C). Dark mode: vivid.
+     ============================================================ */
+
+  /* --- Violet --- */
+  .theme-violet {
+    --primary: oklch(0.80 0.12 290);
+    --primary-foreground: oklch(0.25 0.05 290);
+    --ring: oklch(0.80 0.12 290);
+  }
+
+  .dark .theme-violet {
+    --primary: oklch(0.68 0.22 290);
+    --primary-foreground: oklch(0.14 0.04 265);
+    --ring: oklch(0.68 0.22 290);
+  }
+
+  /* --- Blue --- */
+  .theme-blue {
+    --primary: oklch(0.78 0.12 240);
+    --primary-foreground: oklch(0.22 0.05 240);
+    --ring: oklch(0.78 0.12 240);
+  }
+
+  .dark .theme-blue {
+    --primary: oklch(0.62 0.20 240);
+    --primary-foreground: oklch(0.14 0.04 240);
+    --ring: oklch(0.62 0.20 240);
+  }
+
+  /* --- Rose --- */
+  .theme-rose {
+    --primary: oklch(0.80 0.12 10);
+    --primary-foreground: oklch(0.25 0.05 10);
+    --ring: oklch(0.80 0.12 10);
+  }
+
+  .dark .theme-rose {
+    --primary: oklch(0.65 0.22 10);
+    --primary-foreground: oklch(0.14 0.04 10);
+    --ring: oklch(0.65 0.22 10);
+  }
+
+  /* --- Orange --- */
+  .theme-orange {
+    --primary: oklch(0.82 0.13 55);
+    --primary-foreground: oklch(0.25 0.05 55);
+    --ring: oklch(0.82 0.13 55);
+  }
+
+  .dark .theme-orange {
+    --primary: oklch(0.70 0.22 55);
+    --primary-foreground: oklch(0.14 0.04 55);
+    --ring: oklch(0.70 0.22 55);
+  }
+
+  /* --- Green --- */
+  .theme-green {
+    --primary: oklch(0.82 0.12 160);
+    --primary-foreground: oklch(0.22 0.05 160);
+    --ring: oklch(0.82 0.12 160);
+  }
+
+  .dark .theme-green {
+    --primary: oklch(0.65 0.20 160);
+    --primary-foreground: oklch(0.14 0.04 160);
+    --ring: oklch(0.65 0.20 160);
   }
 }

@@ -41,7 +41,7 @@ export function AccountsTab({ userId }: AccountsTabProps) {
     initial_balance: "0",
   });
 
-  const DEFAULT_ACCOUNT_CATEGORIES = ["Corriente", "Ahorros", "Inversiones"];
+  const DEFAULT_ACCOUNT_CATEGORIES = ["Corriente", "Ahorros", "Inversiones", "Crypto"];
 
   useEffect(() => {
     if (!userId || !categories || categories.length > 0 || isCreatingCategory) return;

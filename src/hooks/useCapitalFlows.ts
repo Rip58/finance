@@ -12,6 +12,7 @@ import { useDCAPortfolios } from './useDCAPortfolios';
 import { useCategories } from './useCategories';
 import { useCryptoMarketData } from './useCryptoMarketData';
 import { isWithinInterval, subHours, subDays, subMonths, subYears, parseISO } from 'date-fns';
+import { calculateDCAStats } from '@/lib/dcaUtils';
 
 export type TimeRange = '24h' | '7d' | '1m' | '3m' | '6m' | '1y' | 'ALL';
 
@@ -185,36 +186,28 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         };
 
         // A. DCA: Calculate Invested & Current Value (DCA portfolios only)
-        const dcaInvestedPerSymbol: Record<string, number> = {};
         const dcaQuantityPerSymbol: Record<string, number> = {};
         const activePortfolioIds = new Set(portfolios?.map(p => p.id) || []);
 
-        assetTransactions.forEach(tx => {
-            if (!tx.dca_portfolio_id || !activePortfolioIds.has(tx.dca_portfolio_id)) return;
+        let totalDcaInvested = 0;
+        let totalDcaRealizedPnL = 0;
+        let totalDcaInvestedAllTime = 0;
 
-            const sym = tx.symbol.toUpperCase();
-            if (!dcaInvestedPerSymbol[sym]) {
-                dcaInvestedPerSymbol[sym] = 0;
-                dcaQuantityPerSymbol[sym] = 0;
-            }
+        portfolios?.forEach(portfolio => {
+            const portfolioTxs = assetTransactions.filter(tx => tx.dca_portfolio_id === portfolio.id);
+            const stats = calculateDCAStats(portfolioTxs as any);
 
-            const value = tx.quantity * tx.price_eur;
+            const sym = portfolio.symbol.toUpperCase();
+            dcaQuantityPerSymbol[sym] = (dcaQuantityPerSymbol[sym] || 0) + stats.netQuantity;
 
-            if (tx.side === 'buy') {
-                dcaInvestedPerSymbol[sym] += value;
-                dcaQuantityPerSymbol[sym] += tx.quantity;
-            } else {
-                const avgCost = dcaQuantityPerSymbol[sym] > 0
-                    ? dcaInvestedPerSymbol[sym] / dcaQuantityPerSymbol[sym]
-                    : 0;
-                dcaInvestedPerSymbol[sym] -= (tx.quantity * avgCost);
-                dcaQuantityPerSymbol[sym] -= tx.quantity;
-            }
+            totalDcaInvested += stats.costBasis;
+            totalDcaRealizedPnL += stats.realizedPnL;
+            totalDcaInvestedAllTime += stats.totalInvestedAllTime;
         });
 
-        Object.keys(dcaInvestedPerSymbol).forEach(sym => {
-            res.dca.totalInvested += dcaInvestedPerSymbol[sym];
-        });
+        res.dca.totalInvested = totalDcaInvested;
+        (res.dca as any)._realizedPnL = totalDcaRealizedPnL;
+        (res.dca as any)._investedAllTime = totalDcaInvestedAllTime;
 
         const cryptoPeriodQtyDelta: Record<string, number> = {};
         const dcaPeriodQtyDelta: Record<string, number> = {};
@@ -223,10 +216,17 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
             if (!shouldInclude(tx.transaction_date)) return;
             const sym = tx.symbol.toUpperCase();
             const qtyDelta = tx.side === "buy" ? tx.quantity : -tx.quantity;
+            // Record the fiat cash flow of the trade
+            const fiatFlow = tx.quantity * tx.price_eur * (tx.side === "buy" ? 1 : -1);
+
             if (tx.dca_portfolio_id && activePortfolioIds.has(tx.dca_portfolio_id)) {
                 dcaPeriodQtyDelta[sym] = (dcaPeriodQtyDelta[sym] || 0) + qtyDelta;
+                periodDelta.dca += fiatFlow;
+                periodDelta.total += fiatFlow;
             } else {
                 cryptoPeriodQtyDelta[sym] = (cryptoPeriodQtyDelta[sym] || 0) + qtyDelta;
+                periodDelta.crypto += fiatFlow;
+                periodDelta.total += fiatFlow;
             }
         });
 
@@ -388,50 +388,105 @@ export function useCapitalFlows(userId: string | undefined, timeRange: TimeRange
         res.total.currentValue = res.savings.currentValue + res.investment.currentValue + res.crypto.currentValue + res.dca.currentValue + res.general.currentValue;
 
         // D. Calculate PnL
-        const calcPnL = (m: { totalInvested: number, currentValue: number, pnl: number, pnlPercent: number }) => {
-            m.pnl = m.currentValue - m.totalInvested;
-            m.pnlPercent = m.totalInvested !== 0 ? (m.pnl / m.totalInvested) * 100 : 0;
+        const calcPnL = (m: any) => {
+            if (m._realizedPnL !== undefined && m._investedAllTime !== undefined) {
+                // For DCA, PnL is Realized PnL + Unrealized PnL
+                const unrealizedPnL = m.currentValue - m.totalInvested;
+                m.pnl = m._realizedPnL + unrealizedPnL;
+                m.pnlPercent = m._investedAllTime > 0 ? (m.pnl / m._investedAllTime) * 100 : 0;
+            } else {
+                m.pnl = m.currentValue - m.totalInvested;
+                m.pnlPercent = m.totalInvested !== 0 ? (m.pnl / m.totalInvested) * 100 : 0;
+            }
         };
-
-        // Calculate PnL for each (Note: Savings/General will be 0 based on above logic, effectively showcasing Crypto PnL)
-        // To show Savings PnL, we would need to distinguish "Principal" from "Interest". 
-        // Without that tag, we can't guess. 
-        // EXCEPT: The user audio mentions "variation representing the change".
-        // If I deposit 1000, and balance is 1000, variation is 0.
-        // If I deposit 1000, and balance is 1200 (200 interest), variation is 200.
-        // But how do we know 200 is interest? 
-        // Maybe we look for transactions notes? Or Category?
-        // Let's stick to Crypto PnL providing the main "DCA" value, and others being flat for now.
 
         calcPnL(res.savings);
         calcPnL(res.investment);
         calcPnL(res.crypto);
         calcPnL(res.dca);
         calcPnL(res.general);
-        calcPnL(res.total);
+
+        // For total, we sum up all PnLs to get accurate total PnL including realized profits
+        res.total.pnl = res.savings.pnl + res.investment.pnl + res.crypto.pnl + res.dca.pnl + res.general.pnl;
+
+        // Use an adjusted base for the total PnL percentage if there's DCA involved
+        const totalInvestedForPercent = res.savings.totalInvested + res.investment.totalInvested + res.crypto.totalInvested + ((res.dca as any)._investedAllTime || 0) + res.general.totalInvested;
+        res.total.pnlPercent = totalInvestedForPercent !== 0 ? (res.total.pnl / totalInvestedForPercent) * 100 : 0;
 
         if (timeRange !== "ALL") {
-            const savingsStart = res.savings.currentValue - periodDelta.savings;
-            const investmentStart = res.investment.currentValue - periodDelta.investment;
-            const generalStart = res.general.currentValue - periodDelta.general;
-            const cryptoStart = cryptoStartValue;
-            const dcaStart = dcaStartValue;
-            const totalStart = savingsStart + investmentStart + generalStart + cryptoStart + dcaStart;
+            // For bank accounts, PnL is effectively the net income (periodDelta)
+            const savingsPnL = periodDelta.savings;
+            const investmentPnL = periodDelta.investment;
+            const generalPnL = periodDelta.general;
 
-            const applyStartValue = (
-                metric: { totalInvested: number; currentValue: number; pnl: number; pnlPercent: number },
-                startValue: number
-            ) => {
-                metric.pnl = metric.currentValue - startValue;
-                metric.pnlPercent = startValue !== 0 ? (metric.pnl / startValue) * 100 : 0;
+            // For Crypto and DCA, user prefers exact market percentage variations (like the DCA page)
+            // rather than backwards cash-flow derivation, to match 24h PnL perfectly.
+            let cryptoPnL = 0;
+            let dcaPnL = 0;
+
+            const getChangePercent = (sym: string) => {
+                if (timeRange === "24h") return marketData[sym]?.change24h || 0;
+                if (timeRange === "7d") return marketData[sym]?.change7d || 0;
+                if (timeRange === "1m") return marketData[sym]?.change30d || 0;
+                // For other ranges, we lack direct API change percent, fallback to cashflow method if needed
+                return null;
             };
 
-            applyStartValue(res.savings, savingsStart);
-            applyStartValue(res.investment, investmentStart);
-            applyStartValue(res.crypto, cryptoStart);
-            applyStartValue(res.dca, dcaStart);
-            applyStartValue(res.general, generalStart);
-            applyStartValue(res.total, totalStart);
+            // Calculate PnL purely via variation of current holdings
+            // For each holding, PnL = CurrentValue - (CurrentValue / (1 + change%))
+            // This isolates pure price movement of the current bag
+            accountHoldings.forEach(h => {
+                const sym = h.symbol.toUpperCase();
+                const changePct = getChangePercent(sym);
+
+                if (changePct !== null) {
+                    const priceData = currentPrices[sym];
+                    const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
+                    const currentValue = h.quantity * price * usdtEurRate;
+
+                    const ratio = 1 + (changePct / 100);
+                    const startValue = ratio > 0 ? currentValue / ratio : currentValue;
+                    cryptoPnL += (currentValue - startValue);
+                } else {
+                    // Fallback to cashflow method for 3m, 6m, 1y where API changes are missing
+                    cryptoPnL = res.crypto.currentValue - (cryptoStartValue + periodDelta.crypto);
+                }
+            });
+
+            Object.entries(dcaQuantityPerSymbol).forEach(([sym, qty]) => {
+                const changePct = getChangePercent(sym);
+
+                if (changePct !== null) {
+                    const priceData = currentPrices[sym];
+                    const price = typeof priceData === 'number' ? priceData : ((priceData as any)?.price || 0);
+                    const currentValue = qty * price * usdtEurRate;
+
+                    const ratio = 1 + (changePct / 100);
+                    const startValue = ratio > 0 ? currentValue / ratio : currentValue;
+                    dcaPnL += (currentValue - startValue);
+                } else {
+                    // Fallback
+                    dcaPnL = res.dca.currentValue - (dcaStartValue + periodDelta.dca);
+                }
+            });
+
+            const totalPnL = savingsPnL + investmentPnL + generalPnL + cryptoPnL + dcaPnL;
+
+            const applyPeriodStats = (
+                metric: any,
+                computedPnL: number
+            ) => {
+                metric.pnl = computedPnL;
+                metric.totalInvested = metric.currentValue - computedPnL; // Sets "Valor Inicial" to the adjusted cost basis
+                metric.pnlPercent = metric.totalInvested !== 0 ? (metric.pnl / metric.totalInvested) * 100 : 0;
+            };
+
+            applyPeriodStats(res.savings, savingsPnL);
+            applyPeriodStats(res.investment, investmentPnL);
+            applyPeriodStats(res.crypto, cryptoPnL);
+            applyPeriodStats(res.dca, dcaPnL);
+            applyPeriodStats(res.general, generalPnL);
+            applyPeriodStats(res.total, totalPnL);
         }
 
         return res;

@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useToast } from "@/hooks/use-toast";
 import { cn, formatCurrency } from "@/lib/utils";
 import { APP_VERSION } from "@/lib/version";
+import { useThemeColor } from "@/components/providers/ThemeColorProvider";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -44,6 +45,7 @@ export function HomePage({ user }: HomePageProps) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { colorTheme } = useThemeColor();
 
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showNumbers, setShowNumbers] = useState(false);
@@ -71,9 +73,9 @@ export function HomePage({ user }: HomePageProps) {
   // Ensure default categories exist
   useEffect(() => {
     if (categories.length > 0) {
-      const defaults = ["Ahorros", "Inversiones"];
+      const defaults = ["Ahorros", "Inversiones", "Crypto"];
       const missing = defaults.filter(def =>
-        !categories.some(c => c.name.toLowerCase() === def.toLowerCase())
+        !categories.some(c => c.name?.toLowerCase() === def.toLowerCase())
       );
 
       if (missing.length > 0) {
@@ -95,6 +97,41 @@ export function HomePage({ user }: HomePageProps) {
       }
     }
   }, [categories, createCategory]);
+
+  // One-off migration of existing crypto accounts into the Crypto category
+  useEffect(() => {
+    if (categories.length > 0 && bankAccounts.length > 0) {
+      const cryptoCat = categories.find(c => c.name?.toLowerCase() === "crypto" || c.name?.toLowerCase() === "cripto");
+      const investCatIds = categories.filter(c => c.name?.toLowerCase().includes("inver")).map(c => c.id);
+
+      if (cryptoCat) {
+        const accountsToMigrate = bankAccounts.filter(acc => {
+          // Leave Andbank where it is as explicitly requested by user
+          if (acc.name.toLowerCase().includes("andbank")) return false;
+
+          // If assigned to investment category and happens to be a crypto-like property
+          if (acc.category_id && investCatIds.includes(acc.category_id)) {
+            const isCryptoCur = ["USDT", "USD", "BTC", "ETH"].includes(acc.currency);
+            const isCryptoName = ["binance", "kraken", "coinbase"].some(n => acc.name.toLowerCase().includes(n));
+            return isCryptoCur || isCryptoName;
+          }
+          return false;
+        });
+
+        if (accountsToMigrate.length > 0) {
+          const migrate = async () => {
+            // dynamic import to avoid altering the top-level imports and risking a lint error easily
+            const { supabase } = await import('@/integrations/supabase/client');
+            for (const acc of accountsToMigrate) {
+              await supabase.from('bank_accounts').update({ category_id: cryptoCat.id }).eq('id', acc.id);
+            }
+            window.location.reload();
+          };
+          migrate();
+        }
+      }
+    }
+  }, [categories, bankAccounts]);
 
   // Get unique symbols from asset transactions and account holdings
   const allSymbols = useMemo(() => {
@@ -153,23 +190,32 @@ export function HomePage({ user }: HomePageProps) {
 
 
 
+  const [activeTab, setActiveTab] = useState("total");
+
   // Filter accounts (Savings, Investment, Crypto)
   const displayedAccounts = useMemo(() => {
-    const includedCategoryIds = categories
-      .filter(c =>
-        c.name.toLowerCase().includes("ahorro") ||
-        c.name.toLowerCase().includes("inversión") ||
-        c.name.toLowerCase().includes("inversion") ||
-        c.name.toLowerCase().includes("crypto") ||
-        c.name.toLowerCase().includes("cripto") ||
-        c.name.toLowerCase().includes("corriente")
-      )
-      .map(c => c.id);
+    // Determine category IDs for filtering
+    const savingsIds = categories.filter(c => c.name?.toLowerCase().includes("ahorro")).map(c => c.id);
+    const investmentIds = categories.filter(c => c.name?.toLowerCase().includes("inversión") || c.name?.toLowerCase().includes("inversion")).map(c => c.id);
+    const cryptoIds = categories.filter(c => c.name?.toLowerCase().includes("crypto") || c.name?.toLowerCase().includes("cripto")).map(c => c.id);
+    const generalIds = categories.filter(c => c.name?.toLowerCase().includes("corriente")).map(c => c.id);
 
-    return bankAccounts.filter(
-      acc => !acc.is_archived && acc.category_id && includedCategoryIds.includes(acc.category_id)
-    );
-  }, [bankAccounts, categories]);
+    return bankAccounts.filter(acc => {
+      if (acc.is_archived || !acc.category_id) return false;
+
+      // When a specific tab is active, only show accounts from that category
+      if (activeTab === "savings") return savingsIds.includes(acc.category_id);
+      if (activeTab === "investment") return investmentIds.includes(acc.category_id);
+      if (activeTab === "crypto") {
+        // Some crypto accounts might be USD/USDT balances
+        return cryptoIds.includes(acc.category_id) || acc.currency === "USDT" || acc.currency === "USD";
+      }
+      if (activeTab === "dca") return false; // DCA doesn't show standard bank accounts
+
+      // Default (total/general) shows all these categories
+      return savingsIds.includes(acc.category_id) || investmentIds.includes(acc.category_id) || cryptoIds.includes(acc.category_id) || generalIds.includes(acc.category_id) || acc.currency === "USDT" || acc.currency === "USD";
+    });
+  }, [bankAccounts, categories, activeTab]);
 
   // --- CRYPTO LIVE DELTA LOGIC & HOLDINGS FOR HOOK - MOVED UP ---
   const allCryptoHoldings = useMemo(() => {
@@ -348,101 +394,115 @@ export function HomePage({ user }: HomePageProps) {
   const liveCryptoBalance = (metrics?.cryptoBalance ?? 0);
 
   return (
-    <MobileLayout>
-      {/* Header */}
-      <SafeAreaHeader>
-        <header className="flex items-center justify-between px-4 pb-2">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-10 w-10 border-2 border-primary/20">
-              <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-                {userName.charAt(0).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-xs text-muted-foreground">{greeting}</p>
-              <div className="flex items-center gap-2">
-                <p className="font-semibold capitalize">{userName}</p>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v{APP_VERSION}</span>
+    <div className={`theme-${colorTheme} flex flex-col h-full`}>
+      <MobileLayout>
+        {/* Header */}
+        <SafeAreaHeader>
+          <header className="flex items-center justify-between px-4 pb-2">
+            <div className="flex items-center gap-3">
+              <Avatar className="h-10 w-10 border-2 border-primary/20">
+                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                  {userName.charAt(0).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-xs text-muted-foreground">{greeting}</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-semibold capitalize">{userName}</p>
+                  <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v{APP_VERSION}</span>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
-              <LogOut className="h-5 w-5" />
-            </Button>
-          </div>
-        </header>
-      </SafeAreaHeader>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleLogout}>
+                <LogOut className="h-5 w-5" />
+              </Button>
+            </div>
+          </header>
+        </SafeAreaHeader>
 
-      {/* Balance Card */}
-      <div className="px-4 py-4">
-        <BalanceCard
-          balance={liveTotalBalance}
-          subtitle="Total patrimonio"
-          savingsTotal={metrics?.savingsBalance ?? 0}
-          investmentsTotal={metrics?.investmentsBalance ?? 0}
-          cryptoTotal={liveCryptoBalance}
+        {/* Balance Card */}
+        <div className="px-4 py-4">
+          <BalanceCard
+            balance={liveTotalBalance}
+            subtitle="Total patrimonio"
+            savingsTotal={metrics?.savingsBalance ?? 0}
+            investmentsTotal={metrics?.investmentsBalance ?? 0}
+            cryptoTotal={liveCryptoBalance}
+          />
+        </div>
+
+        {/* Patrimony Evolution Section */}
+        <div className="px-4 pb-4">
+          <div className="rounded-3xl glass-panel p-5">
+            <Suspense fallback={<div className="h-72 rounded-2xl bg-muted/40 animate-pulse" />}>
+              <PatrimonyEvolution userId={user.id} activeTab={activeTab} onTabChange={setActiveTab} />
+            </Suspense>
+          </div>
+        </div>
+
+        {/* Savings Accounts Panel */}
+        <div className="px-4 py-2">
+          <div className="rounded-3xl glass-panel p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-sm">Desglose Patrimonio</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleRefreshPrices}
+                disabled={isRefreshing}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              <SortableAccountList
+                accounts={displayedAccounts}
+                getDisplayValue={getAccountDisplayValue}
+                onAccountClick={(acc) => setSelectedAccount(acc as typeof bankAccounts[0])}
+                onReorder={updateSortOrder}
+                getAccountTheme={(acc) => {
+                  if (activeTab === "savings") return "emerald";
+                  if (activeTab === "investment") return "sky";
+                  if (activeTab === "crypto") return "amber";
+
+                  // If in "general" tab, determine color by individual account category
+                  const catName = categories.find(c => c.id === acc.category_id)?.name?.toLowerCase() || "";
+                  if (catName.includes("ahorro")) return "emerald";
+                  if (catName.includes("inversión") || catName.includes("inversion")) return "sky";
+                  if (catName.includes("crypto") || catName.includes("cripto")) return "amber";
+                  return "slate";
+                }}
+              />
+
+              {/* DCA Total - Show if has value and tab is total or dca */}
+              {(dcaTotalUsd > 0 && (activeTab === "total" || activeTab === "dca")) && (
+                <div className="flex items-center justify-between p-2 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-950 dark:text-orange-100">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+                    <span className="text-sm font-medium">DCA</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold block">{formatCurrency(dcaTotal, "EUR")}</span>
+                    <span className="text-xs text-orange-600/80 dark:text-orange-400/80">{formatCurrency(dcaTotalUsd, "USDT")}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <AccountEditDialog
+          open={!!selectedAccount}
+          onOpenChange={(open) => !open && setSelectedAccount(null)}
+          account={selectedAccount}
+          userId={user.id}
+          currentBalance={selectedAccount ? accountBalances[selectedAccount.id] : undefined}
         />
-      </div>
-
-      {/* Patrimony Evolution Section */}
-      <div className="px-4 pb-4">
-        <div className="rounded-3xl glass-panel p-5">
-          <Suspense fallback={<div className="h-72 rounded-2xl bg-muted/40 animate-pulse" />}>
-            <PatrimonyEvolution userId={user.id} />
-          </Suspense>
-        </div>
-      </div>
-
-      {/* Savings Accounts Panel */}
-      <div className="px-4 py-2">
-        <div className="rounded-3xl glass-panel p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-sm">Desglose Patrimonio</h3>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleRefreshPrices}
-              disabled={isRefreshing}
-              className="h-8 w-8 p-0"
-            >
-              <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
-            </Button>
-          </div>
-
-          <div className="space-y-3">
-            <SortableAccountList
-              accounts={displayedAccounts}
-              getDisplayValue={getAccountDisplayValue}
-              onAccountClick={(acc) => setSelectedAccount(acc as typeof bankAccounts[0])}
-              onReorder={updateSortOrder}
-            />
-
-            {/* DCA Total - Show if has value */}
-            {(dcaTotalUsd > 0) && (
-              <div className="flex items-center justify-between p-2 rounded-2xl bg-chart-income/10 border border-chart-income/20">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-chart-income animate-pulse" />
-                  <span className="text-sm font-medium">DCA</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-bold block">{formatCurrency(dcaTotal, "EUR")}</span>
-                  <span className="text-xs text-muted-foreground">{formatCurrency(dcaTotalUsd, "USDT")}</span>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      <AccountEditDialog
-        open={!!selectedAccount}
-        onOpenChange={(open) => !open && setSelectedAccount(null)}
-        account={selectedAccount}
-        userId={user.id}
-        currentBalance={selectedAccount ? accountBalances[selectedAccount.id] : undefined}
-      />
-    </MobileLayout >
+      </MobileLayout>
+    </div>
   );
 }
 

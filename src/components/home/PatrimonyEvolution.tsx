@@ -22,25 +22,35 @@ import { useDCAPortfolios } from "@/hooks/useDCAPortfolios";
 
 interface PatrimonyEvolutionProps {
     userId: string | undefined;
+    activeTab?: string;
+    onTabChange?: (tab: string) => void;
 }
 
-export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
+export function PatrimonyEvolution({ userId, activeTab: externalActiveTab, onTabChange }: PatrimonyEvolutionProps) {
     const [timeRange, setTimeRange] = useState<TimeRange>("24h");
     const [isExpanded, setIsExpanded] = useState(false);
     const [editingBankTx, setEditingBankTx] = useState<any | null>(null);
     const [editingAssetTx, setEditingAssetTx] = useState<any | null>(null);
 
-    const [activeTab, setActiveTab] = useState("total");
+    const [internalActiveTab, setInternalActiveTab] = useState("total");
+    const activeTab = externalActiveTab !== undefined ? externalActiveTab : internalActiveTab;
+
+    const handleTabChange = (val: string) => {
+        setInternalActiveTab(val);
+        if (onTabChange) onTabChange(val);
+    };
+
     const { metrics, history } = useCapitalFlows(userId, timeRange);
     const { data: accounts = [] } = useBankAccounts(userId);
     const { data: categories = [] } = useCategories(userId, undefined);
     const { data: accountHoldings = [] } = useAccountHoldings(userId);
     const { data: portfolios = [] } = useDCAPortfolios(userId);
 
-    const filteredHistory = history.filter(item => {
+    const filteredHistory = (history || []).filter(item => {
+        if (!item) return false;
         if (activeTab === "total") return true;
-        if (activeTab === "crypto") return item.category === "crypto" || item.category === "dca";
-        return item.category === activeTab;
+        if (activeTab === "crypto") return item?.category === "crypto" || item?.category === "dca";
+        return item?.category === activeTab;
     });
 
     const { delete: deleteTransaction } = useTransactions(userId);
@@ -56,15 +66,15 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
         { value: "ALL", label: "Todo" },
     ];
     const savingsCategoryIds = useMemo(
-        () => categories.filter(c => c.name.toLowerCase().includes("ahorro")).map(c => c.id),
+        () => categories.filter(c => c.name?.toLowerCase().includes("ahorro")).map(c => c.id),
         [categories]
     );
     const investmentCategoryIds = useMemo(
-        () => categories.filter(c => c.name.toLowerCase().includes("inver")).map(c => c.id),
+        () => categories.filter(c => c.name?.toLowerCase().includes("inver")).map(c => c.id),
         [categories]
     );
     const cryptoCategoryIds = useMemo(
-        () => categories.filter(c => c.name.toLowerCase().includes("crypto") || c.name.toLowerCase().includes("cripto")).map(c => c.id),
+        () => categories.filter(c => c.name?.toLowerCase().includes("crypto") || c.name?.toLowerCase().includes("cripto")).map(c => c.id),
         [categories]
     );
 
@@ -97,7 +107,7 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
     useEffect(() => {
         if (tabs.length === 0) return;
         if (!tabs.some(tab => tab.id === activeTab)) {
-            setActiveTab(tabs[0].id);
+            handleTabChange(tabs[0].id);
         }
     }, [tabs, activeTab]);
 
@@ -155,7 +165,7 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
                 </div>
 
                 {/* Tabs & Summary Cards */}
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
                     <TabsList className="w-full h-auto p-1 bg-muted/50 flex gap-1 mb-4">
                         {tabs.map((tab) => {
                             const Icon = tab.icon;
@@ -180,10 +190,12 @@ export function PatrimonyEvolution({ userId }: PatrimonyEvolutionProps) {
                         return (
                             <TabsContent key={tab.id} value={tab.id} className="mt-0">
                                 <div className="grid grid-cols-2 gap-3 mb-6">
-                                    {/* Card 1: Invested */}
+                                    {/* Card 1: Invested / Initial Value */}
                                     <Card className="bg-gradient-to-br from-background to-muted/50 border-muted">
                                         <CardContent className="p-4">
-                                            <p className="text-xs text-muted-foreground mb-1">Total Invertido</p>
+                                            <p className="text-xs text-muted-foreground mb-1">
+                                                {timeRange === 'ALL' ? 'Total Invertido' : 'Valor Inicial'}
+                                            </p>
                                             <p className="text-lg font-bold">{formatCurrency(data.totalInvested, "EUR")}</p>
                                         </CardContent>
                                     </Card>
