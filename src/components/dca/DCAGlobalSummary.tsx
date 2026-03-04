@@ -21,7 +21,7 @@ export function DCAGlobalSummary({
         <div className="mx-4 mb-6 grid grid-cols-3 gap-3">
             {/* Total Invested */}
             <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-black mb-3">
+                <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
                     <Wallet className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     <span className="text-[13px] font-medium">Invertido</span>
                 </div>
@@ -32,7 +32,7 @@ export function DCAGlobalSummary({
 
             {/* PnL */}
             <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between relative overflow-hidden">
-                <div className="flex items-center gap-1.5 text-black mb-3">
+                <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
                     <Activity className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     <span className="text-[13px] font-medium">PnL Global</span>
                 </div>
@@ -52,7 +52,7 @@ export function DCAGlobalSummary({
 
             {/* Current Value */}
             <div className="bg-white dark:bg-card rounded-[24px] p-4 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-black mb-3">
+                <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
                     <PieChart className="h-[18px] w-[18px]" strokeWidth={1.5} />
                     <span className="text-[13px] font-medium">Actual</span>
                 </div>
