@@ -62,10 +62,10 @@ function SortableAccountItem({
 
   const themeClass = getAccountTheme ? getAccountTheme(account) : "slate";
   const themeClasses: Record<string, string> = {
-    emerald: "bg-emerald-500/10 border-emerald-500/20 text-emerald-950 dark:text-emerald-100",
-    sky: "bg-sky-500/10 border-sky-500/20 text-sky-950 dark:text-sky-100",
-    amber: "bg-amber-500/10 border-amber-500/20 text-amber-950 dark:text-amber-100",
-    slate: "bg-card/50 border-border/50 text-foreground",
+    emerald: "bg-emerald-500/10 border-emerald-500/20",
+    sky: "bg-sky-500/10 border-sky-500/20",
+    amber: "bg-amber-500/10 border-amber-500/20",
+    slate: "bg-card/30 border-border/30",
   };
   const activeClass = themeClasses[themeClass] || themeClasses.slate;
 
@@ -74,40 +74,47 @@ function SortableAccountItem({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "flex items-center justify-between w-full rounded-3xl p-4 mb-3 transition-all duration-200 border backdrop-blur-sm shadow-sm",
+        "flex items-center justify-between w-full rounded-xl px-4 py-3 border transition-all duration-200",
         activeClass,
-        isDragging ? "shadow-xl scale-105 z-10 ring-1 ring-primary/20 bg-accent" : "hover:brightness-95 active:scale-[0.98]"
+        isDragging
+          ? "shadow-lg scale-[1.02] z-10 ring-1 ring-primary/20"
+          : "hover:brightness-95 active:scale-[0.99]"
       )}
     >
-      <div className="flex items-center gap-3 flex-1">
+      <div className="flex items-center gap-3 flex-1 min-w-0">
+        {/* Drag handle */}
         <button
           {...attributes}
           {...listeners}
-          className="touch-none cursor-grab active:cursor-grabbing p-1.5 -ml-1.5 opacity-50 hover:opacity-100 transition-opacity"
+          className="touch-none cursor-grab active:cursor-grabbing p-1 -ml-1 opacity-30 hover:opacity-70 transition-opacity shrink-0"
         >
-          <GripVertical className="h-5 w-5" />
+          <GripVertical className="h-4 w-4" />
         </button>
+
+        {/* Account info */}
         <button
           onClick={onClick}
-          className="flex items-center gap-3 flex-1 text-left"
+          className="flex items-center gap-2.5 flex-1 min-w-0 text-left"
         >
-          <Avatar className="h-10 w-10 border border-black/10 dark:border-white/10 shadow-sm bg-white/50 dark:bg-black/50">
+          <Avatar className="h-7 w-7 border border-border/30 bg-muted/30 shrink-0">
             <AvatarImage
               src={`https://logo.clearbit.com/${account.name.toLowerCase().replace(/\s/g, "")}.com`}
               alt={account.name}
               className="object-contain p-1"
             />
-            <AvatarFallback className="bg-transparent">
-              <Building2 className="h-5 w-5 opacity-50" />
+            <AvatarFallback className="bg-transparent text-muted-foreground">
+              <Building2 className="h-3.5 w-3.5 opacity-40" />
             </AvatarFallback>
           </Avatar>
-          <div>
-            <span className="text-base font-semibold block leading-none mb-1">{account.name}</span>
-            <span className="text-xs font-medium opacity-70 px-1.5 py-0.5 rounded-md mix-blend-multiply dark:mix-blend-screen">{account.currency}</span>
+          <div className="min-w-0">
+            <span className="text-sm font-medium block leading-tight truncate">{account.name}</span>
+            <span className="text-[10px] text-muted-foreground">{account.currency}</span>
           </div>
         </button>
       </div>
-      <span className="font-bold text-base tracking-tight">{getDisplayValue(account)}</span>
+
+      {/* Balance */}
+      <span className="font-semibold text-sm tracking-tight shrink-0 ml-2">{getDisplayValue(account)}</span>
     </div>
   );
 }
@@ -121,52 +128,30 @@ export function SortableAccountList({
 }: SortableAccountListProps) {
   const [items, setItems] = useState(accounts);
 
-  // Update items when accounts prop changes
   if (accounts.length !== items.length || accounts.some((a, i) => a.id !== items[i]?.id)) {
     setItems(accounts);
   }
 
   const sensors = useSensors(
-    useSensor(MouseSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: {
-        delay: 200,
-        tolerance: 5,
-      },
-    })
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
-
     if (over && active.id !== over.id) {
       const oldIndex = items.findIndex((item) => item.id === active.id);
       const newIndex = items.findIndex((item) => item.id === over.id);
-
       const newItems = arrayMove(items, oldIndex, newIndex);
       setItems(newItems);
-
-      // Save new order to database
-      const updates = newItems.map((item, index) => ({
-        id: item.id,
-        sort_order: index,
-      }));
-      onReorder(updates);
+      onReorder(newItems.map((item, index) => ({ id: item.id, sort_order: index })));
     }
   };
 
   return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={handleDragEnd}
-    >
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={items} strategy={verticalListSortingStrategy}>
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           {items.map((account) => (
             <SortableAccountItem
               key={account.id}

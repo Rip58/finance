@@ -433,31 +433,31 @@ export function HomePage({ user }: HomePageProps) {
         </div>
 
         {/* Patrimony Evolution Section */}
-        <div className="px-4 pb-4">
-          <div className="rounded-3xl glass-panel p-5">
-            <Suspense fallback={<div className="h-72 rounded-2xl bg-muted/40 animate-pulse" />}>
+        <div className="px-4 pb-3">
+          <div className="rounded-2xl border border-border/40 bg-card/30 p-4">
+            <Suspense fallback={<div className="h-72 rounded-xl bg-muted/40 animate-pulse" />}>
               <PatrimonyEvolution userId={user.id} activeTab={activeTab} onTabChange={setActiveTab} />
             </Suspense>
           </div>
         </div>
 
         {/* Savings Accounts Panel */}
-        <div className="px-4 py-2">
-          <div className="rounded-3xl glass-panel p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-sm">Desglose Patrimonio</h3>
+        <div className="px-4 pb-4">
+          <div className="rounded-2xl border border-border/40 bg-card/30 p-4">
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Desglose Patrimonio</span>
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={handleRefreshPrices}
                 disabled={isRefreshing}
-                className="h-8 w-8 p-0"
+                className="h-7 w-7"
               >
-                <RefreshCw className={cn("h-4 w-4", isRefreshing && "animate-spin")} />
+                <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
               </Button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-1.5">
               <SortableAccountList
                 accounts={displayedAccounts}
                 getDisplayValue={getAccountDisplayValue}
@@ -467,8 +467,6 @@ export function HomePage({ user }: HomePageProps) {
                   if (activeTab === "savings") return "emerald";
                   if (activeTab === "investment") return "sky";
                   if (activeTab === "crypto") return "amber";
-
-                  // If in "general" tab, determine color by individual account category
                   const catName = categories.find(c => c.id === acc.category_id)?.name?.toLowerCase() || "";
                   if (catName.includes("ahorro")) return "emerald";
                   if (catName.includes("inversión") || catName.includes("inversion")) return "sky";
@@ -477,16 +475,16 @@ export function HomePage({ user }: HomePageProps) {
                 }}
               />
 
-              {/* DCA Total - Show if has value and tab is total or dca */}
+              {/* DCA Total */}
               {(dcaTotalUsd > 0 && (activeTab === "total" || activeTab === "dca")) && (
-                <div className="flex items-center justify-between p-2 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-950 dark:text-orange-100">
+                <div className="flex items-center justify-between px-4 py-3 rounded-xl bg-orange-500/8 border border-orange-500/20">
                   <div className="flex items-center gap-2">
-                    <div className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
-                    <span className="text-sm font-medium">DCA</span>
+                    <div className="h-1.5 w-1.5 rounded-full bg-orange-500 animate-pulse" />
+                    <span className="text-sm font-semibold text-orange-900 dark:text-orange-100">DCA</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-bold block">{formatCurrency(dcaTotal, "EUR")}</span>
-                    <span className="text-xs text-orange-600/80 dark:text-orange-400/80">{formatCurrency(dcaTotalUsd, "USDT")}</span>
+                    <span className="text-sm font-bold block text-orange-900 dark:text-orange-100">{formatCurrency(dcaTotal, "EUR")}</span>
+                    <span className="text-[10px] text-orange-600/70 dark:text-orange-400/70 font-mono">{formatCurrency(dcaTotalUsd, "USDT")}</span>
                   </div>
                 </div>
               )}

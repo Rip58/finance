@@ -231,12 +231,9 @@ export function CryptoPage({ user }: CryptoPageProps) {
                             {/* Crypto Assets Section */}
                             {aggregatedCryptoAssets.length > 0 && (
                                 <div>
-                                    <div className="flex items-center gap-2 mb-3 px-1">
-                                        <div className="h-8 w-1 bg-gradient-to-b from-blue-500 to-purple-500 rounded-full" />
-                                        <h2 className="text-lg font-bold tracking-tight">Criptomonedas</h2>
-                                        <span className="text-xs text-muted-foreground font-medium">
-                                            ({aggregatedCryptoAssets.length})
-                                        </span>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Criptomonedas</span>
+                                        <span className="text-[10px] text-muted-foreground">({aggregatedCryptoAssets.length})</span>
                                     </div>
                                     <BTCHalvingCountdown />
                                     <div className="grid grid-cols-3 gap-2">
@@ -293,12 +290,9 @@ export function CryptoPage({ user }: CryptoPageProps) {
                             {/* Institutional Assets Section */}
                             {aggregatedInstitutionalAssets.length > 0 && (
                                 <div>
-                                    <div className="flex items-center gap-2 mb-3 px-1">
-                                        <div className="h-8 w-1 bg-gradient-to-b from-amber-500 to-orange-500 rounded-full" />
-                                        <h2 className="text-lg font-bold tracking-tight">Activos Institucionales</h2>
-                                        <span className="text-xs text-muted-foreground font-medium">
-                                            ({aggregatedInstitutionalAssets.length})
-                                        </span>
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Activos Institucionales</span>
+                                        <span className="text-[10px] text-muted-foreground">({aggregatedInstitutionalAssets.length})</span>
                                     </div>
                                     <InstitutionalMarketStatus />
                                     <div className="grid grid-cols-3 gap-2">

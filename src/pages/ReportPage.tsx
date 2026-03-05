@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Check } from "lucide-react";
 import { MobileLayout } from "@/components/mobile/MobileLayout";
-import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -26,6 +25,13 @@ interface ReportPageProps {
 
 type TabType = "income" | "expense" | "debt_pay" | "debt_collect";
 
+const TAB_CONFIG: { id: TabType; label: string; activeClass: string }[] = [
+  { id: "expense", label: "Gastos", activeClass: "bg-orange-500/20 text-orange-600 shadow-sm" },
+  { id: "income", label: "Ingresos", activeClass: "bg-blue-500/20 text-blue-600 shadow-sm" },
+  { id: "debt_pay", label: "Deudas", activeClass: "bg-red-500/20 text-red-600 shadow-sm" },
+  { id: "debt_collect", label: "Cobrar", activeClass: "bg-emerald-500/20 text-emerald-600 shadow-sm" },
+];
+
 export function ReportPage({ user }: ReportPageProps) {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabType>("expense");
@@ -35,13 +41,9 @@ export function ReportPage({ user }: ReportPageProps) {
   const { data: categories = [] } = useCategories(user.id, undefined);
   const { data: accounts = [] } = useBankAccounts(user.id);
 
-  // Helper to identify if an item is a loan or debt
   const isLoan = (item: RecurringTransaction) => {
-    // Check fields first (more reliable if they exist)
-    // If it has a person assigned, it's definitely a personal debt
     if (item.person) return true;
     if (item.loan_total_payments && item.loan_total_payments > 0) return true;
-
     if (item.type !== "expense") return false;
     const cat = categories.find(c => c.id === item.category_id);
     if (!cat) return false;
@@ -49,27 +51,19 @@ export function ReportPage({ user }: ReportPageProps) {
     return name.includes("préstamo") || name.includes("prestamo") || name.includes("hipoteca");
   };
 
-  // Filter items based on active tab
   const filteredItems = useMemo(() => {
     return recurring.filter(item => {
-      if (!item.is_active) return false; // Only active templates
-
-      if (activeTab === "debt_pay") {
-        return isLoan(item) && item.type === 'expense';
-      }
-      if (activeTab === "debt_collect") {
-        return isLoan(item) && item.type === 'income';
-      }
-      if (activeTab === "income") return item.type === "income"; // Show all incomes, including debts to receive
-      if (activeTab === "expense") return item.type === "expense"; // Show all expenses, including debts to pay
+      if (!item.is_active) return false;
+      if (activeTab === "debt_pay") return isLoan(item) && item.type === 'expense';
+      if (activeTab === "debt_collect") return isLoan(item) && item.type === 'income';
+      if (activeTab === "income") return item.type === "income";
+      if (activeTab === "expense") return item.type === "expense";
       return false;
     });
   }, [recurring, activeTab, categories]);
 
-  // Determine status for the CURRENT MONTH
   const currentMonthItems = useMemo(() => {
     const today = new Date();
-    const currentMonthStart = startOfMonth(today);
     const currentMonthEnd = endOfMonth(today);
 
     return filteredItems.map(item => {
@@ -77,19 +71,15 @@ export function ReportPage({ user }: ReportPageProps) {
         c.recurring_id === item.id &&
         isSameMonth(parseISO(c.occurrence_date), today)
       );
-
       const nextDate = parseISO(item.next_occurrence_date);
       const isDue = nextDate <= currentMonthEnd;
       const isPaid = !!confirmation;
-
-      const relevant = isPaid || isDue;
-
       return {
         ...item,
         isPaid,
         confirmationId: confirmation?.id,
         confirmationDate: confirmation?.occurrence_date,
-        isRelevant: relevant
+        isRelevant: isPaid || isDue
       };
     }).filter(i => i.isRelevant);
   }, [filteredItems, confirmations]);
@@ -99,44 +89,19 @@ export function ReportPage({ user }: ReportPageProps) {
     if (isConfirming) return;
 
     if (item.isPaid) {
-      // Unconfirm (Undo)
       if (item.confirmationId && item.confirmationDate) {
-        await unconfirm({
-          confirmationId: item.confirmationId,
-          recurringId: item.id,
-          occurrenceDate: item.confirmationDate
-        });
-
-        // Decrement loan payments if applicable
+        await unconfirm({ confirmationId: item.confirmationId, recurringId: item.id, occurrenceDate: item.confirmationDate });
         if (isLoan(item)) {
-          const updateData: any = {
-            id: item.id,
-            loan_payments_made: Math.max(0, (item.loan_payments_made || 0) - 1)
-          };
-          if (item.loan_amount_paid !== null && item.loan_amount_paid !== undefined) {
-            updateData.loan_amount_paid = Math.max(0, item.loan_amount_paid - item.amount);
-          }
+          const updateData: any = { id: item.id, loan_payments_made: Math.max(0, (item.loan_payments_made || 0) - 1) };
+          if (item.loan_amount_paid != null) updateData.loan_amount_paid = Math.max(0, item.loan_amount_paid - item.amount);
           await updateRecurring(updateData);
         }
       }
     } else {
-      // Confirm (Pay)
-      await confirm({
-        recurring: {
-          ...item,
-          occurrence_date: item.next_occurrence_date
-        } as PendingRecurring
-      });
-
-      // Increment loan payments if applicable
+      await confirm({ recurring: { ...item, occurrence_date: item.next_occurrence_date } as PendingRecurring });
       if (isLoan(item)) {
-        const updateData: any = {
-          id: item.id,
-          loan_payments_made: (item.loan_payments_made || 0) + 1
-        };
-        if (item.loan_amount_paid !== null && item.loan_amount_paid !== undefined) {
-          updateData.loan_amount_paid = item.loan_amount_paid + item.amount;
-        }
+        const updateData: any = { id: item.id, loan_payments_made: (item.loan_payments_made || 0) + 1 };
+        if (item.loan_amount_paid != null) updateData.loan_amount_paid = item.loan_amount_paid + item.amount;
         await updateRecurring(updateData);
       }
     }
@@ -148,59 +113,35 @@ export function ReportPage({ user }: ReportPageProps) {
   };
 
   const totals = useMemo(() => {
-    // If showing Loans/Debts, we calculate the GLOBAL status
     if (activeTab === 'debt_pay' || activeTab === 'debt_collect') {
-      let loanTotal = 0; // Total Debt Value
-      let loanPaid = 0;  // Total Amount Paid So Far
-
-      // Calculate from ALL filtered loan items, not just current month (though usually they are the same items)
+      let loanTotal = 0, loanPaid = 0;
       filteredItems.forEach(item => {
-        const totalAmount = item.loan_total_amount || (item.amount * (item.loan_total_payments || 1));
-        const paidAmount = item.loan_amount_paid !== null && item.loan_amount_paid !== undefined
-          ? item.loan_amount_paid
-          : ((item.loan_payments_made || 0) * item.amount);
-
-        loanTotal += totalAmount;
-        loanPaid += paidAmount;
+        loanTotal += item.loan_total_amount || (item.amount * (item.loan_total_payments || 1));
+        loanPaid += item.loan_amount_paid != null ? item.loan_amount_paid : (item.loan_payments_made || 0) * item.amount;
       });
-
-      return {
-        total: loanTotal,
-        paid: loanPaid,
-        pending: loanTotal - loanPaid
-      };
+      return { total: loanTotal, paid: loanPaid, pending: loanTotal - loanPaid };
     }
-
-    // Default behavior for Income/Expense (Monthly View)
-    const total = currentMonthItems.reduce((acc, item) => acc + item.amount, 0);
-    const paid = currentMonthItems.filter(i => i.isPaid).reduce((acc, item) => acc + item.amount, 0);
-    const pending = total - paid;
-    return { total, paid, pending };
+    const total = currentMonthItems.reduce((acc, i) => acc + i.amount, 0);
+    const paid = currentMonthItems.filter(i => i.isPaid).reduce((acc, i) => acc + i.amount, 0);
+    return { total, paid, pending: total - paid };
   }, [currentMonthItems, filteredItems, activeTab]);
 
-  // Group items by Account
   const groupedItems = useMemo(() => {
     const groups: { accountId: string | null; accountName: string; items: typeof currentMonthItems }[] = [];
-
-    // Add known accounts
-    accounts.forEach(acc => {
-      groups.push({ accountId: acc.id, accountName: acc.name, items: [] });
-    });
-    // Add General / Particulares
+    accounts.forEach(acc => groups.push({ accountId: acc.id, accountName: acc.name, items: [] }));
     groups.push({
       accountId: null,
       accountName: (activeTab === 'debt_pay' || activeTab === 'debt_collect') ? "Particulares / Bancos" : "General",
       items: []
     });
 
+    const cadenceOrder: Record<string, number> = { yearly: 0, quarterly: 1, monthly: 2, weekly: 3 };
+
     currentMonthItems.forEach(item => {
       let placed = false;
       if (item.bank_account_id) {
         const g = groups.find(g => g.accountId === item.bank_account_id);
-        if (g) {
-          g.items.push(item);
-          placed = true;
-        }
+        if (g) { g.items.push(item); placed = true; }
       }
       if (!placed) {
         const g = groups.find(g => g.accountId === null);
@@ -208,63 +149,34 @@ export function ReportPage({ user }: ReportPageProps) {
       }
     });
 
-    // Sort items within groups: Yearly first, then others
-    const cadenceOrder: Record<string, number> = {
-      yearly: 0,
-      quarterly: 1,
-      monthly: 2,
-      weekly: 3
-    };
-
-    groups.forEach(g => {
-      g.items.sort((a, b) => {
-        const orderA = cadenceOrder[a.cadence] ?? 99;
-        const orderB = cadenceOrder[b.cadence] ?? 99;
-        return orderA - orderB;
-      });
-    });
-
+    groups.forEach(g => g.items.sort((a, b) => (cadenceOrder[a.cadence] ?? 99) - (cadenceOrder[b.cadence] ?? 99)));
     return groups.filter(g => g.items.length > 0);
   }, [currentMonthItems, accounts]);
 
-  const currentMonthName = format(new Date(), "MMMM", { locale: es });
+  const currentMonthName = format(new Date(), "MMMM yyyy", { locale: es });
+  const isDebtTab = activeTab === 'debt_pay' || activeTab === 'debt_collect';
 
   const CreateAction = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button className="h-full aspect-square p-0 rounded-xl bg-green-100 text-green-700 border border-green-200 hover:bg-green-200 shadow-sm transition-all hover:scale-105 active:scale-95">
-          <Plus className="h-5 w-5" />
+        <Button size="icon" className="h-8 w-8 rounded-lg">
+          <Plus className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 bg-popover/95 backdrop-blur-md border-border mr-2">
-        <DropdownMenuItem
-          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
-          onClick={() => navigate("/add-income?recurring=true")}
-        >
+      <DropdownMenuContent align="end" className="w-48 rounded-xl p-1.5">
+        <DropdownMenuItem className="rounded-lg px-3 py-2 text-sm cursor-pointer" onClick={() => navigate("/add-income?recurring=true")}>
           Nuevo Ingreso
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
-          onClick={() => navigate("/add-expense?recurring=true")}
-        >
+        <DropdownMenuItem className="rounded-lg px-3 py-2 text-sm cursor-pointer" onClick={() => navigate("/add-expense?recurring=true")}>
           Nuevo Gasto
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
-          onClick={() => navigate("/add-expense?recurring=true&hint=bank_loan")}
-        >
+        <DropdownMenuItem className="rounded-lg px-3 py-2 text-sm cursor-pointer" onClick={() => navigate("/add-expense?recurring=true&hint=bank_loan")}>
           Nuevo Préstamo
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
-          onClick={() => setDebtDialogType('pay')}
-        >
+        <DropdownMenuItem className="rounded-lg px-3 py-2 text-sm cursor-pointer" onClick={() => setDebtDialogType('pay')}>
           Nueva Deuda
         </DropdownMenuItem>
-        <DropdownMenuItem
-          className="rounded-xl p-3 focus:bg-accent focus:text-accent-foreground cursor-pointer text-base"
-          onClick={() => setDebtDialogType('receive')}
-        >
+        <DropdownMenuItem className="rounded-lg px-3 py-2 text-sm cursor-pointer" onClick={() => setDebtDialogType('receive')}>
           Nuevo Cobro
         </DropdownMenuItem>
       </DropdownMenuContent>
@@ -273,222 +185,177 @@ export function ReportPage({ user }: ReportPageProps) {
 
   return (
     <MobileLayout>
-      <div className="container mx-auto p-4 space-y-6 pb-20 fade-in safe-area-pt">
-        <PageHeader
-          title="Informe Mensual"
-          description="Resumen de gastos e ingresos recurrentes"
-        />
+      <div className="container mx-auto p-4 space-y-4 pb-20 fade-in safe-area-pt">
 
-        {/* Centered Tabs */}
-        <div className="px-4 mt-2 mb-2">
-          <div className="flex items-stretch p-1 bg-secondary/50 rounded-2xl w-full gap-1">
+        {/* Header inline */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="font-bold text-lg leading-tight">Informe Mensual</h1>
+            <p className="text-[11px] text-muted-foreground capitalize">{currentMonthName}</p>
+          </div>
+          {CreateAction}
+        </div>
+
+        {/* Pill-bar tabs */}
+        <div className="flex items-center gap-1.5 bg-muted/40 p-1 rounded-xl w-full">
+          {TAB_CONFIG.map(tab => (
             <button
-              onClick={() => setActiveTab("expense")}
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
               className={cn(
-                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
-                activeTab === "expense"
-                  ? "bg-orange-100 text-orange-700 shadow-sm border border-orange-200"
-                  : "text-muted-foreground hover:text-orange-700/70"
+                "flex-1 py-1.5 rounded-lg text-xs font-medium transition-all",
+                activeTab === tab.id ? tab.activeClass : "text-muted-foreground hover:text-foreground"
               )}
             >
-              Gastos
+              {tab.label}
             </button>
-            <button
-              onClick={() => setActiveTab("income")}
-              className={cn(
-                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
-                activeTab === "income"
-                  ? "bg-blue-100 text-blue-700 shadow-sm border border-blue-200"
-                  : "text-muted-foreground hover:text-blue-700/70"
-              )}
-            >
-              Ingresos
-            </button>
-            <button
-              onClick={() => setActiveTab("debt_pay")}
-              className={cn(
-                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
-                activeTab === "debt_pay"
-                  ? "bg-red-100 text-red-700 shadow-sm border border-red-200"
-                  : "text-muted-foreground hover:text-red-700/70"
-              )}
-            >
-              Deudas
-            </button>
-            <button
-              onClick={() => setActiveTab("debt_collect")}
-              className={cn(
-                "flex-1 px-0 py-2 rounded-xl text-xs font-medium transition-all duration-200 whitespace-nowrap overflow-hidden text-ellipsis",
-                activeTab === "debt_collect"
-                  ? "bg-emerald-100 text-emerald-700 shadow-sm border border-emerald-200"
-                  : "text-muted-foreground hover:text-emerald-700/70"
-              )}
-            >
-              Cobrar
-            </button>
-            {CreateAction}
+          ))}
+        </div>
+
+        {/* Totals */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-3 text-center">
+            <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-0.5">Total</p>
+            <p className="font-bold text-xs">{formatCurrency(totals.total)}</p>
+          </div>
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl py-2 px-3 text-center">
+            <p className="text-[9px] text-green-600/80 uppercase tracking-wide mb-0.5">
+              {isDebtTab ? "Pagado" : "Confirmado"}
+            </p>
+            <p className="font-bold text-xs text-green-600">{formatCurrency(totals.paid)}</p>
+          </div>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3 text-center">
+            <p className="text-[9px] text-red-600/80 uppercase tracking-wide mb-0.5">Pendiente</p>
+            <p className="font-bold text-xs text-red-600">{formatCurrency(totals.pending)}</p>
           </div>
         </div>
 
-        {/* Totals Summary */}
-        <div className="px-4 py-2 grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-card/50 border border-border/50 rounded-2xl p-3 text-center">
-            <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-1">Total</p>
-            <p className="font-bold text-foreground">{formatCurrency(totals.total)}</p>
-          </div>
-          <div className="bg-green-500/10 border border-green-500/20 rounded-2xl p-3 text-center">
-            <p className="text-[10px] text-green-600/80 uppercase tracking-wide mb-1">Pagado</p>
-            <p className="font-bold text-green-600">{formatCurrency(totals.paid)}</p>
-          </div>
-          <div className="bg-red-500/10 border border-red-500/20 rounded-2xl p-3 text-center">
-            <p className="text-[10px] text-red-600/80 uppercase tracking-wide mb-1">Pendiente</p>
-            <p className="font-bold text-red-600">{formatCurrency(totals.pending)}</p>
-          </div>
-        </div>
-
-        {/* List Section */}
-        <div className="space-y-6 pb-20 px-4">
-          <div className="flex items-center justify-between px-2 mb-2">
-            <h3 className="text-sm font-medium capitalize">{currentMonthName}</h3>
-            <span className="text-xs text-muted-foreground">{currentMonthItems.length} elementos</span>
-          </div>
-
+        {/* Items list */}
+        <div className="space-y-4 pb-20">
           {groupedItems.length > 0 ? (
-            groupedItems.map((group) => (
-              <div key={group.accountId || 'general'} className="space-y-2">
-                {/* Group Header */}
-                <div className="px-2 py-2 mt-4 first:mt-0">
-                  <div className="inline-block px-4 py-1.5 rounded-xl bg-secondary/80 border border-border/50 shadow-sm backdrop-blur-md">
-                    <h4 className="text-xs font-bold text-foreground uppercase tracking-widest">
-                      {group.accountName}
-                    </h4>
-                  </div>
+            groupedItems.map((group, gi) => (
+              <div key={group.accountId || 'general'}>
+                {/* Group separator */}
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-[10px] text-muted-foreground uppercase tracking-wide font-medium truncate max-w-[60%]">
+                    {group.accountName}
+                  </span>
+                  <div className="flex-1 h-px bg-border/40" />
+                  <span className="text-[10px] text-muted-foreground shrink-0">{group.items.length}</span>
                 </div>
 
-                {/* Items - Grid Layout (2 cols) */}
-                <div className="grid grid-cols-2 gap-2">
-                  {group.items.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => handleEdit(item)}
-                      className={cn(
-                        "flex items-center justify-between px-3 py-2 rounded-xl border transition-all duration-200 hover:bg-accent/5 cursor-pointer",
-                        item.isPaid
-                          ? "bg-muted/30 border-transparent opacity-60"
-                          : "bg-card border-border shadow-sm"
-                      )}
-                    >
-                      <div className="flex-1 min-w-0 mr-2">
-                        <p className={cn("text-xs font-semibold truncate", item.isPaid && "line-through text-muted-foreground")}>
-                          {item.name}
-                        </p>
+                {/* Rows */}
+                <div className="space-y-1.5">
+                  {group.items.map(item => {
+                    const debtPct = item.loan_total_amount
+                      ? Math.min(1, (item.loan_amount_paid || 0) / item.loan_total_amount)
+                      : 0;
+                    const remainingDebt = (item.loan_total_amount || 0) - (item.loan_amount_paid || 0);
 
-                        {/* PROGRESS BAR LOGIC */}
-                        {/* CASE 1: FIXED LOAN (Segmented Bar) */}
-                        {(activeTab === 'debt_pay' || activeTab === 'debt_collect' || (item.loan_total_amount && item.loan_total_amount > 0)) && (item.loan_total_payments && item.loan_total_payments > 0) && (
-                          <div className="flex gap-0.5 mt-1.5 w-full h-1.5">
-                            {Array.from({ length: Math.min(20, item.loan_total_payments) }).map((_, i) => (
-                              <div
-                                key={i}
-                                className={cn(
-                                  "h-full flex-1 rounded-full",
-                                  i < (item.loan_payments_made || 0) ? "bg-green-500" : "bg-muted-foreground/20"
-                                )}
-                              />
-                            ))}
-                          </div>
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleEdit(item)}
+                        className={cn(
+                          "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
+                          item.isPaid
+                            ? "bg-muted/20 border-transparent opacity-60"
+                            : "bg-card/40 border-border/40 hover:bg-card/70"
                         )}
+                      >
+                        {/* Left: name + meta */}
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-sm font-semibold truncate leading-tight", item.isPaid && "line-through text-muted-foreground")}>
+                            {item.name}
+                          </p>
 
-                        {/* CASE 2: MANUAL DEBT (Continuous Bar) - Only if some payment made */}
-                        {(activeTab === 'debt_pay' || activeTab === 'debt_collect' || (item.loan_total_amount && item.loan_total_amount > 0)) && (!item.loan_total_payments || item.loan_total_payments === 0) && (
-                          <div className="mt-1.5 w-full h-1.5 bg-muted-foreground/10 rounded-full overflow-hidden">
-                            <div
-                              className={cn(
-                                "h-full transition-all duration-500",
-                                ((item.loan_amount_paid || 0) / (item.loan_total_amount || 1)) >= 1 ? "bg-green-500" :
-                                  ((item.loan_amount_paid || 0) / (item.loan_total_amount || 1)) > 0.5 ? "bg-amber-500" : "bg-red-500"
-                              )}
-                              style={{ width: `${Math.min(100, Math.max(5, ((item.loan_amount_paid || 0) / (item.loan_total_amount || 1)) * 100))}%` }}
-                            />
-                          </div>
-                        )}
-
-                        <div className="flex flex-col gap-0.5 mt-0.5">
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            {/* For loans, show remaining amount. For others, show item amount */}
-                            {(activeTab === 'debt_pay' || activeTab === 'debt_collect' || (item.loan_total_amount && item.loan_total_amount > 0))
-                              ? <span className={cn(
-                                "font-medium",
-                                ((item.loan_total_amount || 0) - (item.loan_amount_paid || 0)) <= 0.01 ? "text-green-600" : "text-red-500"
-                              )}>
-                                {formatCurrency((item.loan_total_amount || 0) - (item.loan_amount_paid || 0))}
-                              </span>
-                              : formatCurrency(item.amount)
-                            }
-
-                            {/* TEXT LOGIC */}
-                            {/* Case 1: Fixed Loan -> (2/12) */}
-                            {(activeTab === 'debt_pay' || activeTab === 'debt_collect' || (item.loan_total_amount && item.loan_total_amount > 0)) && (item.loan_total_payments && item.loan_total_payments > 0) && (
-                              <span className="text-[10px] opacity-70 ml-1">
-                                ({item.loan_payments_made || 0}/{item.loan_total_payments})
+                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                            {/* Cadence badge */}
+                            {item.cadence !== 'monthly' && (
+                              <Badge variant="outline" className="text-[9px] h-3.5 px-1 py-0">
+                                {item.cadence === 'yearly' ? 'Anual' : item.cadence === 'quarterly' ? 'Trim.' : item.cadence}
+                              </Badge>
+                            )}
+                            {/* Person for debt */}
+                            {item.person && (
+                              <span className="text-[10px] text-primary font-medium">
+                                {item.type === 'income' ? 'Te debe' : 'Debes a'}: {item.person}
                               </span>
                             )}
+                          </div>
 
-                            {/* Case 2: Manual Debt -> (2 aportaciones) */}
-                            {(activeTab === 'debt_pay' || activeTab === 'debt_collect' || (item.loan_total_amount && item.loan_total_amount > 0)) && (!item.loan_total_payments || item.loan_total_payments === 0) && (
-                              <span className="text-[10px] opacity-70 ml-1">
-                                ({item.loan_payments_made || 0} aportaciones)
-                              </span>
-                            )}
-                          </span>
-
-                          {/* Show Person Name if available */}
-                          {item.person && (
-                            <span className="text-[10px] text-primary font-medium flex items-center gap-1">
-                              {item.type === 'income' ? 'Te debe:' : 'Debes a:'} {item.person}
-                            </span>
+                          {/* Progress bar for loans (fixed installments) */}
+                          {isDebtTab && item.loan_total_payments && item.loan_total_payments > 0 && (
+                            <div className="flex gap-0.5 mt-1.5 w-full h-1.5">
+                              {Array.from({ length: Math.min(20, item.loan_total_payments) }).map((_, i) => (
+                                <div
+                                  key={i}
+                                  className={cn("h-full flex-1 rounded-full", i < (item.loan_payments_made || 0) ? "bg-green-500" : "bg-muted-foreground/20")}
+                                />
+                              ))}
+                            </div>
                           )}
 
-                          {item.cadence !== 'monthly' && (
-                            <Badge variant="outline" className="text-[9px] h-3.5 px-1 py-0 w-fit">
-                              {item.cadence === 'yearly' ? 'Anual' : item.cadence}
-                            </Badge>
+                          {/* Progress bar for open debts */}
+                          {isDebtTab && (!item.loan_total_payments || item.loan_total_payments === 0) && item.loan_total_amount && item.loan_total_amount > 0 && (
+                            <div className="mt-1.5 w-full h-1.5 bg-muted-foreground/10 rounded-full overflow-hidden">
+                              <div
+                                className={cn("h-full transition-all duration-500", debtPct >= 1 ? "bg-green-500" : debtPct > 0.5 ? "bg-amber-500" : "bg-red-500")}
+                                style={{ width: `${Math.min(100, Math.max(5, debtPct * 100))}%` }}
+                              />
+                            </div>
                           )}
                         </div>
-                      </div>
 
-                      {activeTab !== 'debt_pay' && activeTab !== 'debt_collect' && (
-                        <Button
-                          size="icon"
-                          variant={item.isPaid ? "ghost" : "default"}
-                          className={cn(
-                            "h-7 w-7 rounded-full shrink-0 transition-all",
-                            item.isPaid
-                              ? "text-muted-foreground bg-muted hover:bg-muted"
-                              : "bg-primary text-primary-foreground hover:scale-105 shadow-glow-primary"
-                          )}
-                          onClick={(e) => handleCheck(item, e)}
-                          disabled={isConfirming}
-                        >
-                          {item.isPaid ? (
-                            <Check className="h-3.5 w-3.5" />
+                        {/* Center: amount */}
+                        <div className="text-right shrink-0">
+                          {isDebtTab && item.loan_total_amount ? (
+                            <>
+                              <p className={cn("text-sm font-bold", remainingDebt <= 0.01 ? "text-green-600" : "text-red-500")}>
+                                {formatCurrency(Math.max(0, remainingDebt))}
+                              </p>
+                              {item.loan_total_payments && item.loan_total_payments > 0 && (
+                                <p className="text-[10px] text-muted-foreground font-mono">
+                                  {item.loan_payments_made || 0}/{item.loan_total_payments}
+                                </p>
+                              )}
+                            </>
                           ) : (
-                            <div className="h-3 w-3 rounded-full border-2 border-current" />
+                            <p className="text-sm font-bold">{formatCurrency(item.amount)}</p>
                           )}
-                        </Button>
-                      )}
-                    </div>
-                  ))}
+                        </div>
+
+                        {/* Right: check button (only for income/expense tabs) */}
+                        {!isDebtTab && (
+                          <button
+                            onClick={(e) => handleCheck(item, e)}
+                            disabled={isConfirming}
+                            className={cn(
+                              "h-8 w-8 rounded-full shrink-0 flex items-center justify-center transition-all border-2",
+                              item.isPaid
+                                ? "border-transparent bg-green-500/20 text-green-600"
+                                : "border-border/60 bg-card text-muted-foreground hover:border-primary hover:text-primary"
+                            )}
+                          >
+                            {item.isPaid
+                              ? <Check className="h-3.5 w-3.5" />
+                              : <div className="h-2.5 w-2.5 rounded-full border-2 border-current" />
+                            }
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             ))
           ) : (
-            <div className="text-center py-10 bg-muted/20 rounded-3xl border-2 border-dashed border-muted">
-              <p className="text-muted-foreground text-sm">No hay elementos configurados para este mes</p>
+            <div className="text-center py-10 rounded-xl border border-dashed border-border">
+              <p className="text-muted-foreground text-sm">No hay elementos para este mes</p>
+              <p className="text-xs text-muted-foreground mt-1">Pulsa + para añadir uno nuevo</p>
             </div>
           )}
         </div>
-
 
         <DebtFormDialog
           isOpen={!!debtDialogType}

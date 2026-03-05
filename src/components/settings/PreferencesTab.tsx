@@ -30,8 +30,8 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
       {/* Version Info Card */}
       <div className="p-4 rounded-2xl bg-card border border-border/50">
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <GitBranch className="h-5 w-5" />
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <GitBranch className="h-4 w-4" />
           </div>
           <div>
             <p className="font-medium">Información de Versión</p>
@@ -154,8 +154,8 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
       {/* Color Palette Card */}
       <div className="p-4 rounded-2xl bg-card border border-border/50">
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            <Palette className="h-5 w-5" />
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            <Palette className="h-4 w-4" />
           </div>
           <div>
             <p className="font-medium">Color Principal</p>
@@ -182,8 +182,8 @@ export function PreferencesTab({ userId }: PreferencesTabProps) {
       {/* Theme Card */}
       <div className="p-4 rounded-2xl bg-card border border-border/50">
         <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-            {theme === "light" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+            {theme === "light" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </div>
           <div>
             <p className="font-medium">Tema</p>

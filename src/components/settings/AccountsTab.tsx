@@ -242,48 +242,48 @@ export function AccountsTab({ userId }: AccountsTabProps) {
 
       {/* Accounts List */}
       {accounts?.length === 0 ? (
-        <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
-          <CreditCard className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground">No hay cuentas creadas</p>
+        <div className="text-center py-12 rounded-xl bg-card border border-border/50">
+          <CreditCard className="h-8 w-8 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-muted-foreground text-sm">No hay cuentas creadas</p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-1.5">
           {accounts?.map((account) => (
             <div
               key={account.id}
               className={cn(
-                "flex items-center gap-4 p-4 rounded-2xl bg-card border border-border/50",
+                "flex items-center gap-3 px-4 py-3 rounded-xl bg-card/40 border border-border/40",
                 account.is_archived && "opacity-50"
               )}
             >
-              <Avatar className="h-10 w-10 border border-border/50">
+              <Avatar className="h-8 w-8 border border-border/40 shrink-0">
                 <AvatarImage
                   src={`https://logo.clearbit.com/${account.name.toLowerCase().replace(/\s/g, "")}.com`}
                   alt={account.name}
                   className="object-contain p-1"
                 />
                 <AvatarFallback className="bg-primary/10 text-primary">
-                  <CreditCard className="h-5 w-5" />
+                  <CreditCard className="h-4 w-4" />
                 </AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
-                <p className="font-medium truncate">{account.name}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="text-xs">{account.currency}</Badge>
+                <p className="font-medium text-sm truncate">{account.name}</p>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <Badge variant="outline" className="text-[10px] h-4 px-1">{account.currency}</Badge>
                   {account.is_archived && (
-                    <Badge variant="secondary" className="text-xs">Archivada</Badge>
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1">Archivada</Badge>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-1">
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(account)}>
-                  <Pencil className="h-4 w-4" />
+              <div className="flex items-center gap-0.5 shrink-0">
+                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(account)}>
+                  <Pencil className="h-3.5 w-3.5" />
                 </Button>
 
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>
