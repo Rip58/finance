@@ -108,40 +108,32 @@ export function DCASummaryCard({
         </div>
       </div>
 
-      {/* 3-col footer */}
-      <div className="grid grid-cols-3 divide-x divide-border/30 pt-3 border-t border-border/30">
+      {/* 3-col footer — same style as Report chips */}
+      <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/30">
         {/* Invertido */}
-        <div className="pr-3">
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-            <Wallet className="h-2.5 w-2.5" /> Invertido
-          </p>
-          <p className="text-sm font-bold tabular-nums leading-tight">{formatCurrency(totals.totalInvested, "USD")}</p>
+        <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
+          <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Invertido</p>
+          <p className="font-bold text-[10px] tabular-nums truncate">{formatCurrency(totals.totalInvested, "USD")}</p>
         </div>
 
-        {/* PnL — center, colored */}
-        <div className="px-3">
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-            <Target className="h-2.5 w-2.5" /> PnL
+        {/* PnL — colored */}
+        <div className={cn(
+          "rounded-xl py-2 px-2 text-center border",
+          isProfitable ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"
+        )}>
+          <p className={cn("text-[8px] uppercase tracking-wide mb-0.5", isProfitable ? "text-emerald-600/80" : "text-rose-600/80")}>PnL</p>
+          <p className={cn("font-bold text-[10px] tabular-nums truncate", isProfitable ? "text-emerald-600" : "text-rose-600")}>
+            {isProfitable ? "+" : ""}{formatCurrency(totals.pnl, "USD")}
           </p>
-          <div className="flex items-baseline gap-1.5 flex-wrap">
-            <p className={cn("text-sm font-bold tabular-nums leading-tight", isProfitable ? "text-emerald-500" : "text-rose-500")}>
-              {isProfitable ? "+" : ""}{formatCurrency(totals.pnl, "USD")}
-            </p>
-            <span className={cn(
-              "text-[9px] font-bold px-1 py-0.5 rounded",
-              isProfitable ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
-            )}>
-              {isProfitable ? "+" : ""}{totals.pnlPercent.toFixed(1)}%
-            </span>
-          </div>
+          <p className={cn("text-[9px] font-medium", isProfitable ? "text-emerald-600/60" : "text-rose-600/60")}>
+            {isProfitable ? "+" : ""}{totals.pnlPercent.toFixed(1)}%
+          </p>
         </div>
 
         {/* Actual */}
-        <div className="pl-3">
-          <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
-            <Zap className="h-2.5 w-2.5" /> Actual
-          </p>
-          <p className="text-sm font-bold tabular-nums leading-tight">{currentPrice ? formatCurrency(currentPrice, "USD") : "—"}</p>
+        <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
+          <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Actual</p>
+          <p className="font-bold text-[10px] tabular-nums truncate">{currentPrice ? formatCurrency(currentPrice, "USD") : "—"}</p>
         </div>
       </div>
     </div>

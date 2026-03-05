@@ -217,26 +217,25 @@ export function CryptoPage({ user }: CryptoPageProps) {
                     }
                 />
 
-                {/* Assets Grid */}
+                {/* Assets List */}
                 <div className="px-4 py-2 pb-24 space-y-6">
                     {cryptoAssets.length === 0 ? (
-                        <div className="text-center py-12 rounded-2xl bg-card border border-border/50">
-                            <p className="text-muted-foreground">No hay criptomonedas configuradas</p>
-                            <p className="text-sm text-muted-foreground mt-2">
-                                Añade activos desde la sección de cuenta
-                            </p>
+                        <div className="text-center py-12 rounded-xl border border-dashed border-border">
+                            <p className="text-muted-foreground text-sm">No hay criptomonedas configuradas</p>
+                            <p className="text-xs text-muted-foreground mt-1">Añade activos desde la sección de cuenta</p>
                         </div>
                     ) : (
                         <>
                             {/* Crypto Assets Section */}
                             {aggregatedCryptoAssets.length > 0 && (
                                 <div>
-                                    <div className="flex items-center gap-2 mb-3">
+                                    <div className="flex items-center gap-2 mb-2">
                                         <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Criptomonedas</span>
-                                        <span className="text-[10px] text-muted-foreground">({aggregatedCryptoAssets.length})</span>
+                                        <div className="flex-1 h-px bg-border/40" />
+                                        <span className="text-[10px] text-muted-foreground">{aggregatedCryptoAssets.length}</span>
                                     </div>
                                     <BTCHalvingCountdown />
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-1.5 mt-2">
                                         {aggregatedCryptoAssets.map((asset) => {
                                             const variation = asset.variations[timeframe];
                                             const hasData = variation !== null;
@@ -245,40 +244,32 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                             return (
                                                 <div
                                                     key={asset.symbol}
-                                                    className="group relative flex flex-col justify-between p-2.5 rounded-xl bg-card border border-border/40 shadow-sm transition-all hover:shadow-md hover:border-border/60"
+                                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card/40 border border-border/40 hover:bg-card/70 transition-all"
                                                 >
-                                                    {/* Top: Logo + Symbol */}
-                                                    <div className="flex items-center gap-1.5 mb-2">
-                                                        <div className="relative">
-                                                            <CryptoLogo symbol={asset.symbol} size={24} />
-                                                        </div>
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="font-bold text-xs tracking-tight truncate">{asset.symbol}</span>
-                                                            <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wide truncate">{asset.name}</span>
-                                                        </div>
+                                                    {/* Logo */}
+                                                    <CryptoLogo symbol={asset.symbol} size={28} />
+
+                                                    {/* Symbol + Name */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold leading-tight">{asset.symbol}</p>
+                                                        <p className="text-[10px] text-muted-foreground truncate">{asset.name}</p>
                                                     </div>
 
-                                                    {/* Bottom: Price + Variation */}
-                                                    <div className="flex flex-col items-end gap-0.5">
-                                                        <p className="font-bold text-xs tabular-nums tracking-tight">
-                                                            {formatCryptoPrice(asset.currentPrice)}
-                                                        </p>
+                                                    {/* Price */}
+                                                    <p className="text-sm font-bold tabular-nums text-right">
+                                                        {formatCryptoPrice(asset.currentPrice)}
+                                                    </p>
 
-                                                        <div className={cn(
-                                                            "flex items-center justify-center px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-full text-center",
-                                                            !hasData
-                                                                ? "text-muted-foreground bg-muted"
-                                                                : isPositive
-                                                                    ? "text-green-600 bg-green-500/10"
-                                                                    : "text-red-600 bg-red-500/10"
-                                                        )}>
-                                                            {hasData ? (
-                                                                <>
-                                                                    {isPositive ? "+" : ""}
-                                                                    {variation.toFixed(2)}%
-                                                                </>
-                                                            ) : "—"}
-                                                        </div>
+                                                    {/* % badge */}
+                                                    <div className={cn(
+                                                        "text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-lg shrink-0 min-w-[52px] text-center",
+                                                        !hasData
+                                                            ? "text-muted-foreground bg-muted/50"
+                                                            : isPositive
+                                                                ? "text-green-600 bg-green-500/10"
+                                                                : "text-red-600 bg-red-500/10"
+                                                    )}>
+                                                        {hasData ? `${isPositive ? "+" : ""}${variation.toFixed(2)}%` : "—"}
                                                     </div>
                                                 </div>
                                             );
@@ -290,12 +281,13 @@ export function CryptoPage({ user }: CryptoPageProps) {
                             {/* Institutional Assets Section */}
                             {aggregatedInstitutionalAssets.length > 0 && (
                                 <div>
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Activos Institucionales</span>
-                                        <span className="text-[10px] text-muted-foreground">({aggregatedInstitutionalAssets.length})</span>
+                                    <div className="flex items-center gap-2 mb-2">
+                                        <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Institucionales</span>
+                                        <div className="flex-1 h-px bg-border/40" />
+                                        <span className="text-[10px] text-muted-foreground">{aggregatedInstitutionalAssets.length}</span>
                                     </div>
                                     <InstitutionalMarketStatus />
-                                    <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-1.5 mt-2">
                                         {aggregatedInstitutionalAssets.map((asset) => {
                                             const variation = asset.variations[timeframe];
                                             const hasData = variation !== null;
@@ -304,40 +296,32 @@ export function CryptoPage({ user }: CryptoPageProps) {
                                             return (
                                                 <div
                                                     key={asset.symbol}
-                                                    className="group relative flex flex-col justify-between p-2.5 rounded-xl bg-card border border-amber-500/20 shadow-sm transition-all hover:shadow-md hover:border-amber-500/40"
+                                                    className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card/40 border border-amber-500/20 hover:bg-card/70 transition-all"
                                                 >
-                                                    {/* Top: Logo + Symbol */}
-                                                    <div className="flex items-center gap-1.5 mb-2">
-                                                        <div className="relative">
-                                                            <CryptoLogo symbol={asset.symbol} size={24} />
-                                                        </div>
-                                                        <div className="flex flex-col min-w-0">
-                                                            <span className="font-bold text-xs tracking-tight truncate">{asset.symbol}</span>
-                                                            <span className="text-[8px] text-muted-foreground font-medium uppercase tracking-wide truncate">{asset.name}</span>
-                                                        </div>
+                                                    {/* Logo */}
+                                                    <CryptoLogo symbol={asset.symbol} size={28} />
+
+                                                    {/* Symbol + Name */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="text-sm font-semibold leading-tight">{asset.symbol}</p>
+                                                        <p className="text-[10px] text-muted-foreground truncate">{asset.name}</p>
                                                     </div>
 
-                                                    {/* Bottom: Price + Variation */}
-                                                    <div className="flex flex-col items-end gap-0.5">
-                                                        <p className="font-bold text-xs tabular-nums tracking-tight">
-                                                            {formatCryptoPrice(asset.currentPrice)}
-                                                        </p>
+                                                    {/* Price */}
+                                                    <p className="text-sm font-bold tabular-nums text-right">
+                                                        {formatCryptoPrice(asset.currentPrice)}
+                                                    </p>
 
-                                                        <div className={cn(
-                                                            "flex items-center justify-center px-1 py-0.5 rounded text-[9px] font-bold tabular-nums w-full text-center",
-                                                            !hasData
-                                                                ? "text-muted-foreground bg-muted"
-                                                                : isPositive
-                                                                    ? "text-green-600 bg-green-500/10"
-                                                                    : "text-red-600 bg-red-500/10"
-                                                        )}>
-                                                            {hasData ? (
-                                                                <>
-                                                                    {isPositive ? "+" : ""}
-                                                                    {variation.toFixed(2)}%
-                                                                </>
-                                                            ) : "—"}
-                                                        </div>
+                                                    {/* % badge */}
+                                                    <div className={cn(
+                                                        "text-[10px] font-bold tabular-nums px-2 py-0.5 rounded-lg shrink-0 min-w-[52px] text-center",
+                                                        !hasData
+                                                            ? "text-muted-foreground bg-muted/50"
+                                                            : isPositive
+                                                                ? "text-green-600 bg-green-500/10"
+                                                                : "text-red-600 bg-red-500/10"
+                                                    )}>
+                                                        {hasData ? `${isPositive ? "+" : ""}${variation.toFixed(2)}%` : "—"}
                                                     </div>
                                                 </div>
                                             );

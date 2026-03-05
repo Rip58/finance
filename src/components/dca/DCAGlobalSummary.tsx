@@ -1,5 +1,4 @@
 import { formatCurrency, formatPercent } from "@/lib/utils";
-import { TrendingUp, TrendingDown, Wallet, PieChart, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface DCAGlobalSummaryProps {
@@ -19,46 +18,30 @@ export function DCAGlobalSummary({
 
     return (
         <div className="mb-4 grid grid-cols-3 gap-2">
-            {/* Total Invested */}
-            <div className="bg-white dark:bg-card rounded-[24px] p-2.5 sm:p-3 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
-                    <Wallet className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                    <span className="text-[13px] font-medium">Invertido</span>
-                </div>
-                <p className="text-[15px] sm:text-[16px] font-bold tracking-tight text-foreground">
-                    {formatCurrency(totalInvested, "USD")}
-                </p>
+            {/* Invertido */}
+            <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Invertido</p>
+                <p className="font-bold text-[10px] tabular-nums truncate">{formatCurrency(totalInvested, "USD")}</p>
             </div>
 
             {/* PnL */}
-            <div className="bg-white dark:bg-card rounded-[24px] p-2.5 sm:p-3 flex flex-col justify-between relative overflow-hidden">
-                <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
-                    <Activity className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                    <span className="text-[13px] font-medium">PnL Global</span>
-                </div>
-                <div className="flex flex-col gap-0.5">
-                    <span className={cn(
-                        "text-[15px] sm:text-[16px] font-bold tracking-tight flex items-center gap-0.5",
-                        isProfitable ? "text-emerald-500" : "text-rose-500"
-                    )}>
-                        {isProfitable ? "+" : ""}{formatCurrency(totalPnL, "USD")}
-                        {isProfitable ? <TrendingUp className="h-4 w-4" strokeWidth={2.5} /> : <TrendingDown className="h-4 w-4" strokeWidth={2.5} />}
-                    </span>
-                    <span className={cn("text-[13px] font-medium", isProfitable ? "text-emerald-500/70" : "text-rose-400/80")}>
-                        {formatPercent(totalPnLPercent)}
-                    </span>
-                </div>
+            <div className={cn(
+                "rounded-xl py-2 px-2 text-center border",
+                isProfitable ? "bg-emerald-500/10 border-emerald-500/20" : "bg-rose-500/10 border-rose-500/20"
+            )}>
+                <p className={cn("text-[8px] uppercase tracking-wide mb-0.5", isProfitable ? "text-emerald-600/80" : "text-rose-600/80")}>PnL Global</p>
+                <p className={cn("font-bold text-[10px] tabular-nums truncate", isProfitable ? "text-emerald-600" : "text-rose-600")}>
+                    {isProfitable ? "+" : ""}{formatCurrency(totalPnL, "USD")}
+                </p>
+                <p className={cn("text-[9px] font-medium", isProfitable ? "text-emerald-600/60" : "text-rose-600/60")}>
+                    {formatPercent(totalPnLPercent)}
+                </p>
             </div>
 
-            {/* Current Value */}
-            <div className="bg-white dark:bg-card rounded-[24px] p-2.5 sm:p-3 flex flex-col justify-between">
-                <div className="flex items-center gap-1.5 text-zinc-800 dark:text-zinc-300 mb-3">
-                    <PieChart className="h-[18px] w-[18px]" strokeWidth={1.5} />
-                    <span className="text-[13px] font-medium">Actual</span>
-                </div>
-                <p className="text-[15px] sm:text-[16px] font-bold tracking-tight text-foreground">
-                    {formatCurrency(totalCurrentValue, "USD")}
-                </p>
+            {/* Actual */}
+            <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
+                <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Actual</p>
+                <p className="font-bold text-[10px] tabular-nums truncate">{formatCurrency(totalCurrentValue, "USD")}</p>
             </div>
         </div>
     );

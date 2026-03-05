@@ -141,47 +141,39 @@ export default function TradingPage({ user }: TradingPageProps) {
                     </div>
                 </div>
 
-                {/* Metrics Section */}
-                <div className="space-y-3">
-                    {/* Big PnL Card */}
-                    <div className={`rounded-xl p-5 border flex items-center justify-between ${totalPnl >= 0
-                        ? 'bg-green-500/8 border-green-500/20'
-                        : 'bg-red-500/8 border-red-500/20'
-                        }`}>
-                        <div>
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">PnL Total</span>
-                            <div className={`text-3xl font-bold font-mono mt-0.5 ${totalPnl >= 0 ? 'text-green-500' : 'text-red-500'
-                                }`}>
-                                {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)} $
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-widest">Win Rate</span>
-                            <div className="text-3xl font-bold mt-0.5">{winRate}%</div>
-                        </div>
+                {/* Metrics chips — same style as Report */}
+                <div className="grid grid-cols-2 gap-2">
+                    {/* PnL Total */}
+                    <div className={`rounded-xl py-3 px-3 border ${totalPnl >= 0 ? 'bg-green-500/10 border-green-500/20' : 'bg-red-500/10 border-red-500/20'}`}>
+                        <p className={`text-[8px] uppercase tracking-wide mb-0.5 ${totalPnl >= 0 ? 'text-green-600/80' : 'text-red-600/80'}`}>PnL Total</p>
+                        <p className={`font-bold text-sm tabular-nums ${totalPnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {totalPnl >= 0 ? '+' : ''}{totalPnl.toFixed(2)} $
+                        </p>
                     </div>
-
-                    {/* 3 stat chips */}
-                    <div className="grid grid-cols-3 gap-3">
-                        <div className="bg-card/50 border border-border/40 rounded-xl p-3 text-center">
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Wins</span>
-                            <div className="text-xl font-bold text-green-500 mt-0.5">{wins}</div>
-                            <div className="text-[10px] font-mono text-green-500/70 mt-0.5">
-                                +{totalWinPnl.toFixed(0)} $
-                            </div>
-                        </div>
-                        <div className="bg-card/50 border border-border/40 rounded-xl p-3 text-center">
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Losses</span>
-                            <div className="text-xl font-bold text-red-500 mt-0.5">{losses}</div>
-                            <div className="text-[10px] font-mono text-red-500/70 mt-0.5">
-                                {totalLossPnl.toFixed(0)} $
-                            </div>
-                        </div>
-                        <div className="bg-card/50 border border-border/40 rounded-xl p-3 text-center">
-                            <span className="text-[10px] text-muted-foreground uppercase tracking-wider block">Operaciones</span>
-                            <div className="text-xl font-bold mt-0.5">{closedTrades.length}</div>
-                            <div className="text-[10px] text-muted-foreground mt-0.5">cerradas</div>
-                        </div>
+                    {/* Win Rate */}
+                    <div className="bg-card/50 border border-border/40 rounded-xl py-3 px-3">
+                        <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Win Rate</p>
+                        <p className="font-bold text-sm">{winRate}%</p>
+                    </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                    {/* Wins */}
+                    <div className="bg-green-500/10 border border-green-500/20 rounded-xl py-2 px-2 text-center">
+                        <p className="text-[8px] text-green-600/80 uppercase tracking-wide mb-0.5">Wins</p>
+                        <p className="font-bold text-sm text-green-600">{wins}</p>
+                        <p className="text-[9px] text-green-600/60 tabular-nums">+{totalWinPnl.toFixed(0)} $</p>
+                    </div>
+                    {/* Losses */}
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-2 text-center">
+                        <p className="text-[8px] text-red-600/80 uppercase tracking-wide mb-0.5">Losses</p>
+                        <p className="font-bold text-sm text-red-600">{losses}</p>
+                        <p className="text-[9px] text-red-600/60 tabular-nums">{totalLossPnl.toFixed(0)} $</p>
+                    </div>
+                    {/* Operaciones */}
+                    <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
+                        <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Trades</p>
+                        <p className="font-bold text-sm">{closedTrades.length}</p>
+                        <p className="text-[9px] text-muted-foreground">cerradas</p>
                     </div>
                 </div>
 
