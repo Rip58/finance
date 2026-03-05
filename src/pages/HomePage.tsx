@@ -384,7 +384,6 @@ export function HomePage({ user }: HomePageProps) {
   };
 
   const userName = user.email?.split("@")[0] || "Usuario";
-  const greeting = getGreeting();
 
   // Balance = savings + investments + crypto
   const totalBalance = (metrics?.savingsBalance ?? 0) + (metrics?.investmentsBalance ?? 0) + (metrics?.cryptoBalance ?? 0);
@@ -406,11 +405,11 @@ export function HomePage({ user }: HomePageProps) {
                 </AvatarFallback>
               </Avatar>
               <div>
-                <p className="text-xs text-muted-foreground">{greeting}</p>
                 <div className="flex items-center gap-2">
-                  <p className="font-semibold capitalize">{userName}</p>
+                  <p className="font-bold text-lg capitalize leading-tight">{userName}</p>
                   <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium">v{APP_VERSION}</span>
                 </div>
+                <p className="text-[10px] text-muted-foreground">Finanzas personales</p>
               </div>
             </div>
             <div className="flex items-center gap-1">
@@ -504,9 +503,3 @@ export function HomePage({ user }: HomePageProps) {
   );
 }
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return "Buenos días!";
-  if (hour < 18) return "Buenas tardes!";
-  return "Buenas noches!";
-}

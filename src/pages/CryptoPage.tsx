@@ -180,7 +180,7 @@ export function CryptoPage({ user }: CryptoPageProps) {
         <MobileLayout>
             <div className="container mx-auto p-4 space-y-6 pb-20 fade-in safe-area-pt">
                 <PageHeader
-                    title="Mercado Crypto"
+                    title="Crypto"
                     description="Precios en tiempo real"
                     actions={
                         <div className="flex items-center gap-2">

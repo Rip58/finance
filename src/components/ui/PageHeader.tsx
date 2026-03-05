@@ -12,7 +12,7 @@ export function PageHeader({ title, description, actions, className }: PageHeade
     return (
         <div className={cn("flex items-start justify-between gap-4 mb-6", className)}>
             <div className="flex-1 min-w-0">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent leading-tight truncate">
+                <h1 className="text-2xl font-bold text-foreground leading-tight truncate">
                     {title}
                 </h1>
                 {description && (

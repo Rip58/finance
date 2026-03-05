@@ -109,27 +109,39 @@ export function DCASummaryCard({
       </div>
 
       {/* 3-col footer */}
-      <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border/30">
-        <div>
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
-            <Wallet className="h-3 w-3" />
-            Invertido
-          </div>
-          <p className="text-sm font-bold">{formatCurrency(totals.totalInvested, "USD")}</p>
+      <div className="grid grid-cols-3 divide-x divide-border/30 pt-3 border-t border-border/30">
+        {/* Invertido */}
+        <div className="pr-3">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+            <Wallet className="h-2.5 w-2.5" /> Invertido
+          </p>
+          <p className="text-sm font-bold tabular-nums leading-tight">{formatCurrency(totals.totalInvested, "USD")}</p>
         </div>
-        <div className="border-l border-border/30 pl-3">
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
-            <Target className="h-3 w-3" />
-            Medio
+
+        {/* PnL — center, colored */}
+        <div className="px-3">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+            <Target className="h-2.5 w-2.5" /> PnL
+          </p>
+          <div className="flex items-baseline gap-1.5 flex-wrap">
+            <p className={cn("text-sm font-bold tabular-nums leading-tight", isProfitable ? "text-emerald-500" : "text-rose-500")}>
+              {isProfitable ? "+" : ""}{formatCurrency(totals.pnl, "USD")}
+            </p>
+            <span className={cn(
+              "text-[9px] font-bold px-1 py-0.5 rounded",
+              isProfitable ? "bg-emerald-500/10 text-emerald-500" : "bg-rose-500/10 text-rose-500"
+            )}>
+              {isProfitable ? "+" : ""}{totals.pnlPercent.toFixed(1)}%
+            </span>
           </div>
-          <p className="text-sm font-bold">{formatCurrency(totals.averagePrice, "USD")}</p>
         </div>
-        <div className="border-l border-border/30 pl-3">
-          <div className="flex items-center gap-1 text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">
-            <Zap className="h-3 w-3" />
-            Actual
-          </div>
-          <p className="text-sm font-bold">{currentPrice ? formatCurrency(currentPrice, "USD") : "—"}</p>
+
+        {/* Actual */}
+        <div className="pl-3">
+          <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-1 flex items-center gap-1">
+            <Zap className="h-2.5 w-2.5" /> Actual
+          </p>
+          <p className="text-sm font-bold tabular-nums leading-tight">{currentPrice ? formatCurrency(currentPrice, "USD") : "—"}</p>
         </div>
       </div>
     </div>

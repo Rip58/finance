@@ -121,7 +121,7 @@ export default function TradingPage({ user }: TradingPageProps) {
             <div className="container mx-auto p-4 space-y-8 pb-20 fade-in safe-area-pt">
                 {/* Header */}
                 <div className="flex items-center justify-between">
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+                    <h1 className="text-2xl font-bold text-foreground">
                         Trading Journal
                     </h1>
                     <div className="flex items-center gap-2">

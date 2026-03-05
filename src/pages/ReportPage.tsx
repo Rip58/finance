@@ -214,19 +214,19 @@ export function ReportPage({ user }: ReportPageProps) {
 
         {/* Totals */}
         <div className="grid grid-cols-3 gap-2">
-          <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-3 text-center">
-            <p className="text-[9px] text-muted-foreground uppercase tracking-wide mb-0.5">Total</p>
-            <p className="font-bold text-xs">{formatCurrency(totals.total)}</p>
+          <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
+            <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Total</p>
+            <p className="font-bold text-[10px] truncate">{formatCurrency(totals.total)}</p>
           </div>
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl py-2 px-3 text-center">
-            <p className="text-[9px] text-green-600/80 uppercase tracking-wide mb-0.5">
+          <div className="bg-green-500/10 border border-green-500/20 rounded-xl py-2 px-2 text-center">
+            <p className="text-[8px] text-green-600/80 uppercase tracking-wide mb-0.5">
               {isDebtTab ? "Pagado" : "Confirmado"}
             </p>
-            <p className="font-bold text-xs text-green-600">{formatCurrency(totals.paid)}</p>
+            <p className="font-bold text-[10px] text-green-600 truncate">{formatCurrency(totals.paid)}</p>
           </div>
-          <div className="bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-3 text-center">
-            <p className="text-[9px] text-red-600/80 uppercase tracking-wide mb-0.5">Pendiente</p>
-            <p className="font-bold text-xs text-red-600">{formatCurrency(totals.pending)}</p>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-xl py-2 px-2 text-center">
+            <p className="text-[8px] text-red-600/80 uppercase tracking-wide mb-0.5">Pendiente</p>
+            <p className="font-bold text-[10px] text-red-600 truncate">{formatCurrency(totals.pending)}</p>
           </div>
         </div>
 
@@ -257,10 +257,10 @@ export function ReportPage({ user }: ReportPageProps) {
                         key={item.id}
                         onClick={() => handleEdit(item)}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-3 rounded-xl border transition-all cursor-pointer",
+                          "flex items-center gap-3 px-4 py-3 rounded-xl border border-border/40 transition-all cursor-pointer bg-card/40",
                           item.isPaid
-                            ? "bg-muted/20 border-transparent opacity-60"
-                            : "bg-card/40 border-border/40 hover:bg-card/70"
+                            ? "opacity-60 hover:opacity-80"
+                            : "hover:bg-card/70"
                         )}
                       >
                         {/* Left: name + meta */}
