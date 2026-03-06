@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { calculateDCAStats } from "@/lib/dcaUtils";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2, TrendingUp, TrendingDown, Wallet, Target, Zap } from "lucide-react";
+import { RefreshCw, Trash2 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 import { CryptoLogo } from "./CryptoLogo";
@@ -83,37 +83,28 @@ export function DCASummaryCard({
         </div>
       </div>
 
-      {/* Hero: value + PnL */}
-      <div className="mb-4">
-        <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Valor Actual</p>
-        <div className="flex items-baseline gap-2 flex-wrap">
+      {/* Hero: Valor Actual (left) | Invertido (right) */}
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Valor Actual</p>
           <span className="text-2xl font-bold tracking-tight">
             {formatCurrency(totals.currentValue, "USD")}
           </span>
-          <div className={cn(
-            "flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold",
-            isProfitable
-              ? "bg-emerald-500/10 text-emerald-500"
-              : "bg-rose-500/10 text-rose-500"
-          )}>
-            {isProfitable ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-            {isProfitable ? "+" : ""}{totals.pnlPercent.toFixed(1)}%
-          </div>
-          <span className={cn(
-            "text-sm font-bold",
-            isProfitable ? "text-emerald-500" : "text-rose-500"
-          )}>
-            {isProfitable ? "+" : ""}{formatCurrency(totals.pnl, "USD")}
+        </div>
+        <div className="text-right">
+          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-0.5">Invertido</p>
+          <span className="text-2xl font-bold tracking-tight">
+            {formatCurrency(totals.totalInvested, "USD")}
           </span>
         </div>
       </div>
 
       {/* 3-col footer — same style as Report chips */}
       <div className="grid grid-cols-3 gap-2 pt-3 border-t border-border/30">
-        {/* Invertido */}
+        {/* Precio Medio */}
         <div className="bg-card/50 border border-border/40 rounded-xl py-2 px-2 text-center">
-          <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Invertido</p>
-          <p className="font-bold text-[10px] tabular-nums truncate">{formatCurrency(totals.totalInvested, "USD")}</p>
+          <p className="text-[8px] text-muted-foreground uppercase tracking-wide mb-0.5">Precio Medio</p>
+          <p className="font-bold text-[10px] tabular-nums truncate">{totals.averagePrice > 0 ? formatCurrency(totals.averagePrice, "USD") : "—"}</p>
         </div>
 
         {/* PnL — colored */}
