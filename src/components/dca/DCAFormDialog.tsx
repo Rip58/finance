@@ -102,10 +102,15 @@ export function DCAFormDialog({
     const price = parseFloat(formData.price_eur);
     const total = parseFloat(formData.totalOutput);
 
+    if (val === "") {
+      setFormData(prev => ({ ...prev, quantity: val }));
+      return;
+    }
+
     if (!isNaN(qty) && qty >= 0) {
-      if (!isNaN(price) && price > 0) {
+      if (formData.price_eur !== "" && !isNaN(price) && price > 0) {
         setFormData(prev => ({ ...prev, quantity: val, totalOutput: formatVal(qty * price) }));
-      } else if (!isNaN(total) && total > 0) {
+      } else if (formData.totalOutput !== "" && !isNaN(total) && total > 0) {
         setFormData(prev => ({ ...prev, quantity: val, price_eur: formatVal(total / qty) }));
       } else {
         setFormData(prev => ({ ...prev, quantity: val }));
@@ -120,10 +125,15 @@ export function DCAFormDialog({
     const qty = parseFloat(formData.quantity);
     const total = parseFloat(formData.totalOutput);
 
+    if (val === "") {
+      setFormData(prev => ({ ...prev, price_eur: val }));
+      return;
+    }
+
     if (!isNaN(price) && price > 0) {
-      if (!isNaN(qty) && qty > 0) {
+      if (formData.quantity !== "" && !isNaN(qty) && qty > 0) {
         setFormData(prev => ({ ...prev, price_eur: val, totalOutput: formatVal(qty * price) }));
-      } else if (!isNaN(total) && total > 0) {
+      } else if (formData.totalOutput !== "" && !isNaN(total) && total > 0) {
         setFormData(prev => ({ ...prev, price_eur: val, quantity: formatVal(total / price) }));
       } else {
         setFormData(prev => ({ ...prev, price_eur: val }));
@@ -138,11 +148,17 @@ export function DCAFormDialog({
     const price = parseFloat(formData.price_eur);
     const qty = parseFloat(formData.quantity);
 
+    if (val === "") {
+      setFormData(prev => ({ ...prev, totalOutput: val }));
+      return;
+    }
+
     if (!isNaN(total) && total >= 0) {
-      if (!isNaN(price) && price > 0) {
-        setFormData(prev => ({ ...prev, totalOutput: val, quantity: formatVal(total / price) }));
-      } else if (!isNaN(qty) && qty > 0) {
+      // Priorizar el cálculo del precio antes que la cantidad
+      if (formData.quantity !== "" && !isNaN(qty) && qty > 0) {
         setFormData(prev => ({ ...prev, totalOutput: val, price_eur: formatVal(total / qty) }));
+      } else if (formData.price_eur !== "" && !isNaN(price) && price > 0) {
+        setFormData(prev => ({ ...prev, totalOutput: val, quantity: formatVal(total / price) }));
       } else {
         setFormData(prev => ({ ...prev, totalOutput: val }));
       }

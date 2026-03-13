@@ -116,8 +116,17 @@ export function ReportPage({ user }: ReportPageProps) {
     if (activeTab === 'debt_pay' || activeTab === 'debt_collect') {
       let loanTotal = 0, loanPaid = 0;
       filteredItems.forEach(item => {
-        loanTotal += item.loan_total_amount || (item.amount * (item.loan_total_payments || 1));
-        loanPaid += item.loan_amount_paid != null ? item.loan_amount_paid : (item.loan_payments_made || 0) * item.amount;
+        let isFullyPaid = false;
+        if (item.loan_total_payments && item.loan_total_payments > 0) {
+           isFullyPaid = (item.loan_payments_made || 0) >= item.loan_total_payments;
+        } else if (item.loan_total_amount && item.loan_total_amount > 0) {
+           isFullyPaid = ((item.loan_total_amount || 0) - (item.loan_amount_paid || 0)) <= 0;
+        }
+
+        if (!isFullyPaid) {
+          loanTotal += item.loan_total_amount || (item.amount * (item.loan_total_payments || 1));
+          loanPaid += item.loan_amount_paid != null ? item.loan_amount_paid : (item.loan_payments_made || 0) * item.amount;
+        }
       });
       return { total: loanTotal, paid: loanPaid, pending: loanTotal - loanPaid };
     }
@@ -127,7 +136,7 @@ export function ReportPage({ user }: ReportPageProps) {
   }, [currentMonthItems, filteredItems, activeTab]);
 
   const groupedItems = useMemo(() => {
-    const groups: { accountId: string | null; accountName: string; items: typeof currentMonthItems }[] = [];
+    const groups: { accountId: string | null; accountName: string; items: typeof currentMonthItems; isHistory?: boolean }[] = [];
     accounts.forEach(acc => groups.push({ accountId: acc.id, accountName: acc.name, items: [] }));
     groups.push({
       accountId: null,
@@ -135,23 +144,49 @@ export function ReportPage({ user }: ReportPageProps) {
       items: []
     });
 
+    if (activeTab === 'debt_pay' || activeTab === 'debt_collect') {
+      groups.push({ accountId: 'history', accountName: 'Histórico', items: [], isHistory: true });
+    }
+
     const cadenceOrder: Record<string, number> = { yearly: 0, quarterly: 1, monthly: 2, weekly: 3 };
 
     currentMonthItems.forEach(item => {
+      if (activeTab === 'debt_pay' || activeTab === 'debt_collect') {
+        let isFullyPaid = false;
+        if (item.loan_total_payments && item.loan_total_payments > 0) {
+           isFullyPaid = (item.loan_payments_made || 0) >= item.loan_total_payments;
+        } else if (item.loan_total_amount && item.loan_total_amount > 0) {
+           isFullyPaid = ((item.loan_total_amount || 0) - (item.loan_amount_paid || 0)) <= 0;
+        }
+
+        if (isFullyPaid) {
+          const hg = groups.find(g => g.isHistory);
+          if (hg) {
+            hg.items.push(item);
+            return;
+          }
+        }
+      }
+
       let placed = false;
       if (item.bank_account_id) {
-        const g = groups.find(g => g.accountId === item.bank_account_id);
+        const g = groups.find(g => g.accountId === item.bank_account_id && !g.isHistory);
         if (g) { g.items.push(item); placed = true; }
       }
       if (!placed) {
-        const g = groups.find(g => g.accountId === null);
+        const g = groups.find(g => g.accountId === null && !g.isHistory);
         if (g) g.items.push(item);
       }
     });
 
     groups.forEach(g => g.items.sort((a, b) => (cadenceOrder[a.cadence] ?? 99) - (cadenceOrder[b.cadence] ?? 99)));
-    return groups.filter(g => g.items.length > 0);
-  }, [currentMonthItems, accounts]);
+    
+    return groups.filter(g => g.items.length > 0).sort((a, b) => {
+      if (a.isHistory) return 1;
+      if (b.isHistory) return -1;
+      return 0;
+    });
+  }, [currentMonthItems, accounts, activeTab]);
 
   const currentMonthName = format(new Date(), "MMMM yyyy", { locale: es });
   const isDebtTab = activeTab === 'debt_pay' || activeTab === 'debt_collect';
