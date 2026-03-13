@@ -13,6 +13,7 @@ import { DCASummaryCard } from "@/components/dca/DCASummaryCard";
 import { DCAEntryList } from "@/components/dca/DCAEntryList";
 import { CryptoLogo } from "@/components/dca/CryptoLogo";
 import { DCAFormDialog } from "@/components/dca/DCAFormDialog";
+import { DCAManualBalanceDialog } from "@/components/dca/DCAManualBalanceDialog";
 import { DCAPortfolioDialog } from "@/components/dca/DCAPortfolioDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -49,6 +50,8 @@ export function DCAPage({ user }: DCAPageProps) {
   const [deletePortfolioId, setDeletePortfolioId] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+  const [showManualBalanceDialog, setShowManualBalanceDialog] = useState(false);
+  const [currentTargetQuantity, setCurrentTargetQuantity] = useState(0);
 
   const portfolios = useDCAPortfolios(user.id);
   const assetTransactions = useAssetTransactions(user.id);
@@ -138,6 +141,28 @@ export function DCAPage({ user }: DCAPageProps) {
       handleRefreshPrices();
     }
   }, [allSymbols.join(',')]);
+
+  const handleManualBalanceSubmit = async (newQuantity: number) => {
+    if (!selectedPortfolio) return;
+    
+    const difference = newQuantity - currentTargetQuantity;
+    
+    if (Math.abs(difference) > 1e-8) {
+      await assetTransactions.create({
+        symbol: selectedPortfolio.symbol,
+        asset_type: selectedPortfolio.asset_type as "crypto" | "commodity" | "other",
+        side: "adjustment",
+        quantity: difference,
+        price_eur: 0,
+        transaction_date: new Date().toISOString().split("T")[0],
+        notes: "Ajuste manual de saldo",
+        value_date: null,
+        category_id: null,
+        dca_portfolio_id: selectedPortfolioId,
+      });
+      toast({ title: "Balance ajustado" });
+    }
+  };
 
 
   const handleSubmit = async (data: {
@@ -298,6 +323,10 @@ export function DCAPage({ user }: DCAPageProps) {
                   onRefresh={handleRefreshPrices}
                   isRefreshing={isRefreshing}
                   onDelete={() => setDeletePortfolioId(selectedPortfolioId)}
+                  onUpdateQuantity={(qty) => {
+                    setCurrentTargetQuantity(qty);
+                    setShowManualBalanceDialog(true);
+                  }}
                 />
 
                 <DCAEntryList
@@ -325,6 +354,16 @@ export function DCAPage({ user }: DCAPageProps) {
         currentPrices={currentPrices || {}}
         onSubmit={handleSubmit}
         isSubmitting={assetTransactions.isCreating || assetTransactions.isUpdating}
+      />
+
+      {/* Manual Balance Form */}
+      <DCAManualBalanceDialog
+        open={showManualBalanceDialog}
+        onOpenChange={setShowManualBalanceDialog}
+        symbol={selectedPortfolio?.symbol || ""}
+        currentQuantity={currentTargetQuantity}
+        onSubmit={handleManualBalanceSubmit}
+        isSubmitting={assetTransactions.isCreating}
       />
 
       {/* Portfolio Form (New DCA) */}

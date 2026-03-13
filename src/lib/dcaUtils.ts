@@ -37,6 +37,8 @@ export function calculateDCAStats(transactions: AssetTransaction[]): DCAStats {
 
             netQuantity -= tx.quantity;
             costBasis -= costOfSold;
+        } else if (tx.side === "adjustment") {
+            netQuantity += tx.quantity;
         }
     }
 

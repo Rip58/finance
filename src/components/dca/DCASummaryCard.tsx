@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { calculateDCAStats } from "@/lib/dcaUtils";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, Trash2 } from "lucide-react";
+import { RefreshCw, Trash2, Pencil } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import type { AssetTransaction } from "@/hooks/useAssetTransactions";
 import { CryptoLogo } from "./CryptoLogo";
@@ -13,6 +13,7 @@ interface DCASummaryCardProps {
   onRefresh: () => void;
   isRefreshing?: boolean;
   onDelete?: () => void;
+  onUpdateQuantity?: (newQuantity: number) => void;
 }
 
 export function DCASummaryCard({
@@ -21,7 +22,8 @@ export function DCASummaryCard({
   symbol,
   onRefresh,
   isRefreshing,
-  onDelete
+  onDelete,
+  onUpdateQuantity
 }: DCASummaryCardProps) {
   const totals = useMemo(() => {
     if (!transactions || transactions.length === 0)
@@ -70,6 +72,16 @@ export function DCASummaryCard({
           >
             <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin")} />
           </Button>
+          {onUpdateQuantity && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => onUpdateQuantity(totals.netQuantity)}
+              className="h-8 w-8 text-muted-foreground"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+          )}
           {onDelete && (
             <Button
               variant="ghost"

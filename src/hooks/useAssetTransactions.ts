@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { updateCryptoPrices } from "@/lib/cryptoPrices";
 
 export type AssetType = "crypto" | "commodity" | "other";
-export type AssetSide = "buy" | "sell";
+export type AssetSide = "buy" | "sell" | "adjustment";
 
 export interface AssetTransaction {
   id: string;
